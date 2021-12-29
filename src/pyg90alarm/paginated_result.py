@@ -1,0 +1,111 @@
+# Copyright (c) 2021 Ilia Sotnikov
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+"""
+tbd
+"""
+
+import logging
+from .paginated_cmd import G90PaginatedCommand
+from .const import (
+    CMD_PAGE_SIZE,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+class G90PaginatedResult:
+    """
+    tbd
+    """
+    # pylint: disable=too-few-public-methods
+    def __init__(self, host, port, code, start=1, end=None, **kwargs):
+        # pylint: disable=too-many-arguments
+        self._host = host
+        self._port = port
+        self._code = code
+        self._start = start
+        self._end = end
+        self._kwargs = kwargs
+
+    async def process(self):
+        """
+        tbd
+        """
+        page = CMD_PAGE_SIZE
+        start = self._start
+        count = 0
+        while True:
+            # The start record number is one-based, so subtract one when
+            # calculating the number of the end record for the current
+            # iteration
+            end = start + page - 1
+            # Use the smallest of requested end record number and calculated
+            # one (based of page size), allows for number of records less than
+            # in page
+            if self._end:
+                end = min(end, self._end)
+
+            _LOGGER.debug('Invoking paginated command for %s..%s range',
+                          start, end)
+            cmd = await G90PaginatedCommand(
+                host=self._host, port=self._port, code=self._code,
+                start=start, end=end,
+                **self._kwargs
+            ).process()
+
+            # The caller didn't supply the end record number, use the records
+            # total since it is now known
+            if not self._end:
+                self._end = cmd.total
+            # The supplied end record number is higher than total records
+            # available, reset to the latter
+            if self._end > cmd.total:
+                _LOGGER.warning('Requested record range (%i) exceeds number of'
+                                ' available records (%i), setting to the'
+                                ' latter', self._end, cmd.total)
+                self._end = cmd.total
+
+            # Produce the resulting records for the consumer
+            for res in cmd.result:
+                yield res
+
+            # Count the number of processed records
+            count += cmd.count
+
+            # End the loop if we processed same number of sensors as in the
+            # pagination header (or attempted to process more than that by
+            # an error)
+            _LOGGER.debug('Retrieved %i records in the iteration,'
+                          ' %i available in total, target end'
+                          ' record number is %i',
+                          cmd.count, cmd.total, self._end)
+            if cmd.start + cmd.count - 1 >= self._end:
+                break
+            # Move to the next page for another iteration
+            start = start + page
+
+        _LOGGER.debug('Total number of paginated entries:'
+                      ' processed %s, expected %s',
+                      count,
+                      # Again, both end and start record numbers are one-based,
+                      # so need to add one to calculate how many records have
+                      # been requested
+                      self._end - self._start + 1)
