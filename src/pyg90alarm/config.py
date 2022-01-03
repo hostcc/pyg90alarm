@@ -43,7 +43,7 @@ class G90AlertConfigFlags(IntFlag):
 
 class G90AlertConfig(namedtuple('G90AlertConfig', ['flags_data'])):
     """
-    Represents alert vonfiguration as received from the alarm panel.
+    Represents alert configuration as received from the alarm panel.
     """
 
     @property

@@ -263,7 +263,7 @@ class G90Alarm:
             _LOGGER.debug('Found sensor: %s', sensor[0])
             sensor[0].occupancy = True
 
-            # Emulate turning off the ocuppancy - most of sensors will not
+            # Emulate turning off the occupancy - most of sensors will not
             # notify the device of that, nor the device would emit such
             # notification itself
             def reset_sensor_occupancy(sensor):
