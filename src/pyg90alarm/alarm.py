@@ -66,6 +66,7 @@ from .discovery import G90Discovery
 from .targeted_discovery import G90TargetedDiscovery
 from .host_info import G90HostInfo
 from .host_status import G90HostStatus
+from .config import G90AlertConfig
 from .history import G90History
 from .user_data_crc import G90UserDataCRC
 from .callback import G90Callback
@@ -104,7 +105,7 @@ class G90Alarm:
         self._sock = sock
         self._sensor_cb = None
         self._armdisarm_cb = None
-        self._device_event_cb = None
+        self._device_alert_cb = None
         self._reset_occupancy_interval = reset_occupancy_interval
 
     async def command(self, code, data=None):
@@ -216,6 +217,17 @@ class G90Alarm:
         return G90HostStatus(*res)
 
     @property
+    async def alert_config(self):
+        """
+        Retrieves the alert configuration from the device.
+
+        :return: Instance of :class:`.G90AlertConfig` containing the alerts
+         configured
+        """
+        res = await self.command(G90Commands.GETNOTICEFLAG)
+        return G90AlertConfig(*res)
+
+    @property
     async def user_data_crc(self):
         """
         tbd
@@ -285,25 +297,25 @@ class G90Alarm:
         """
         self._sensor_cb = value
 
-    async def _internal_device_event_cb(self, data):
+    async def _internal_device_alert_cb(self, data):
         """
         tbd
         """
-        G90Callback.invoke(self._device_event_cb, data)
+        G90Callback.invoke(self._device_alert_cb, data)
 
     @property
-    def device_event_callback(self):
+    def device_alert_callback(self):
         """
         tbd
         """
-        return self._device_event_cb
+        return self._device_alert_cb
 
-    @device_event_callback.setter
-    def device_event_callback(self, value):
+    @device_alert_callback.setter
+    def device_alert_callback(self, value):
         """
         tbd
         """
-        self._device_event_cb = value
+        self._device_alert_cb = value
 
     async def _internal_armdisarm_cb(self, state):
         """
@@ -331,7 +343,7 @@ class G90Alarm:
         """
         self._notifications = G90DeviceNotifications(
             sensor_cb=self._internal_sensor_cb,
-            device_event_cb=self._internal_device_event_cb,
+            device_alert_cb=self._internal_device_alert_cb,
             armdisarm_cb=self._internal_armdisarm_cb,
             sock=sock)
         await self._notifications.listen()

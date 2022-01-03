@@ -26,6 +26,7 @@ from pyg90alarm.host_status import (   # noqa:E402
 from pyg90alarm.user_data_crc import (   # noqa:E402
     G90UserDataCRC,
 )
+from pyg90alarm.config import G90AlertConfig  # noqa: E402
 
 
 class TestG90Alarm(G90Fixture):
@@ -244,12 +245,12 @@ class TestG90Alarm(G90Fixture):
         g90.close_device_notifications()
         armdisarm_cb.assert_called_once_with(1)
 
-    async def test_device_event_callback(self):
+    async def test_device_alert_callback(self):
         future = self.loop.create_future()
-        device_event_cb = MagicMock()
-        device_event_cb.side_effect = lambda *args: future.set_result(True)
+        device_alert_cb = MagicMock()
+        device_alert_cb.side_effect = lambda *args: future.set_result(True)
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
-        g90.device_event_callback = device_event_cb
+        g90.device_alert_callback = device_alert_cb
         socket_ntfy_mock = asynctest.SocketMock()
         socket_ntfy_mock.type = socket.SOCK_DGRAM
         await g90.listen_device_notifications(socket_ntfy_mock)
@@ -262,7 +263,7 @@ class TestG90Alarm(G90Fixture):
         # Only validate the fact the callback has been called, actual paramters
         # are checked in a separate test assumed to pass - see
         # `test_notifications.py`
-        device_event_cb.assert_called_once()
+        device_alert_cb.assert_called_once()
 
     async def test_arm_away(self):
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
@@ -307,3 +308,13 @@ class TestG90Alarm(G90Fixture):
         self.assert_callargs_on_sent_data([
             b'ISTART[200,200,[200,[1,5]]]IEND\0'
         ])
+
+    async def test_alert_config(self):
+        """ Tests for retrieving alert configuration from the device """
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        data = b'ISTART[117,[1]]IEND\0'
+        self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
+
+        res = await g90.alert_config
+        self.assert_callargs_on_sent_data([b'ISTART[117,117,""]IEND\0'])
+        self.assertIsInstance(res, G90AlertConfig)
