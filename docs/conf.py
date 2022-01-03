@@ -22,7 +22,6 @@ author = 'Ilia Sotnikov'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'enum_tools.autoenum',
     'myst_parser',
 ]
 
