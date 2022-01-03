@@ -1,3 +1,7 @@
+[![master](https://github.com/hostcc/pyg90alarm/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/hostcc/pyg90alarm/tree/master)
+
+[![Documentation Status](https://readthedocs.org/projects/pyg90alarm/badge/?version=stable)](https://pyg90alarm.readthedocs.io/en/stable/?badge=stable)
+
 # Description
 
 Python package to control G90-based alarm systems.
