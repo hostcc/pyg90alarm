@@ -26,5 +26,5 @@ from .alarm import G90Alarm  # noqa: F401
 from .base_cmd import G90BaseCommand  # noqa: F401
 from .paginated_result import G90PaginatedResult  # noqa: F401
 from .device_notifications import (  # noqa: F401
-    G90DeviceEvent,
+    G90DeviceAlert,
 )
