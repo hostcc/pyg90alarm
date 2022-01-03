@@ -103,8 +103,39 @@ class G90DeviceNotificationProtocol:
         tbd
         """
 
-    def datagram_received(self, data, addr):
+    def _handle_notification(self, addr, notification):
+        # Zone notification
+        if notification.kind == 5:
+            g90_zone_info = G90ZoneInfo(*notification.data)
+            _LOGGER.debug('Sensor notification: %s', g90_zone_info)
+            G90Callback.invoke(self._sensor_cb,
+                               g90_zone_info.idx,
+                               g90_zone_info.name)
+            return
 
+        # Arm/disarm notification
+        if notification.kind == 1:
+            g90_armdisarm_info = G90ArmDisarmInfo(
+                *notification.data)
+            _LOGGER.debug('Arm/disarm notification: %s',
+                          g90_armdisarm_info)
+            G90Callback.invoke(self._armdisarm_cb,
+                               g90_armdisarm_info.state)
+            return
+
+        _LOGGER.warning('Unknown notification received from %s:%s:'
+                        ' kind %s, data %s',
+                        addr[0], addr[1], notification.kind, notification.data)
+
+    def _handle_alert(self, alert):
+        _LOGGER.debug('Device alert: %s', alert)
+        # if alert.type == 3:  # Alarm alert
+        # if alert.type == 4:  # Door open/close alert
+        # if alert.type == 2:  # Device state change alert
+        G90Callback.invoke(self._device_alert_cb,
+                           alert)
+
+    def datagram_received(self, data, addr):
         """
         tbd
         """
@@ -112,47 +143,22 @@ class G90DeviceNotificationProtocol:
         if not s_data.endswith('\0'):
             raise Exception('Missing end marker in data')
         payload = s_data[:-1]
-        _LOGGER.debug('Received device notification from %s:%s: %s',
+        _LOGGER.debug('Received device message from %s:%s: %s',
                       addr[0], addr[1], payload)
         message = json.loads(payload)
         g90_message = G90Message(*message)
 
         # Device notifications
         if g90_message.code == 170:
-            g90_notification = G90Notification(
-                *g90_message.data)
-
-            # Zone notification
-            if g90_notification.kind == 5:
-                g90_zone_info = G90ZoneInfo(*g90_notification.data)
-                _LOGGER.debug('Sensor notification: %s', g90_zone_info)
-                G90Callback.invoke(self._sensor_cb,
-                                   g90_zone_info.idx,
-                                   g90_zone_info.name)
-                return
-
-            # Arm/disarm notification
-            if g90_notification.kind == 1:
-                g90_armdisarm_info = G90ArmDisarmInfo(
-                    *g90_notification.data)
-                _LOGGER.debug('Arm/disarm notification: %s',
-                              g90_armdisarm_info)
-                G90Callback.invoke(self._armdisarm_cb,
-                                   g90_armdisarm_info.state)
-                return
+            self._handle_notification(addr, G90Notification(*g90_message.data))
+            return
 
         # Device alerts
         if g90_message.code == 208:
-            g90_device_alert = G90DeviceAlert(*g90_message.data)
-            _LOGGER.debug('Device alert: %s', g90_device_alert)
-            # if g90_device_alert.type == 3:  # Alarm alert
-            # if g90_device_alert.type == 4:  # Door open/close alert
-            # if g90_device_alert.type == 2:  # Device state change alert
-            G90Callback.invoke(self._device_alert_cb,
-                               g90_device_alert)
+            self._handle_alert(G90DeviceAlert(*g90_message.data))
             return
 
-        _LOGGER.warning('Unknown notification received from %s:%s: %s',
+        _LOGGER.warning('Unknown message received from %s:%s: %s',
                         addr[0], addr[1], message)
 
 
