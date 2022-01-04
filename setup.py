@@ -31,7 +31,7 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Topic :: Home Automation',
-        'Topic :: System :: Hardware'
+        'Topic :: System :: Hardware',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
