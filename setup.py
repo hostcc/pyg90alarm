@@ -14,7 +14,8 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='pyg90alarm',
-    version='1.0.0',
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True,
     description='G90 Alarm system protocol',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -26,11 +27,11 @@ setup(
     #
     # For a list of valid classifiers, see https://pypi.org/classifiers/
     classifiers=[
-        'Development Status :: 3 - Alpha',
-        # Indicate who your project is intended for
+        'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
-        'Topic :: Software Development :: Build Tools',
-        # Pick your license as you wish
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'Topic :: Home Automation',
+        'Topic :: System :: Hardware'
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.6',
@@ -60,7 +61,7 @@ setup(
         ],
     },
 
-    project_urls={  # Optional
+    project_urls={
         'Bug Reports': 'https://github.com/hostcc/pyg90alarm/issues',
         'Source': 'https://github.com/hostcc/pyg90alarm/',
     },
