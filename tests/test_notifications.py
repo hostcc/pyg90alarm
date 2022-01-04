@@ -6,7 +6,6 @@ from .fixtures import G90Fixture
 sys.path.extend(['src', '../src'])
 from pyg90alarm.device_notifications import (   # noqa:E402
     G90DeviceNotifications,
-    G90DeviceEvent,
 )
 
 
@@ -39,20 +38,17 @@ class TestG90Notifications(G90Fixture):
         notifications.close()
         armdisarm_cb.assert_called_once_with(1)
 
-    async def test_device_event_callback(self):
+    async def test_door_open_close_callback(self):
         future = self.loop.create_future()
-        device_event_cb = MagicMock()
-        device_event_cb.side_effect = lambda *args: future.set_result(True)
+        door_open_close_cb = MagicMock()
+        door_open_close_cb.side_effect = lambda *args: future.set_result(True)
         notifications = G90DeviceNotifications(
-            device_event_cb=device_event_cb, sock=self.socket_mock)
+            door_open_close_cb=door_open_close_cb, sock=self.socket_mock)
         await notifications.listen()
         asynctest.set_read_ready(self.socket_mock, self.loop)
         self.socket_mock.recvfrom.return_value = (
-            b'[208,[2,4,0,0,"","DUMMYGUID",1631545189,0,[""]]]\0',
+            b'[208,[4,100,1,1,"Hall","DUMMYGUID",1631545189,0,[""]]]\0',
             ('mocked', 12345))
         await asyncio.wait([future], timeout=0.1)
         notifications.close()
-        device_event_cb.assert_called_once_with(
-            G90DeviceEvent(type=2, event_id=4, resv2=0, resv3=0,
-                           zone_name='', device_id='DUMMYGUID',
-                           unix_time=1631545189, resv4=0, other=['']))
+        door_open_close_cb.assert_called_once_with(100, 'Hall', True)

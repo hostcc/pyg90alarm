@@ -19,12 +19,37 @@
 # SOFTWARE.
 
 """
-tbd
+Represents various configuration aspects of the alarm panel.
 """
+from enum import IntFlag
+from collections import namedtuple
 
-from .alarm import G90Alarm  # noqa: F401
-from .base_cmd import G90BaseCommand  # noqa: F401
-from .paginated_result import G90PaginatedResult  # noqa: F401
-from .device_notifications import (  # noqa: F401
-    G90DeviceAlert,
-)
+
+class G90AlertConfigFlags(IntFlag):
+    """ Alert configuration flags, used bitwise """
+    AC_POWER_FAILURE = 1
+    AC_POWER_RECOVER = 2
+    ARM_DISARM = 4
+    HOST_LOW_VOLTAGE = 8
+    SENSOR_LOW_VOLTAGE = 16
+    WIFI_AVAILABLE = 32
+    WIFI_UNAVAILABLE = 64
+    DOOR_OPEN = 128
+    DOOR_CLOSE = 256
+    SMS_PUSH = 512
+    UNKNOWN1 = 2048
+    UNKNOWN2 = 8192
+
+
+class G90AlertConfig(namedtuple('G90AlertConfig', ['flags_data'])):
+    """
+    Represents alert configuration as received from the alarm panel.
+    """
+
+    @property
+    def flags(self):
+        """
+        :return: Instance of :class:`G90AlertConfigFlags` that provides
+         symbolic names to corresponding flag bits
+        """
+        return G90AlertConfigFlags(self.flags_data)

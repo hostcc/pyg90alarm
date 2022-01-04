@@ -26,6 +26,7 @@ from pyg90alarm.host_status import (   # noqa:E402
 from pyg90alarm.user_data_crc import (   # noqa:E402
     G90UserDataCRC,
 )
+from pyg90alarm.config import G90AlertConfig  # noqa: E402
 
 
 class TestG90Alarm(G90Fixture):
@@ -200,9 +201,14 @@ class TestG90Alarm(G90Fixture):
         reset_interval = 0.5
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock,
                        reset_occupancy_interval=reset_interval)
-        data = b'ISTART[102,' \
-               b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0'
-        self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
+        data = [(b'ISTART[102,'
+                 b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+                 ('mocked', 12345)),
+                (b'ISTART[117,'
+                 b'[256]]IEND\0',
+                 ('mocked', 12345)),
+                ]
+        self.socket_mock.recvfrom.side_effect = data
 
         sensors = await g90.sensors
         future = self.loop.create_future()
@@ -244,25 +250,53 @@ class TestG90Alarm(G90Fixture):
         g90.close_device_notifications()
         armdisarm_cb.assert_called_once_with(1)
 
-    async def test_device_event_callback(self):
+    async def test_door_open_close_callback(self):
         future = self.loop.create_future()
-        device_event_cb = MagicMock()
-        device_event_cb.side_effect = lambda *args: future.set_result(True)
+        door_open_close_cb = MagicMock()
+        door_open_close_cb.side_effect = lambda *args: future.set_result(True)
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
-        g90.device_event_callback = device_event_cb
+        data = [(b'ISTART[102,'
+                 b'[[1,1,1],["Door",100,0,1,1,0,32,0,0,16,1,0,""]]]IEND\0',
+                 ('mocked', 12345)),
+                (b'ISTART[117,'
+                 b'[256]]IEND\0',
+                 ('mocked', 12345)),
+                # The GETNOTICEFLAG command is invoked twice, for each of
+                # alerts simulated below
+                (b'ISTART[117,'
+                 b'[256]]IEND\0',
+                 ('mocked', 12345)),
+                ]
+        self.socket_mock.recvfrom.side_effect = data
+
+        g90.door_open_close_callback = door_open_close_cb
         socket_ntfy_mock = asynctest.SocketMock()
         socket_ntfy_mock.type = socket.SOCK_DGRAM
         await g90.listen_device_notifications(socket_ntfy_mock)
+        # Simulate two device alerts - for opening and then closing the door
+        socket_ntfy_mock.recvfrom.side_effect = [
+            (b'[208,[4,100,1,1,"Door","DUMMYGUID",1631545189,0,[""]]]\0',
+             ('mocked', 12345)),
+            (b'[208,[4,100,1,0,"Door","DUMMYGUID",1631545189,0,[""]]]\0',
+             ('mocked', 12345)),
+        ]
+        # Signal the first alert is ready
         asynctest.set_read_ready(socket_ntfy_mock, self.loop)
-        socket_ntfy_mock.recvfrom.return_value = (
-            b'[208,[2,4,0,0,"","DUMMYGUID",1631545189,0,[""]]]\0',
-            ('mocked', 12345))
         await asyncio.wait([future], timeout=0.1)
+        # Corresponding sensor should turn to occupied (=door opened)
+        sensors = await g90.sensors
+        self.assertEqual(sensors[0].occupancy, True)
+
+        # Signal the second alert is ready, the future has to be re-created as
+        # the corresponding callback will be fired again
+        future = self.loop.create_future()
+        asynctest.set_read_ready(socket_ntfy_mock, self.loop)
+        await asyncio.wait([future], timeout=0.1)
+        # The sensor should become inactive (=door closed)
+        sensors = await g90.sensors
+        self.assertEqual(sensors[0].occupancy, False)
+
         g90.close_device_notifications()
-        # Only validate the fact the callback has been called, actual paramters
-        # are checked in a separate test assumed to pass - see
-        # `test_notifications.py`
-        device_event_cb.assert_called_once()
 
     async def test_arm_away(self):
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
@@ -307,3 +341,13 @@ class TestG90Alarm(G90Fixture):
         self.assert_callargs_on_sent_data([
             b'ISTART[200,200,[200,[1,5]]]IEND\0'
         ])
+
+    async def test_alert_config(self):
+        """ Tests for retrieving alert configuration from the device """
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        data = b'ISTART[117,[1]]IEND\0'
+        self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
+
+        res = await g90.alert_config
+        self.assert_callargs_on_sent_data([b'ISTART[117,117,""]IEND\0'])
+        self.assertIsInstance(res, G90AlertConfig)
