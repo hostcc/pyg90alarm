@@ -14,7 +14,6 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 
 setup(
     name='pyg90alarm',
-    version='1.0.0',
     description='G90 Alarm system protocol',
     long_description=long_description,
     long_description_content_type='text/markdown',
