@@ -57,7 +57,7 @@ from .const import (
 )
 from .base_cmd import G90BaseCommand
 from .paginated_result import G90PaginatedResult
-from .entities.sensor import G90Sensor
+from .entities.sensor import (G90Sensor, G90SensorTypes)
 from .entities.device import G90Device
 from .device_notifications import (
     G90DeviceNotifications,
@@ -66,7 +66,7 @@ from .discovery import G90Discovery
 from .targeted_discovery import G90TargetedDiscovery
 from .host_info import G90HostInfo
 from .host_status import G90HostStatus
-from .config import G90AlertConfig
+from .config import (G90AlertConfig, G90AlertConfigFlags)
 from .history import G90History
 from .user_data_crc import G90UserDataCRC
 from .callback import G90Callback
@@ -105,7 +105,7 @@ class G90Alarm:
         self._sock = sock
         self._sensor_cb = None
         self._armdisarm_cb = None
-        self._device_alert_cb = None
+        self._door_open_close_cb = None
         self._reset_occupancy_interval = reset_occupancy_interval
 
     async def command(self, code, data=None):
@@ -244,9 +244,21 @@ class G90Alarm:
         history = [G90History(*x) async for x in res]
         return history
 
-    async def _internal_sensor_cb(self, idx, name):
+    async def _internal_sensor_cb(self, idx, name, occupancy=True):
         """
-        tbd
+        Callback that invoked both for sensor notifications and door open/close
+        alerts, since the logic for both is same and could be reused.
+
+        :param int idx: The index of the sensor the callback is invoked for.
+         Please note the index is a property of sensor, not the direct index of
+         :attr:`sensors` array
+        :param str name: The name of the sensor, along with the `idx` parameter
+         it is used to look the sensor up from the :attr:`sensors` list
+        :param bool occupancy: The flag indicating the target sensor state
+         (=occupancy), will always be `True` for callbacks invoked from alarm
+         panel notifications, and reflects actual sensor state for device
+         alerts (only for `door` type sensors, if door open/close alerts are
+         enabled)
         """
         sensors = await self.sensors
 
@@ -261,7 +273,9 @@ class G90Alarm:
             ]
         if sensor:
             _LOGGER.debug('Found sensor: %s', sensor[0])
-            sensor[0].occupancy = True
+            _LOGGER.debug('Setting occupancy to %s (previously %s)',
+                          occupancy, sensor[0].occupancy)
+            sensor[0].occupancy = occupancy
 
             # Emulate turning off the occupancy - most of sensors will not
             # notify the device of that, nor the device would emit such
@@ -271,17 +285,36 @@ class G90Alarm:
                 sensor.occupancy = False
                 G90Callback.invoke(sensor.state_callback, sensor.occupancy)
 
-            G90Callback.invoke_delayed(
-                self._reset_occupancy_interval,
-                reset_sensor_occupancy, sensor[0])
+            # Determine if door close notifications are available for the given
+            # sensor
+            alert_config_flags = (await self.alert_config).flags
+            door_close_alert_enabled = (
+                G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags)
+            sensor_is_door = sensor[0].type == G90SensorTypes.DOOR
+
+            # Alarm panel could emit door close alerts (if enabled) for sensors
+            # of type `door`, and such event will be used to reset the
+            # occupancy for the given sensor. Otherwise, the sensor closing
+            # event will be emulated
+            if not door_close_alert_enabled or not sensor_is_door:
+                _LOGGER.debug("Sensor '%s' is not a door (type %s),"
+                              ' or door close alert is disabled'
+                              ' (alert config flags %s),'
+                              ' closing event will be emulated upon'
+                              ' %s seconds',
+                              name, sensor[0].type, alert_config_flags,
+                              self._reset_occupancy_interval)
+                G90Callback.invoke_delayed(
+                    self._reset_occupancy_interval,
+                    reset_sensor_occupancy, sensor[0])
 
             # Invoke per-sensor callback if provided
-            G90Callback.invoke(sensor[0].state_callback, sensor[0].occupancy)
+            G90Callback.invoke(sensor[0].state_callback, occupancy)
         else:
             _LOGGER.error('Sensor not found: idx=%s, name=%s', idx, name)
 
         # Invoke global callback if provided
-        G90Callback.invoke(self._sensor_cb, idx, name)
+        G90Callback.invoke(self._sensor_cb, idx, name, occupancy)
 
     @property
     def sensor_callback(self):
@@ -297,25 +330,31 @@ class G90Alarm:
         """
         self._sensor_cb = value
 
-    async def _internal_device_alert_cb(self, data):
+    async def _internal_door_open_close_cb(self, idx, name, is_open):
         """
-        tbd
+        Callback that invoked when door open/close alert comes from the alarm
+        panel.
         """
-        G90Callback.invoke(self._device_alert_cb, data)
+        # Same internal callback is reused both for door open/close alerts and
+        # sensor notifications. The former adds reporting when a door is
+        # closed, since the notifications aren't sent for such events
+        await self._internal_sensor_cb(idx, name, is_open)
+        # Invoke user specified callback if any
+        G90Callback.invoke(self._door_open_close_cb, idx, name, is_open)
 
     @property
-    def device_alert_callback(self):
+    def door_open_close_callback(self):
         """
         tbd
         """
-        return self._device_alert_cb
+        return self._door_open_close_cb
 
-    @device_alert_callback.setter
-    def device_alert_callback(self, value):
+    @door_open_close_callback.setter
+    def door_open_close_callback(self, value):
         """
         tbd
         """
-        self._device_alert_cb = value
+        self._door_open_close_cb = value
 
     async def _internal_armdisarm_cb(self, state):
         """
@@ -343,7 +382,7 @@ class G90Alarm:
         """
         self._notifications = G90DeviceNotifications(
             sensor_cb=self._internal_sensor_cb,
-            device_alert_cb=self._internal_device_alert_cb,
+            door_open_close_cb=self._internal_door_open_close_cb,
             armdisarm_cb=self._internal_armdisarm_cb,
             sock=sock)
         await self._notifications.listen()

@@ -112,3 +112,28 @@ class G90Commands(IntEnum):
     GETAPINFO = 212
     PINGBYGPRS = 218
     PING = 219
+
+
+class G90MessageTypes(IntEnum):
+    """
+    Defines message types (codes) from messages coming from the alarm panel.
+    """
+    NOTIFICATION = 170
+    ALERT = 208
+
+
+class G90NotificationTypes(IntEnum):
+    """
+    Defines types of notifications sent by the alarm panel.
+    """
+    ARM_DISARM = 1
+    SENSOR_ACTIVITY = 5
+
+
+class G90AlertTypes(IntEnum):
+    """
+    Defines types of alerts sent by the alarm panel.
+    """
+    STATE_CHANGE = 2
+    ALARM = 3
+    DOOR_OPEN_CLOSE = 4
