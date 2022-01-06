@@ -4,6 +4,7 @@ on: [pull_request, release]
 jobs:
   pypi-publish:
     runs-on: ubuntu-latest
+    needs: [main]
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
