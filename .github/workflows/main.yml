@@ -1,6 +1,9 @@
 name: main
 
-on: [pull_request, release]
+on:
+  pull_request:
+  release:
+    types: [published]
 
 jobs:
   tests:
