@@ -15,7 +15,9 @@ long_description = (here / 'README.md').read_text(encoding='utf-8')
 setup(
     name='pyg90alarm',
     setup_requires=['setuptools_scm'],
-    use_scm_version=True,
+    use_scm_version={
+        "local_scheme": "no-local-version"
+    },
     description='G90 Alarm system protocol',
     long_description=long_description,
     long_description_content_type='text/markdown',
