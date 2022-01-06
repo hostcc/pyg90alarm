@@ -1,0 +1,27 @@
+name: pypi-publish
+on: [pull_request, release]
+
+jobs:
+  pypi-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v2
+      - name: Set Python up
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Install the PEP517 package builder
+        run: python -m pip install --upgrade build
+      - name: Build the package
+        run: python -m build
+      - name: Publish the package to Test PyPi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.TEST_PYPI_TOKEN }}
+          repository_url: https://test.pypi.org/legacy/
+      - name: Publish the release to PyPi
+        if: github.event_name == 'release' && github.event.action == 'published'
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
