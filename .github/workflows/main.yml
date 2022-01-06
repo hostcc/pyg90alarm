@@ -1,13 +1,10 @@
-name: main
+name: Tests
 
 on:
   push:
-    branches:
-    tags:
-  pull_request:
 
 jobs:
-  main:
+  tests:
     strategy:
       matrix:
         include:
