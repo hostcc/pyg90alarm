@@ -58,8 +58,8 @@ setup(
             'asynctest',
         ],
         'docs': [
-            'Sphinx',
-            'myst-parser',
+            'sphinx',
+            'sphinx-rtd-theme',
         ],
     },
 
