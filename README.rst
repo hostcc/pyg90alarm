@@ -51,13 +51,13 @@ And the list of sensors, actual set of device should be notable larger as many
 of other manufacturers produce similar items. The names in parenthesis are
 taken from the alarm system documentation, for example, `Home Alarm GB90-Plus <https://archive.org/details/HomeAlarmGB90-Plus/G90B%20plus%20WIFIGSMGPRS%20alarm%20system%20user%20manual/page/n7/mode/2up>`_.
 
-  * Wired PIR sensors
-  * Wireless PIR sensors (WPD01, WMS08)
-  * Door/window sensors (WDS07, WRDS01)
-  * Water leak sensors (LSTC01)
-  * Smoke sensors (WSD02)
-  * Gas sensors (WGD01)
-  * Switches/relays (JDQ)
+* Wired PIR sensors
+* Wireless PIR sensors (WPD01, WMS08)
+* Door/window sensors (WDS07, WRDS01)
+* Water leak sensors (LSTC01)
+* Smoke sensors (WSD02)
+* Gas sensors (WGD01)
+* Switches/relays (JDQ)
 
 Basically, the alarm system uses 433 MHz communications for the wireless
 devices using EV1527, PT2262 protocols. The mobile application also mentions
