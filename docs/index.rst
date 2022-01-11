@@ -2,13 +2,13 @@
    :maxdepth: 2
    :hidden:
 
+   Introduction <self>
    protocol
    api-docs
 
 .. contents::
 
-.. include:: ../README.md
-   :parser: myst_parser.sphinx_
+.. include:: ../README.rst
 
 
 Indices and tables
