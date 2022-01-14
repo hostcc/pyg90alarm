@@ -1,7 +1,15 @@
 .. image::  https://github.com/hostcc/pyg90alarm/actions/workflows/main.yml/badge.svg?branch=master
    :target: https://github.com/hostcc/pyg90alarm/tree/master
+   :alt: Github workflow status
 .. image:: https://readthedocs.org/projects/pyg90alarm/badge/?version=stable
    :target: https://pyg90alarm.readthedocs.io/en/stable
+   :alt: ReadTheDocs status
+.. image:: https://img.shields.io/github/v/release/hostcc/pyg90alarm
+   :target: https://github.com/hostcc/pyg90alarm/releases/latest
+   :alt: Latest GitHub release
+.. image:: https://img.shields.io/pypi/v/pyg90alarm
+   :target: https://pypi.org/project/pyg90alarm/
+   :alt: Latest PyPI version
 
 Description
 ===========
