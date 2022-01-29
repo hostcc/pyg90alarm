@@ -32,6 +32,8 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python }}
+          # Disable shallow clone for Sonar scanner, as it needs access to the history
+          fetch-depth: 0
       - name: Install testing tools
         run: python -m pip install --upgrade setuptools pip tox virtualenv coverage
       - name: Run the tests
