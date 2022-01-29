@@ -8,3 +8,9 @@ __pycache__/
 *~
 .tox
 .cache
+.DS_Store
+# Tests related
+flake8.txt
+pylint.txt
+.coverage*
+coverage.xml
