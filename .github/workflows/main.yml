@@ -52,13 +52,13 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >-
-            -Dsonar.projectKey=${{ github.event.repository.name }}
+            -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.organization=${{ github.repository_owner }}
 
   pypi-publish:
     name: Publish to PyPi
     runs-on: ubuntu-latest
-    needs: [tests]
+    needs: [scanning]
     steps:
       - name: Checkout the code
         uses: actions/checkout@v2
