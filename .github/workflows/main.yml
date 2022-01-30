@@ -95,7 +95,8 @@ jobs:
         if: >-
           github.event_name == 'release'
           && github.event.action == 'published'
-          && contains(['main', 'master'], github.event.release.target_commitish)
+          && (github.event.release.target_commitish == 'main'
+             || github.event.release.target_commitish == 'master')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_TOKEN }}
