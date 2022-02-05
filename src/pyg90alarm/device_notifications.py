@@ -28,6 +28,7 @@ from collections import namedtuple
 import asyncio
 from .callback import G90Callback
 from .const import (G90MessageTypes, G90NotificationTypes, G90AlertTypes)
+from .exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -149,7 +150,7 @@ class G90DeviceNotificationProtocol:
         """
         s_data = data.decode('utf-8')
         if not s_data.endswith('\0'):
-            raise Exception('Missing end marker in data')
+            raise G90Error('Missing end marker in data')
         payload = s_data[:-1]
         _LOGGER.debug('Received device message from %s:%s: %s',
                       addr[0], addr[1], payload)

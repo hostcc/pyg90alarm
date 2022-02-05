@@ -25,6 +25,7 @@ tbd
 import logging
 from collections import namedtuple
 from .discovery import G90Discovery
+from .exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,10 +86,10 @@ class G90TargetedDiscoveryProtocol:
             _LOGGER.debug('Received from %s:%s: %s', addr[0], addr[1], data)
             decoded = data.decode('utf-8', errors='ignore')
             if not decoded.endswith('\0'):
-                raise Exception('Invalid discovery response')
+                raise G90Error('Invalid discovery response')
             host_info = G90TargetedDiscoveryInfo(*decoded[:-1].split(','))
             if host_info.message != 'IWTAC_PROBE_DEVICE_ACK':
-                raise Exception('Invalid discovery response')
+                raise G90Error('Invalid discovery response')
             res = {'guid': self._device_id,
                    'host': addr[0],
                    'port': addr[1]}

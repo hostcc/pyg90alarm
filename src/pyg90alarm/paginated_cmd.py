@@ -25,6 +25,7 @@ tbd
 import logging
 from collections import namedtuple
 from .base_cmd import G90BaseCommand
+from .exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -86,11 +87,11 @@ class G90PaginatedCommand(G90BaseCommand):
             page_data = data.pop(0)
             page_info = G90PaginationFields(*page_data)
         except TypeError as exc:
-            raise Exception(f'Wrong pagination data {page_data} - {str(exc)}'
-                            ) from exc
+            raise G90Error(f'Wrong pagination data {page_data} - {str(exc)}'
+                           ) from exc
         except IndexError as exc:
-            raise Exception(f"Missing pagination in response '{self._resp}'"
-                            ) from exc
+            raise G90Error(f"Missing pagination in response '{self._resp}'"
+                           ) from exc
 
         self._total = page_info.total
         self._start = page_info.start
@@ -111,7 +112,7 @@ class G90PaginatedCommand(G90BaseCommand):
                 f' received {len(data)}')
 
         if errors:
-            raise Exception('. '.join(errors))
+            raise G90Error('. '.join(errors))
 
         _LOGGER.debug('Paginated command response: '
                       'total records %s, start record %s, record count %s',

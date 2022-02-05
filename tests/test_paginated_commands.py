@@ -5,6 +5,7 @@ sys.path.extend(['src', '../src'])
 from pyg90alarm.paginated_cmd import (   # noqa:E402
     G90PaginatedCommand,
 )
+from pyg90alarm.exceptions import G90Error  # noqa:E402
 
 
 class TestG90PaginatedCommand(G90Fixture):
@@ -16,7 +17,7 @@ class TestG90PaginatedCommand(G90Fixture):
         self.socket_mock.recvfrom.return_value = (
             b'ISTART[102,[[]]]IEND\0', ('mocked', 12345))
 
-        with self.assertRaises(Exception, ) as cm:
+        with self.assertRaises(G90Error, ) as cm:
             await g90.process()
         self.assertIn(cm.exception.args[0],
                       ['Wrong pagination data [] -'
@@ -37,7 +38,7 @@ class TestG90PaginatedCommand(G90Fixture):
         self.socket_mock.recvfrom.return_value = (
             b'ISTART[102,[[1,1,1]]]IEND\0', ('mocked', 12345))
 
-        with self.assertRaises(Exception) as cm:
+        with self.assertRaises(G90Error) as cm:
             await g90.process()
         self.assertIn('Truncated data provided in paginated response -'
                       ' expected 1 entities as per response, received 0',
@@ -65,7 +66,7 @@ class TestG90PaginatedCommand(G90Fixture):
         self.socket_mock.recvfrom.return_value = (
             b'ISTART[102,[[2,1,2],[""],[""]]]IEND\0', ('mocked', 12345))
 
-        with self.assertRaises(Exception) as cm:
+        with self.assertRaises(G90Error) as cm:
             await g90.process()
         self.assertIn('Extra data provided in paginated response -'
                       ' expected 1 entities as per request, received 2',
