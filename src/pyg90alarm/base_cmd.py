@@ -22,11 +22,16 @@
 tbd
 """
 
-from __future__ import annotations
 import logging
 import json
 import asyncio
-from typing import NamedTuple
+# Python 3.6 has `InvalidStateError` under `asyncio.base_futures` while later
+# version have it under `asyncio.expcetions`
+try:
+    from asyncio.exceptions import InvalidStateError  # pylint:disable=E1101
+except ImportError:
+    from asyncio.base_futures import InvalidStateError
+from typing import NamedTuple, Optional
 from .exceptions import (G90Error, G90TimeoutError)
 
 
@@ -41,8 +46,8 @@ class G90Header(NamedTuple):
 
     :meta private:
     """
-    code: int | None = None
-    data: str | None = None
+    code: Optional[int] = None
+    data: Optional[str] = None
 
 
 class G90DeviceProtocol:
@@ -88,7 +93,7 @@ class G90DeviceProtocol:
         if asyncio.isfuture(self._data) and not self._data.cancelled():
             try:
                 self._data.set_result((*addr, data))
-            except asyncio.exceptions.InvalidStateError as exc:
+            except InvalidStateError as exc:
                 _LOGGER.error('Wrong state of the future %s: %s',
                               repr(self._data), exc)
                 raise exc
