@@ -28,7 +28,6 @@ from collections import namedtuple
 import asyncio
 from .callback import G90Callback
 from .const import (G90MessageTypes, G90NotificationTypes, G90AlertTypes)
-from .exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -144,18 +143,28 @@ class G90DeviceNotificationProtocol:
                         ' type %s, data %s',
                         addr[0], addr[1], alert.type, alert)
 
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data, addr):  # pylint:disable=R0911
         """
         tbd
         """
         s_data = data.decode('utf-8')
         if not s_data.endswith('\0'):
-            raise G90Error('Missing end marker in data')
+            _LOGGER.error('Missing end marker in data')
+            return
         payload = s_data[:-1]
         _LOGGER.debug('Received device message from %s:%s: %s',
                       addr[0], addr[1], payload)
-        message = json.loads(payload)
-        g90_message = G90Message(*message)
+        try:
+            message = json.loads(payload)
+            g90_message = G90Message(*message)
+        except json.JSONDecodeError as exc:
+            _LOGGER.error("Unable to parse device message '%s' as JSON: %s",
+                          payload, exc)
+            return
+        except TypeError as exc:
+            _LOGGER.error("Device message '%s' is malformed: %s",
+                          payload, exc)
+            return
 
         # Device notifications
         if g90_message.code == G90MessageTypes.NOTIFICATION:
