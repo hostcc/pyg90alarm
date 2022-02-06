@@ -84,3 +84,22 @@ class TestG90TargetedDiscovery(G90Fixture):
                 'WARNING:pyg90alarm.targeted_discovery:'
                 'Got exception, ignoring: Invalid discovery response'
             ])
+
+    async def test_targeted_discovery_wrong_response_end_marker(self):
+        data = b'IWTAC_PROBE_DEVICE_ACK,TSV018-3SIA' \
+               b',1.2,1.1,206,1.8,3,3,1,0,2,50,100'
+
+        g90 = G90TargetedDiscovery(
+            device_id='DUMMYGUID',
+            host='255.255.255.255',
+            port=REMOTE_TARGETED_DISCOVERY_PORT,
+            local_port=LOCAL_TARGETED_DISCOVERY_PORT,
+            timeout=0.1, sock=self.socket_mock)
+        self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
+
+        with self.assertLogs(level='WARNING') as cm:
+            await g90.process()
+            self.assertEqual(cm.output, [
+                'WARNING:pyg90alarm.targeted_discovery:'
+                'Got exception, ignoring: Invalid discovery response'
+            ])

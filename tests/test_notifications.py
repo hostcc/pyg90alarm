@@ -10,7 +10,65 @@ from pyg90alarm.device_notifications import (   # noqa:E402
 
 
 class TestG90Notifications(G90Fixture):
-    async def test_unknown_bad_notification(self):
+    async def test_device_notification_missing_header(self):
+        def sock_data_awaitable(*args):
+            future.set_result(True)
+            return b'[170]\0', ('mocked', 12345)
+
+        future = self.loop.create_future()
+        notifications = G90DeviceNotifications(sock=self.socket_mock)
+        await notifications.listen()
+        self.socket_mock.recvfrom.side_effect = sock_data_awaitable
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        with self.assertLogs(level='ERROR') as cm:
+            await asyncio.wait([future], timeout=0.1)
+            self.assertEqual(
+                cm.output[0],
+                'ERROR:pyg90alarm.device_notifications:Device message'
+                " '[170]' is malformed: <lambda>() missing 1 required"
+                " positional argument: 'data'"
+            )
+        notifications.close()
+
+    async def test_device_notification_malformed_message(self):
+        def sock_data_awaitable(*args):
+            future.set_result(True)
+            return b'[170,[1,[1]]\0', ('mocked', 12345)
+
+        future = self.loop.create_future()
+        notifications = G90DeviceNotifications(sock=self.socket_mock)
+        await notifications.listen()
+        self.socket_mock.recvfrom.side_effect = sock_data_awaitable
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        with self.assertLogs(level='ERROR') as cm:
+            await asyncio.wait([future], timeout=0.1)
+            self.assertIn(
+                'ERROR:pyg90alarm.device_notifications:'
+                "Unable to parse device message '[170,[1,[1]]' as JSON:",
+                cm.output[0]
+            )
+        notifications.close()
+
+    async def test_device_notification_missing_end_marker(self):
+        def sock_data_awaitable(*args):
+            future.set_result(True)
+            return b'[170,[1,[1]]]', ('mocked', 12345)
+
+        future = self.loop.create_future()
+        notifications = G90DeviceNotifications(sock=self.socket_mock)
+        await notifications.listen()
+        self.socket_mock.recvfrom.side_effect = sock_data_awaitable
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        with self.assertLogs(level='ERROR') as cm:
+            await asyncio.wait([future], timeout=0.1)
+            self.assertEqual(
+                cm.output[0],
+                'ERROR:pyg90alarm.device_notifications:'
+                'Missing end marker in data'
+            )
+        notifications.close()
+
+    async def test_wrong_device_notification_format(self):
         def sock_data_awaitable(*args):
             future.set_result(True)
             return b'[170,[1]]\0', ('mocked', 12345)
@@ -32,7 +90,7 @@ class TestG90Notifications(G90Fixture):
             ])
         notifications.close()
 
-    async def test_bad_device_alert(self):
+    async def test_wrong_device_alert_format(self):
         def sock_data_awaitable(*args):
             future.set_result(True)
             return (b'[208,[]]\0', ('mocked', 12345))
