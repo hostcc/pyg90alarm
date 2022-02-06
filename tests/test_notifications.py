@@ -10,6 +10,46 @@ from pyg90alarm.device_notifications import (   # noqa:E402
 
 
 class TestG90Notifications(G90Fixture):
+    async def test_unknown_device_notification(self):
+        def sock_data_awaitable(*args):
+            future.set_result(True)
+            return b'[170,[999,[1]]]\0', ('mocked', 12345)
+
+        future = self.loop.create_future()
+        notifications = G90DeviceNotifications(sock=self.socket_mock)
+        await notifications.listen()
+        self.socket_mock.recvfrom.side_effect = sock_data_awaitable
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        with self.assertLogs(level='WARNING') as cm:
+            await asyncio.wait([future], timeout=0.1)
+            self.assertEqual(cm.output, [
+                'WARNING:pyg90alarm.device_notifications:'
+                'Unknown notification received from mocked:12345: kind 999,'
+                ' data [1]'
+            ])
+        notifications.close()
+
+    async def test_unknown_device_alert(self):
+        def sock_data_awaitable(*args):
+            future.set_result(True)
+            return (b'[208,[999,100,1,1,"Hall","DUMMYGUID",'
+                    b'1631545189,0,[""]]]\0', ('mocked', 12345))
+        future = self.loop.create_future()
+        notifications = G90DeviceNotifications(sock=self.socket_mock)
+        await notifications.listen()
+        self.socket_mock.recvfrom.side_effect = sock_data_awaitable
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        with self.assertLogs(level='WARNING') as cm:
+            await asyncio.wait([future], timeout=0.1)
+            self.assertEqual(cm.output, [
+                'WARNING:pyg90alarm.device_notifications:'
+                'Unknown alert received from mocked:12345: type 999,'
+                ' data G90DeviceAlert(type=999, event_id=100, resv2=1,'
+                " resv3=1, zone_name='Hall', device_id='DUMMYGUID',"
+                " unix_time=1631545189, resv4=0, other=[''])"
+            ])
+        notifications.close()
+
     async def test_sensor_callback(self):
         future = self.loop.create_future()
         sensor_cb = MagicMock()

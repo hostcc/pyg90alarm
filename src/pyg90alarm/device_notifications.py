@@ -159,12 +159,24 @@ class G90DeviceNotificationProtocol:
 
         # Device notifications
         if g90_message.code == G90MessageTypes.NOTIFICATION:
-            self._handle_notification(addr, G90Notification(*g90_message.data))
+            try:
+                data = G90Notification(*g90_message.data)
+            except TypeError as exc:
+                _LOGGER.error('Bad notification received from %s:%s: %s',
+                              addr[0], addr[1], exc)
+                return
+            self._handle_notification(addr, data)
             return
 
         # Device alerts
         if g90_message.code == G90MessageTypes.ALERT:
-            self._handle_alert(addr, G90DeviceAlert(*g90_message.data))
+            try:
+                data = G90DeviceAlert(*g90_message.data)
+            except TypeError as exc:
+                _LOGGER.error('Bad alert received from %s:%s: %s',
+                              addr[0], addr[1], exc)
+                return
+            self._handle_alert(addr, data)
             return
 
         _LOGGER.warning('Unknown message received from %s:%s: %s',
