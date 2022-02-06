@@ -95,6 +95,18 @@ class TestG90BaseCommand(G90Fixture):
         self.assertIn("Missing code in response: '[]'", cm.exception.args)
         self.assert_callargs_on_sent_data([b'ISTART[206,206,""]IEND\0'])
 
+    async def test_wrong_code_response(self):
+        g90 = G90BaseCommand(
+            host='mocked', port=12345, code=206, sock=self.socket_mock)
+        self.socket_mock.recvfrom.return_value = (
+            b'ISTART[106,[""]]IEND\0', ('mocked', 12345))
+
+        with self.assertRaises(G90Error) as cm:
+            await g90.process()
+        self.assertIn('Wrong response - received code 106, expected code 206',
+                      cm.exception.args)
+        self.assert_callargs_on_sent_data([b'ISTART[206,206,""]IEND\0'])
+
     async def test_no_data_response(self):
         g90 = G90BaseCommand(
             host='mocked', port=12345, code=206, sock=self.socket_mock)
