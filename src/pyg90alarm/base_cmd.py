@@ -25,12 +25,6 @@ tbd
 import logging
 import json
 import asyncio
-# Python 3.6 has `InvalidStateError` under `asyncio.base_futures` while later
-# version have it under `asyncio.expcetions`
-try:
-    from asyncio.exceptions import InvalidStateError  # pylint:disable=E1101
-except ImportError:
-    from asyncio.base_futures import InvalidStateError
 from typing import NamedTuple, Optional
 from .exceptions import (G90Error, G90TimeoutError)
 
@@ -90,19 +84,19 @@ class G90DeviceProtocol:
         """
         tbd
         """
-        if asyncio.isfuture(self._data) and not self._data.cancelled():
-            try:
-                self._data.set_result((*addr, data))
-            except InvalidStateError as exc:
-                _LOGGER.error('Wrong state of the future %s: %s',
-                              repr(self._data), exc)
-                raise exc
+        if asyncio.isfuture(self._data):
+            if self._data.done():
+                _LOGGER.warning('Excessive packet received'
+                                ' from %s:%s: %s',
+                                addr[0], addr[1], data)
+                return
+            self._data.set_result((*addr, data))
 
     def error_received(self, exc):
         """
         tbd
         """
-        if asyncio.isfuture(self._data) and not self._data.cancelled():
+        if asyncio.isfuture(self._data) and not self._data.done():
             self._data.set_exception(exc)
 
 
