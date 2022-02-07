@@ -38,9 +38,19 @@ class G90Commands(IntEnum):
     The list consists of the entities known so far, and does not pretend to be
     comprehensive or complete.
     """
+
+    def __new__(cls, value, doc=None):
+        """
+        Allows to set the docstring along with the value to enum entry.
+        """
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        obj.__doc__ = doc
+        return obj
+
     # Host status
-    GETHOSTSTATUS = 100
-    SETHOSTSTATUS = 101
+    GETHOSTSTATUS = (100, 'Get host status')
+    SETHOSTSTATUS = (101, 'Set host status')
     # Host info
     GETHOSTINFO = 206
     # History

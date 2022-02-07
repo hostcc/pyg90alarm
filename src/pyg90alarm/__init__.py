@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Python package to control G90-based alarm systems.
 """
 
 from .alarm import G90Alarm  # noqa: F401
