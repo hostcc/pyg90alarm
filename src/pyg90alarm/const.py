@@ -130,6 +130,17 @@ class G90NotificationTypes(IntEnum):
     SENSOR_ACTIVITY = 5
 
 
+class G90ArmDisarmTypes(IntEnum):
+    """
+    Defines arm/disarm states of the device, applicable both for setting device
+    state and one the device sends in notification messages.
+    """
+    ARM_AWAY = 1
+    ARM_HOME = 2
+    DISARM = 3
+    ALARMED = 4
+
+
 class G90AlertTypes(IntEnum):
     """
     Defines types of alerts sent by the alarm panel.
@@ -137,3 +148,17 @@ class G90AlertTypes(IntEnum):
     STATE_CHANGE = 2
     ALARM = 3
     DOOR_OPEN_CLOSE = 4
+
+
+class G90AlertStateChangeTypes(IntEnum):
+    """
+    Defines types of alert for device state changes.
+    """
+    AC_POWER_FAILURE = 1
+    AC_POWER_RECOVER = 2
+    DISARM = 3
+    ARM_AWAY = 4
+    ARM_HOME = 5
+    LOW_BATTERY = 6
+    WIFI_CONNECTED = 7
+    WIFI_DISCONNECTED = 8
