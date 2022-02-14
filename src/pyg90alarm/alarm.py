@@ -54,6 +54,7 @@ from .const import (
     G90Commands, REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
     LOCAL_TARGETED_DISCOVERY_PORT,
+    G90ArmDisarmTypes,
 )
 from .base_cmd import G90BaseCommand
 from .paginated_result import G90PaginatedResult
@@ -398,16 +399,19 @@ class G90Alarm:
         """
         tbd
         """
-        await self.command(G90Commands.SETHOSTSTATUS, [1])
+        await self.command(G90Commands.SETHOSTSTATUS,
+                           [G90ArmDisarmTypes.ARM_AWAY])
 
     async def arm_home(self):
         """
         tbd
         """
-        await self.command(G90Commands.SETHOSTSTATUS, [2])
+        await self.command(G90Commands.SETHOSTSTATUS,
+                           [G90ArmDisarmTypes.ARM_HOME])
 
     async def disarm(self):
         """
         tbd
         """
-        await self.command(G90Commands.SETHOSTSTATUS, [3])
+        await self.command(G90Commands.SETHOSTSTATUS,
+                           [G90ArmDisarmTypes.DISARM])

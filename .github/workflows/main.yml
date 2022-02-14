@@ -85,6 +85,9 @@ jobs:
       - name: Build the package
         run: python -m build
       - name: Publish the package to Test PyPi
+        # Skip publishing to test PyPI if we're performing release, there might
+        # be already the version of the package from the merge to master branch
+        if: github.event_name != 'release'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_TOKEN }}

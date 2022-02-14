@@ -25,7 +25,8 @@ tbd
 import logging
 import json
 import asyncio
-from typing import NamedTuple
+from typing import NamedTuple, Optional
+from .exceptions import (G90Error, G90TimeoutError)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,8 +40,8 @@ class G90Header(NamedTuple):
 
     :meta private:
     """
-    code: int = None
-    data: str = None
+    code: Optional[int] = None
+    data: Optional[str] = None
 
 
 class G90DeviceProtocol:
@@ -83,14 +84,19 @@ class G90DeviceProtocol:
         """
         tbd
         """
-        if asyncio.isfuture(self._data) and not self._data.cancelled():
+        if asyncio.isfuture(self._data):
+            if self._data.done():
+                _LOGGER.warning('Excessive packet received'
+                                ' from %s:%s: %s',
+                                addr[0], addr[1], data)
+                return
             self._data.set_result((*addr, data))
 
     def error_received(self, exc):
         """
         tbd
         """
-        if asyncio.isfuture(self._data) and not self._data.cancelled():
+        if asyncio.isfuture(self._data) and not self._data.done():
             self._data.set_exception(exc)
 
 
@@ -183,9 +189,9 @@ class G90BaseCommand:
         tbd
         """
         if not data.startswith('ISTART'):
-            raise Exception('Missing start marker in data')
+            raise G90Error('Missing start marker in data')
         if not data.endswith('IEND\0'):
-            raise Exception('Missing end marker in data')
+            raise G90Error('Missing end marker in data')
         payload = data[6:-5]
         _LOGGER.debug("Decoded from wire: JSON string '%s'", payload)
 
@@ -194,25 +200,25 @@ class G90BaseCommand:
             try:
                 resp = json.loads(payload)
             except json.JSONDecodeError as exc:
-                raise Exception('Unable to parse response as JSON:'
-                                f" '{payload}'") from exc
+                raise G90Error('Unable to parse response as JSON:'
+                               f" '{payload}'") from exc
 
             if not isinstance(resp, list):
-                raise Exception('Mailformed response,'
-                                f" 'list' expected: '{payload}'")
+                raise G90Error('Mailformed response,'
+                               f" 'list' expected: '{payload}'")
 
         if resp is not None:
             self._resp = G90Header(*resp)
             _LOGGER.debug('Parsed from wire: %s', self._resp)
 
             if not self._resp.code:
-                raise Exception(f"Missing code in response: '{payload}'")
+                raise G90Error(f"Missing code in response: '{payload}'")
             # Check there is data if the response is non-empty
             if not self._resp.data:
-                raise Exception(f"Missing data in response: '{payload}'")
+                raise G90Error(f"Missing data in response: '{payload}'")
 
             if self._resp.code != self._code:
-                raise Exception(
+                raise G90Error(
                     'Wrong response - received code '
                     f"{self._resp.code}, expected code {self._code}")
 
@@ -259,20 +265,23 @@ class G90BaseCommand:
                                              timeout=self._timeout)
             if protocol.future_data in done:
                 break
+            # Cancel the future to signal protocol handler it is no longer
+            # valid, the future will be re-created on next retry
+            protocol.future_data.cancel()
             if not attempts:
                 transport.close()
-                raise asyncio.TimeoutError()
+                raise G90TimeoutError()
             _LOGGER.debug('Timed out, retrying')
         transport.close()
         (host, port, data) = protocol.future_data.result()
         _LOGGER.debug('Received response from %s:%s', host, port)
         if self.host != '255.255.255.255':
             if self.host != host or host == '255.255.255.255':
-                raise Exception(f'Received response from wrong host {host},'
-                                f' expected from {self.host}')
+                raise G90Error(f'Received response from wrong host {host},'
+                               f' expected from {self.host}')
         if self.port != port:
-            raise Exception(f'Received response from wrong port {port},'
-                            f' expected from {self.port}')
+            raise G90Error(f'Received response from wrong port {port},'
+                           f' expected from {self.port}')
 
         ret = self.from_wire(data)
         self._result = ret

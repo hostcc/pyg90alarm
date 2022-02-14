@@ -27,7 +27,13 @@ import logging
 from collections import namedtuple
 import asyncio
 from .callback import G90Callback
-from .const import (G90MessageTypes, G90NotificationTypes, G90AlertTypes)
+from .const import (
+    G90MessageTypes,
+    G90NotificationTypes,
+    G90AlertTypes,
+    G90AlertStateChangeTypes,
+    G90ArmDisarmTypes,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -118,10 +124,12 @@ class G90DeviceNotificationProtocol:
         if notification.kind == G90NotificationTypes.ARM_DISARM:
             g90_armdisarm_info = G90ArmDisarmInfo(
                 *notification.data)
+            # Map the state received from the device to corresponding enum
+            state = G90ArmDisarmTypes(g90_armdisarm_info.state)
             _LOGGER.debug('Arm/disarm notification: %s',
-                          g90_armdisarm_info)
+                          state)
             G90Callback.invoke(self._armdisarm_cb,
-                               g90_armdisarm_info.state)
+                               state)
             return
 
         _LOGGER.warning('Unknown notification received from %s:%s:'
@@ -139,31 +147,74 @@ class G90DeviceNotificationProtocol:
                                is_open)
             return
 
+        if alert.type == G90AlertTypes.STATE_CHANGE:
+            # Define the mapping between device state received in the alert, to
+            # common `G90ArmDisarmTypes` enum that is used when setting device
+            # arm state and received in the corresponding notifications. The
+            # primary reason is to unify state as passed down to the callbacks.
+            # The map covers only subset of state changes pertinent to
+            # arm/disarm state changes
+            alarm_arm_disarm_state_map = {
+                G90AlertStateChangeTypes.ARM_HOME: G90ArmDisarmTypes.ARM_HOME,
+                G90AlertStateChangeTypes.ARM_AWAY: G90ArmDisarmTypes.ARM_AWAY,
+                G90AlertStateChangeTypes.DISARM: G90ArmDisarmTypes.DISARM
+            }
+
+            state = alarm_arm_disarm_state_map.get(alert.event_id, None)
+            if state:
+                # We received the device state change related to arm/disarm,
+                # invoke the corresponding callback
+                _LOGGER.debug('Arm/disarm state change: %s', state)
+                G90Callback.invoke(self._armdisarm_cb, state)
+                return
+
         _LOGGER.warning('Unknown alert received from %s:%s:'
                         ' type %s, data %s',
                         addr[0], addr[1], alert.type, alert)
 
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data, addr):  # pylint:disable=R0911
         """
         tbd
         """
         s_data = data.decode('utf-8')
         if not s_data.endswith('\0'):
-            raise Exception('Missing end marker in data')
+            _LOGGER.error('Missing end marker in data')
+            return
         payload = s_data[:-1]
         _LOGGER.debug('Received device message from %s:%s: %s',
                       addr[0], addr[1], payload)
-        message = json.loads(payload)
-        g90_message = G90Message(*message)
+        try:
+            message = json.loads(payload)
+            g90_message = G90Message(*message)
+        except json.JSONDecodeError as exc:
+            _LOGGER.error("Unable to parse device message '%s' as JSON: %s",
+                          payload, exc)
+            return
+        except TypeError as exc:
+            _LOGGER.error("Device message '%s' is malformed: %s",
+                          payload, exc)
+            return
 
         # Device notifications
         if g90_message.code == G90MessageTypes.NOTIFICATION:
-            self._handle_notification(addr, G90Notification(*g90_message.data))
+            try:
+                data = G90Notification(*g90_message.data)
+            except TypeError as exc:
+                _LOGGER.error('Bad notification received from %s:%s: %s',
+                              addr[0], addr[1], exc)
+                return
+            self._handle_notification(addr, data)
             return
 
         # Device alerts
         if g90_message.code == G90MessageTypes.ALERT:
-            self._handle_alert(addr, G90DeviceAlert(*g90_message.data))
+            try:
+                data = G90DeviceAlert(*g90_message.data)
+            except TypeError as exc:
+                _LOGGER.error('Bad alert received from %s:%s: %s',
+                              addr[0], addr[1], exc)
+                return
+            self._handle_alert(addr, data)
             return
 
         _LOGGER.warning('Unknown message received from %s:%s: %s',
