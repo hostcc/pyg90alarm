@@ -23,7 +23,7 @@ tbd
 """
 
 import asyncio
-import functools
+from functools import (partial, wraps)
 import logging
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,22 +39,43 @@ class G90Callback:
         tbd
         """
         if not callback:
-            return None
+            return
 
         _LOGGER.debug('Attempting to invoke callback %s'
                       ' (args: %s, kwargs: %s)',
                       callback, args, kwargs)
-        try:
-            if asyncio.iscoroutinefunction(callback):
-                if hasattr(asyncio, 'create_task'):
-                    return asyncio.create_task(callback(*args, **kwargs))
-                # Python 3.6 has only `ensure_future` method
-                return asyncio.ensure_future(callback(*args, **kwargs))
-            return callback(*args, **kwargs)
-        except Exception as exc:  # pylint: disable=broad-except
-            _LOGGER.error('Got exception when invoking'
-                          ' callback: %s', exc)
-            return None
+
+        if not asyncio.iscoroutinefunction(callback):
+            def async_wrapper(func):
+                """
+                Wraps the regular callback function into coroutine, so it could
+                later be created as async task.
+                """
+                @wraps(func)
+                async def wrapper(*args, **kwds):
+                    return func(*args, **kwds)
+                return wrapper
+
+            callback = async_wrapper(callback)
+
+        if hasattr(asyncio, 'create_task'):
+            task = asyncio.create_task(callback(*args, **kwargs))
+        else:
+            # Python 3.6 has only `ensure_future` method
+            task = asyncio.ensure_future(callback(*args, **kwargs))
+
+        def reap_callback_exception(task):
+            """
+            Reaps an exception (if any) from the task logging it, to prevent
+            `asyncio` reporting that task exception was never retrieved.
+            """
+            exc = task.exception()
+            if exc:
+                _LOGGER.error('Got exception when invoking'
+                              " callback '%s(...)': %s",
+                              task.get_coro().__qualname__, exc)
+
+        task.add_done_callback(reap_callback_exception)
 
     @staticmethod
     def invoke_delayed(delay, callback, *args, **kwargs):
@@ -66,4 +87,4 @@ class G90Callback:
         else:
             # Python 3.6 has no `get_running_loop`, only `get_event_loop`
             loop = asyncio.get_event_loop()
-        loop.call_later(delay, functools.partial(callback, *args, **kwargs))
+        loop.call_later(delay, partial(callback, *args, **kwargs))
