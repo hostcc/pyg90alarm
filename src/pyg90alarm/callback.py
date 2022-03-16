@@ -72,8 +72,9 @@ class G90Callback:
             exc = task.exception()
             if exc:
                 _LOGGER.error('Got exception when invoking'
-                              " callback '%s(...)': %s",
-                              task.get_coro().__qualname__, exc)
+                              " callback '%s(...)':",
+                              task.get_coro().__qualname__,
+                              exc_info=exc, stack_info=False)
 
         task.add_done_callback(reap_callback_exception)
 
