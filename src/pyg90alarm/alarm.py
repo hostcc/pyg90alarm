@@ -368,8 +368,8 @@ class G90Alarm:
     @property
     def sensor_callback(self):
         """
-        Get or set sensor activity callback, the callback is invoked when sensor
-        activates.
+        Get or set sensor activity callback, the callback is invoked when
+        sensor activates.
 
         :type: .. py:function:: ()(idx, name, occupancy)
         """
