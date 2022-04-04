@@ -126,15 +126,15 @@ class G90Alarm:
 
     def paginated_result(self, code, start=1, end=None):
         """
-        Invokes a paginated command, that is - command operating on a range of
-        records.
+        Returns asynchronous generator to for a paginated command, that is -
+        command operating on a range of records.
 
         :param code: Command code
         :type code: :class:`.G90Commands`
         :param int start: Starting record position (one-based)
         :param int end: Ending record position (one-based)
-        :return: :class:`.G90PaginatedResult` that contains the result of
-         command invocation
+        :return: :class:`.G90PaginatedResult` being asynchronous generator
+          over the result of command invocation
         """
         return G90PaginatedResult(
             self._host, self._port, code, start, end, sock=self._sock
@@ -143,7 +143,11 @@ class G90Alarm:
     @classmethod
     async def discover(cls):
         """
-        tbd
+        Initiates discovering devices available in the same network segment, by
+        using global broadcast address as the destination.
+
+        :return: List of discovered devices
+        :rtype: list[{'guid', 'host', 'port'}]
         """
         return await G90Discovery(
             port=REMOTE_PORT,
@@ -153,7 +157,14 @@ class G90Alarm:
     @classmethod
     async def targeted_discover(cls, device_id):
         """
-        tbd
+        Initiates discovering devices available in the same network segment
+        using targeted protocol, that is - specifying target device GUID in the
+        request, so only the specific device should respond to the query.
+
+        :param device_id: GUID of the target device to discover
+        :type device_id: str
+        :return: List of discovered devices
+        :rtype: list[{'guid', 'host', 'port'}]
         """
         return await G90TargetedDiscovery(
             device_id=device_id,
@@ -165,7 +176,12 @@ class G90Alarm:
     @property
     async def sensors(self):
         """
-        tbd
+        Provides list of sensors configured in the device. Please note the list
+        is cached upon first call, so you need to re-instantiate the class to
+        reflect any updates there.
+
+        :return: List of sensors
+        :rtype: list(:class:`.G90Sensor`)
         """
         if not self._sensors:
             sensors = self.paginated_result(
@@ -182,7 +198,14 @@ class G90Alarm:
     @property
     async def devices(self):
         """
-        tbd
+        Provides list of devices (switches) configured in the device. Please
+        note the list is cached upon first call, so you need to re-instantiate
+        the class to reflect any updates there. Multi-node devices, those
+        having multiple ports, are expanded into corresponding number of
+        resulting entries.
+
+        :return: List of devices
+        :rtype: list(:class:`.G90Device`)
         """
         if not self._devices:
             cmd = self.paginated_result(
@@ -204,7 +227,11 @@ class G90Alarm:
     @property
     async def host_info(self):
         """
-        tbd
+        Provides the device information (for example hardware versions, signal
+        levels etc.).
+
+        :return: Device information
+        :rtype: Instance of :class:`.G90HostInfo`
         """
         res = await self.command(G90Commands.GETHOSTINFO)
         return G90HostInfo(*res)
@@ -212,7 +239,12 @@ class G90Alarm:
     @property
     async def host_status(self):
         """
-        tbd
+        Provides the device status (for example, armed or disarmed, configured
+        phone number, product name etc.).
+
+        :return: Device information
+        :rtype: Instance of :class:`.G90HostStatus`
+
         """
         res = await self.command(G90Commands.GETHOSTSTATUS)
         return G90HostStatus(*res)
@@ -231,14 +263,29 @@ class G90Alarm:
     @property
     async def user_data_crc(self):
         """
-        tbd
+        Retieves checksums (CRC) for different on-device databases (history,
+        sensors etc.). Might be used to detect if there is a change in a
+        particular database.
+
+        .. note:: Note that due to a bug in the firmware CRC for sensos and
+          device databases change on each call even if there were no changes
+
+        :return: Instance of :class:`.G90UserDataCRC` containing checksums for
+          different databases
         """
         res = await self.command(G90Commands.GETUSERDATACRC)
         return G90UserDataCRC(*res)
 
     async def history(self, start=1, count=1):
         """
-        tbd
+        Retrieves event history from the device.
+
+        :param start: Starting record number (one-based)
+        :type start: int
+        :param count: Number of records to retrieve
+        :type count: int
+        :return: List of history entries
+        :rtype: list[:class:`.G90History`]
         """
         res = self.paginated_result(G90Commands.GETHISTORY,
                                     start, count)
@@ -248,7 +295,8 @@ class G90Alarm:
     async def _internal_sensor_cb(self, idx, name, occupancy=True):
         """
         Callback that invoked both for sensor notifications and door open/close
-        alerts, since the logic for both is same and could be reused.
+        alerts, since the logic for both is same and could be reused. Please
+        note the callback is for internal use by the class.
 
         :param int idx: The index of the sensor the callback is invoked for.
          Please note the index is a property of sensor, not the direct index of
@@ -320,21 +368,23 @@ class G90Alarm:
     @property
     def sensor_callback(self):
         """
-        tbd
+        Get or set sensor activity callback, the callback is invoked when sensor
+        activates.
+
+        :type: .. py:function:: ()(idx, name, occupancy)
         """
         return self._sensor_cb
 
     @sensor_callback.setter
     def sensor_callback(self, value):
-        """
-        tbd
-        """
         self._sensor_cb = value
 
     async def _internal_door_open_close_cb(self, idx, name, is_open):
         """
         Callback that invoked when door open/close alert comes from the alarm
-        panel.
+        panel. Please note the callback is for internal use by the class.
+
+        .. seealso:: `method`:_internal_sensor_cb for arguments
         """
         # Same internal callback is reused both for door open/close alerts and
         # sensor notifications. The former adds reporting when a door is
@@ -346,7 +396,11 @@ class G90Alarm:
     @property
     def door_open_close_callback(self):
         """
-        tbd
+        Get or set door open/close callback, the callback is invoked when door
+        is opened or closed (if corresponding alert is configured on the
+        device).
+
+        :type: ()(idx: int, name: str, is_open: bool)
         """
         return self._door_open_close_cb
 
@@ -359,27 +413,34 @@ class G90Alarm:
 
     async def _internal_armdisarm_cb(self, state):
         """
-        tbd
+        Callback that invoked when the device is armed or disarmed. Please note
+        the callback is for internal use by the class.
+
+        :param state: Device state (armed, disarmed, armed home)
+        :type state: :class:`G90ArmDisarmTypes`
         """
         G90Callback.invoke(self._armdisarm_cb, state)
 
     @property
     def armdisarm_callback(self):
         """
-        tbd
+        Get or set device arm/disarm callback, the callback is invoked when
+        device state changes.
+
+        :type: ()(state: :class:`.G90ArmDisarmTypes`)
         """
         return self._armdisarm_cb
 
     @armdisarm_callback.setter
     def armdisarm_callback(self, value):
-        """
-        tbd
-        """
         self._armdisarm_cb = value
 
     async def listen_device_notifications(self, sock=None):
         """
-        tbd
+        Starts internal listener for device notifications/alerts.
+
+        :param sock: socket instance to listen on, mostly used by tests
+        :type: socket.socket
         """
         self._notifications = G90DeviceNotifications(
             sensor_cb=self._internal_sensor_cb,
@@ -390,28 +451,28 @@ class G90Alarm:
 
     def close_device_notifications(self):
         """
-        tbd
+        Closes the listener for device notifications/alerts.
         """
         if self._notifications:
             self._notifications.close()
 
     async def arm_away(self):
         """
-        tbd
+        Arms the device in away mode.
         """
         await self.command(G90Commands.SETHOSTSTATUS,
                            [G90ArmDisarmTypes.ARM_AWAY])
 
     async def arm_home(self):
         """
-        tbd
+        Arms the device in home mode.
         """
         await self.command(G90Commands.SETHOSTSTATUS,
                            [G90ArmDisarmTypes.ARM_HOME])
 
     async def disarm(self):
         """
-        tbd
+        Disarms the device.
         """
         await self.command(G90Commands.SETHOSTSTATUS,
                            [G90ArmDisarmTypes.DISARM])
