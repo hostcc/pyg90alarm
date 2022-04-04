@@ -108,6 +108,7 @@ class G90Alarm:
         self._armdisarm_cb = None
         self._door_open_close_cb = None
         self._reset_occupancy_interval = reset_occupancy_interval
+        self._alert_config = None
 
     async def command(self, code, data=None):
         """
@@ -257,8 +258,10 @@ class G90Alarm:
         :return: Instance of :class:`.G90AlertConfig` containing the alerts
          configured
         """
-        res = await self.command(G90Commands.GETNOTICEFLAG)
-        return G90AlertConfig(*res)
+        if not self._alert_config:
+            res = await self.command(G90Commands.GETNOTICEFLAG)
+            self._alert_config = G90AlertConfig(*res)
+        return self._alert_config
 
     @property
     async def user_data_crc(self):
