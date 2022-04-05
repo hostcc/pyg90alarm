@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Discovers G90 alarm panel devices with specific ID.
 """
 
 import logging

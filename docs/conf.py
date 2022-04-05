@@ -22,7 +22,9 @@ author = 'Ilia Sotnikov'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.autosummary',
-    'myst_parser',
+    'sphinx.ext.intersphinx',
+    'enum_tools.autoenum',
+    'sphinx.ext.autosectionlabel',
 ]
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
@@ -33,7 +35,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 autodoc_default_options = {
     'members': True,
@@ -46,6 +48,10 @@ autodoc_default_options = {
 source_suffix = {
     '.rst': 'restructuredtext',
     '.md': 'markdown',
+}
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
 }
 
 

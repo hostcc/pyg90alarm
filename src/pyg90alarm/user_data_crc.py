@@ -19,7 +19,8 @@
 # SOFTWARE.
 
 """
-tbd
+Protocol entity for G90 alarm panel that provides checksums of different
+on-device databases.
 """
 
 from collections import namedtuple

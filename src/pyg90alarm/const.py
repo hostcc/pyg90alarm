@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Definies different constants for G90 alarm panel.
 """
 
 from enum import IntEnum
@@ -38,15 +38,29 @@ class G90Commands(IntEnum):
     The list consists of the entities known so far, and does not pretend to be
     comprehensive or complete.
     """
+
+    def __new__(cls, value, doc=None):
+        """
+        Allows to set the docstring along with the value to enum entry.
+        """
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        obj.__doc__ = doc
+        return obj
+
     # Host status
-    GETHOSTSTATUS = 100
-    SETHOSTSTATUS = 101
+    GETHOSTSTATUS = (100, 'Get host status')
+    SETHOSTSTATUS = (101, 'Set host status')
     # Host info
     GETHOSTINFO = 206
     # History
     GETHISTORY = 200
     # Sensors
-    GETSENSORLIST = 102
+    GETSENSORLIST = (102, """
+        Get list of sensors
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     SETSINGLESENSOR = 103
     DELSENSOR = 131
     ADDSENSOR = 156
@@ -58,7 +72,11 @@ class G90Commands(IntEnum):
     REGDEVICE = 135
     DELDEVICE = 136
     CONTROLDEVICE = 137
-    GETDEVICELIST = 138
+    GETDEVICELIST = (138, """
+        Get list of devices (switches)
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     GETSINGLEDEVICE = 139
     SETSINGLEDEVICE = 140
     DELALLDEVICES = 203
@@ -87,7 +105,11 @@ class G90Commands(IntEnum):
     ADDSCENE = 143
     DELSCENE = 144
     CTLSCENE = 145
-    GETSCENELIST = 146
+    GETSCENELIST = (146, """
+        Get list of scenes
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     GETSINGLESCENE = 147
     SETSINGLESCENE = 148
     GETROOMANDSCENE = 149
@@ -95,7 +117,11 @@ class G90Commands(IntEnum):
     # IFTTT (scenarios)
     ADDIFTTT = 150
     DELIFTTT = 151
-    GETIFTTTLIST = 152
+    GETIFTTTLIST = (152, """
+        Get list of if-then-else scenarios
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     GETSINGLEIFTTT = 153
     SETSINGLEIFTTT = 154
     IFTTTREQTIMERID = 164
@@ -103,7 +129,11 @@ class G90Commands(IntEnum):
     # Data CRC
     GETUSERDATACRC = 160
     # Fingerprint scanners
-    GETFPLOCKLIST = 165
+    GETFPLOCKLIST = (165, """
+        Get list of fingerprint scanners
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     SETFPLOCKNAME = 166
     GETFPLOCKUSERNAME = 167
     SETFPLOCKUSERNAME = 168

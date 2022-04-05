@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Implements callbacks.
 """
 
 import asyncio

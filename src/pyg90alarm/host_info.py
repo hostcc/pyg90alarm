@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Protocol entity for G90 alarm panel information.
 """
 
 from collections import namedtuple

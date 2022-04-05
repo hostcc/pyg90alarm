@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Implements support for notifications/alerts sent by G90 alarm panel.
 """
 
 import json
