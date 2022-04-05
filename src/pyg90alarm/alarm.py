@@ -253,7 +253,9 @@ class G90Alarm:
     @property
     async def alert_config(self):
         """
-        Retrieves the alert configuration from the device.
+        Retrieves the alert configuration from the device. Please note the
+        configuration is cached upon first call, so you need to re-instantiate
+        the class to reflect any updates there.
 
         :return: Instance of :class:`.G90AlertConfig` containing the alerts
          configured
