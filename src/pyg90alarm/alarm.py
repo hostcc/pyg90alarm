@@ -405,7 +405,7 @@ class G90Alarm:
         is opened or closed (if corresponding alert is configured on the
         device).
 
-        :type: ()(idx: int, name: str, is_open: bool)
+        :type: .. py:function:: ()(idx: int, name: str, is_open: bool)
         """
         return self._door_open_close_cb
 
@@ -432,7 +432,7 @@ class G90Alarm:
         Get or set device arm/disarm callback, the callback is invoked when
         device state changes.
 
-        :type: ()(state: :class:`.G90ArmDisarmTypes`)
+        :type: .. py:function:: ()(state: :class:`.G90ArmDisarmTypes`)
         """
         return self._armdisarm_cb
 
