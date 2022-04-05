@@ -56,8 +56,7 @@ class G90Commands(IntEnum):
     # History
     GETHISTORY = 200
     # Sensors
-    GETSENSORLIST = (102,
-    """
+    GETSENSORLIST = (102, """
         Get list of sensors
 
         .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
