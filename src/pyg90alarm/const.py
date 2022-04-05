@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Definies different constants for G90 alarm panel.
 """
 
 from enum import IntEnum

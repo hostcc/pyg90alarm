@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Implements paginated command for G90 alarm panel protocol.
 """
 
 import logging

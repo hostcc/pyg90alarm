@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-Provides interface to G90 Alarm panel.
+Provides interface to G90 alarm panel.
 
 .. note:: Only protocol 1.2 is supported!
 

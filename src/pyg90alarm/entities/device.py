@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Provides interface to devices (switches) of G90 alarm panel.
 """
 
 from .sensor import G90Sensor

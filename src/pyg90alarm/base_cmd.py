@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Provides support for basic commands of G90 alarm panel.
 """
 
 import logging

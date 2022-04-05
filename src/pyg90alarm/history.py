@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+History protocol entity.
 """
 
 import time

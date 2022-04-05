@@ -19,7 +19,7 @@
 # SOFTWARE.
 
 """
-tbd
+Provides interface to sensors of G90 alarm panel.
 """
 
 from collections import namedtuple

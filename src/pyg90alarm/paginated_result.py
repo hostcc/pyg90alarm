@@ -19,7 +19,8 @@
 # SOFTWARE.
 
 """
-tbd
+Extends paginated command for G90 alarm panel providing convenience interface
+to work with results of paginated commands.
 """
 
 import logging
