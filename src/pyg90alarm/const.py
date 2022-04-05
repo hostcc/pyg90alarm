@@ -56,7 +56,12 @@ class G90Commands(IntEnum):
     # History
     GETHISTORY = 200
     # Sensors
-    GETSENSORLIST = 102
+    GETSENSORLIST = (102,
+    """
+        Get list of sensors
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     SETSINGLESENSOR = 103
     DELSENSOR = 131
     ADDSENSOR = 156
@@ -68,7 +73,11 @@ class G90Commands(IntEnum):
     REGDEVICE = 135
     DELDEVICE = 136
     CONTROLDEVICE = 137
-    GETDEVICELIST = 138
+    GETDEVICELIST = (138, """
+        Get list of devices (switches)
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     GETSINGLEDEVICE = 139
     SETSINGLEDEVICE = 140
     DELALLDEVICES = 203
@@ -97,7 +106,11 @@ class G90Commands(IntEnum):
     ADDSCENE = 143
     DELSCENE = 144
     CTLSCENE = 145
-    GETSCENELIST = 146
+    GETSCENELIST = (146, """
+        Get list of scenes
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     GETSINGLESCENE = 147
     SETSINGLESCENE = 148
     GETROOMANDSCENE = 149
@@ -105,7 +118,11 @@ class G90Commands(IntEnum):
     # IFTTT (scenarios)
     ADDIFTTT = 150
     DELIFTTT = 151
-    GETIFTTTLIST = 152
+    GETIFTTTLIST = (152, """
+        Get list of if-then-else scenarios
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     GETSINGLEIFTTT = 153
     SETSINGLEIFTTT = 154
     IFTTTREQTIMERID = 164
@@ -113,7 +130,11 @@ class G90Commands(IntEnum):
     # Data CRC
     GETUSERDATACRC = 160
     # Fingerprint scanners
-    GETFPLOCKLIST = 165
+    GETFPLOCKLIST = (165, """
+        Get list of fingerprint scanners
+
+        .. note:: Paginated command, see :py:class:`.G90PaginatedResult`
+    """)
     SETFPLOCKNAME = 166
     GETFPLOCKUSERNAME = 167
     SETFPLOCKUSERNAME = 168
