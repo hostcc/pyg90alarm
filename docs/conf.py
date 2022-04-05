@@ -24,6 +24,7 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'enum_tools.autoenum',
+    'sphinx.ext.autosectionlabel',
 ]
 
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
