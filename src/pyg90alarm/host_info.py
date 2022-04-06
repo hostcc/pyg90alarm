@@ -23,6 +23,7 @@ Protocol entity for G90 alarm panel information.
 """
 
 from collections import namedtuple
+from enum import IntEnum
 
 INCOMING_FIELDS = [
     'host_guid',
@@ -31,8 +32,8 @@ INCOMING_FIELDS = [
     'cloud_protocol_version',
     'mcu_hw_version',
     'wifi_hw_version',
-    'gsm_status',
-    'wifi_status',
+    'gsm_status_data',
+    'wifi_status_data',
     'reserved1',
     'reserved2',
     'band_frequency',
@@ -41,7 +42,45 @@ INCOMING_FIELDS = [
 ]
 
 
+class G90HostInfoGsmStatus(IntEnum):
+    """
+    Defines possible values of GSM module status.
+    """
+    POWERED_OFF = 0
+    SIM_ABSENT = 1
+    NO_SIGNAL = 2
+    OPERATIONAL = 3
+
+
+class G90HostInfoWifiStatus(IntEnum):
+    """
+    Defines possible values of Wifi module status.
+    """
+    POWERED_OFF = 0
+    NOT_CONNECTED = 1
+    OPERATIONAL = 3
+
+
 class G90HostInfo(namedtuple('G90HostInfo', INCOMING_FIELDS)):
     """
-    tbd
+    Interprets data fields of GETHOSTINFO command.
     """
+    @property
+    def gsm_status(self):
+        """
+        Translates the GSM module status received from the device into
+        corresponding enum.
+
+        :return: :class:`G90HostInfoGsmStatus`
+        """
+        return G90HostInfoGsmStatus(self.gsm_status_data)
+
+    @property
+    def wifi_status(self):
+        """
+        Translates the Wifi module status received from the device into
+        corresponding enum.
+
+        :return: :class:`G90HostInfoWifiStatus`
+        """
+        return G90HostInfoWifiStatus(self.wifi_status_data)

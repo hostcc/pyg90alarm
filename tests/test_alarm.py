@@ -9,7 +9,7 @@ from pyg90alarm import (   # noqa:E402
     G90Alarm,
 )
 from pyg90alarm.host_info import (   # noqa:E402
-    G90HostInfo,
+    G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
 )
 from pyg90alarm.entities.sensor import (   # noqa:E402
     G90Sensor,
@@ -54,6 +54,8 @@ class TestG90Alarm(G90Fixture):
         self.assertIsInstance(res, G90HostInfo)
         self.assertEqual(res.host_guid, 'DUMMYGUID')
         self.assertEqual(res.product_name, 'DUMMYPRODUCT')
+        self.assertEqual(res.gsm_status, G90HostInfoGsmStatus.OPERATIONAL)
+        self.assertEqual(res.wifi_status, G90HostInfoWifiStatus.OPERATIONAL)
 
     async def test_user_data_crc(self):
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
