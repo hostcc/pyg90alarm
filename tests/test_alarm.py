@@ -1,7 +1,6 @@
 import asyncio
 import socket
 import sys
-import logging
 from unittest.mock import MagicMock
 import asynctest
 from .fixtures import G90Fixture
