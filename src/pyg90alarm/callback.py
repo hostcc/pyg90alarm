@@ -89,3 +89,30 @@ class G90Callback:
             # Python 3.6 has no `get_running_loop`, only `get_event_loop`
             loop = asyncio.get_event_loop()
         loop.call_later(delay, partial(callback, *args, **kwargs))
+
+
+def async_as_sync(func):
+    """
+    Invokes an async function as regular one via :py:func:`G90Callback.invoke`. One of
+    possible use cases is implementing property setter for async code, where
+    the function could be used an decorator:
+
+    .. code-block:: python
+
+     @property
+     async def a_property(...):
+         ...
+
+     @a_property.setter
+     @async_as_sync
+     async def a_property(...):
+         ...
+
+    Since the function internally submits the wrapped async code as
+    :py:mod:`asyncio` task, it execution isn't guaranteed as the program could
+    be terminated earlier that it is processed in the loop.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return G90Callback.invoke(func, *args, **kwargs)
+    return wrapper
