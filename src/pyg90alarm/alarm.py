@@ -510,11 +510,6 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         await self.command(G90Commands.SETHOSTSTATUS,
                            [state])
 
-        # Invoke corresponding callback in case the device notifications aren't
-        # available, at the cost of possible duplicate callback invocation if
-        # they are.
-        await self._internal_armdisarm_cb(state)
-
     async def arm_home(self):
         """
         Arms the device in home mode.
@@ -523,9 +518,6 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         await self.command(G90Commands.SETHOSTSTATUS,
                            [state])
 
-        # See the clarification above.
-        await self._internal_armdisarm_cb(state)
-
     async def disarm(self):
         """
         Disarms the device.
@@ -533,9 +525,6 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         state = G90ArmDisarmTypes.DISARM
         await self.command(G90Commands.SETHOSTSTATUS,
                            [state])
-
-        # See the clarification above.
-        await self._internal_armdisarm_cb(state)
 
     @property
     def sms_alert_when_armed(self):
