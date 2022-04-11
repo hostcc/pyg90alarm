@@ -31,8 +31,6 @@ from pyg90alarm.config import (  # noqa: E402
     G90AlertConfigFlags,
 )
 
-logging.basicConfig()
-
 
 class TestG90Alarm(G90Fixture):
     async def test_host_status(self):
