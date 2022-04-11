@@ -26,7 +26,9 @@ from pyg90alarm.host_status import (   # noqa:E402
 from pyg90alarm.user_data_crc import (   # noqa:E402
     G90UserDataCRC,
 )
-from pyg90alarm.config import G90AlertConfig  # noqa: E402
+from pyg90alarm.config import (  # noqa: E402
+    G90AlertConfigFlags,
+)
 
 
 class TestG90Alarm(G90Fixture):
@@ -352,4 +354,91 @@ class TestG90Alarm(G90Fixture):
 
         res = await g90.alert_config
         self.assert_callargs_on_sent_data([b'ISTART[117,117,""]IEND\0'])
-        self.assertIsInstance(res, G90AlertConfig)
+        self.assertIsInstance(res, G90AlertConfigFlags)
+
+    async def test_set_alert_config(self):
+        """ Tests for setting alert configuration to the the device """
+        g90 = G90Alarm(host="mocked", port=12345, sock=self.socket_mock)
+        self.socket_mock.recvfrom.side_effect = [
+            (b"ISTART[117,[1]]IEND\0", ("mocked", 12345)),
+            (b"ISTART[117,[3]]IEND\0", ("mocked", 12345)),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+
+        await g90.set_alert_config(
+            await g90.alert_config
+            | G90AlertConfigFlags.AC_POWER_FAILURE  # noqa:W503
+            | G90AlertConfigFlags.HOST_LOW_VOLTAGE  # noqa:W503
+        )
+        self.assert_callargs_on_sent_data(
+            [
+                b'ISTART[117,117,""]IEND\0',
+                b'ISTART[117,117,""]IEND\0',
+                b"ISTART[116,116,[116,[9]]]IEND\0",
+            ]
+        )
+
+    async def test_sms_alert_when_armed(self):
+        """ Tests for enabling SMS alerts when device is armed """
+        future = self.loop.create_future()
+        armdisarm_cb = MagicMock()
+        armdisarm_cb.side_effect = lambda *args: future.set_result(True)
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        g90.armdisarm_callback = armdisarm_cb
+        g90.sms_alert_when_armed = True
+        socket_ntfy_mock = asynctest.SocketMock()
+        socket_ntfy_mock.type = socket.SOCK_DGRAM
+        await g90.listen_device_notifications(socket_ntfy_mock)
+        asynctest.set_read_ready(socket_ntfy_mock, self.loop)
+        self.socket_mock.recvfrom.side_effect = [
+            # First command to get alert configuration is from
+            # `G90Alarm.alert_config` property
+            (b"ISTART[117,[1]]IEND\0", ("mocked", 12345)),
+            # Second command for same is invoked by `G90Alarm.set_alert_config`
+            # that checks if alert config has been modified externally
+            (b"ISTART[117,[1]]IEND\0", ("mocked", 12345)),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+        socket_ntfy_mock.recvfrom.side_effect = [
+            (b'[170,[1,[1]]]\0', ('mocked', 12345)),
+        ]
+        await asyncio.wait([future], timeout=0.1)
+        g90.close_device_notifications()
+        self.assert_callargs_on_sent_data(
+            [
+                b'ISTART[117,117,""]IEND\0',
+                b'ISTART[117,117,""]IEND\0',
+                b"ISTART[116,116,[116,[513]]]IEND\0",
+            ]
+        )
+
+    async def test_sms_alert_when_disarmed(self):
+        """ Tests for disabling SMS alerts when device is disarmed """
+        future = self.loop.create_future()
+        armdisarm_cb = MagicMock()
+        armdisarm_cb.side_effect = lambda *args: future.set_result(True)
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        g90.armdisarm_callback = armdisarm_cb
+        g90.sms_alert_when_armed = True
+        socket_ntfy_mock = asynctest.SocketMock()
+        socket_ntfy_mock.type = socket.SOCK_DGRAM
+        await g90.listen_device_notifications(socket_ntfy_mock)
+        asynctest.set_read_ready(socket_ntfy_mock, self.loop)
+        self.socket_mock.recvfrom.side_effect = [
+            # See above for the clarification on command sequence
+            (b"ISTART[117,[513]]IEND\0", ("mocked", 12345)),
+            (b"ISTART[117,[513]]IEND\0", ("mocked", 12345)),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+        socket_ntfy_mock.recvfrom.side_effect = [
+            (b'[170,[1,[3]]]\0', ('mocked', 12345)),
+        ]
+        await asyncio.wait([future], timeout=0.1)
+        g90.close_device_notifications()
+        self.assert_callargs_on_sent_data(
+            [
+                b'ISTART[117,117,""]IEND\0',
+                b'ISTART[117,117,""]IEND\0',
+                b"ISTART[116,116,[116,[1]]]IEND\0",
+            ]
+        )
