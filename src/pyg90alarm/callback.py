@@ -93,9 +93,9 @@ class G90Callback:
 
 def async_as_sync(func):
     """
-    Invokes an async function as regular one via :py:func:`G90Callback.invoke`. One of
-    possible use cases is implementing property setter for async code, where
-    the function could be used an decorator:
+    Invokes an async function as regular one via :py:func:`G90Callback.invoke`.
+    One of possible use cases is implementing property setter for async code,
+    where the function could be used an decorator:
 
     .. code-block:: python
 
