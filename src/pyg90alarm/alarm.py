@@ -75,7 +75,7 @@ from .callback import G90Callback
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90Alarm:
+class G90Alarm:  # pylint: disable=too-many-public-methods
     """
     Allows to interact with G90 alarm panel.
 
@@ -109,6 +109,7 @@ class G90Alarm:
         self._door_open_close_cb = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config = None
+        self._sms_alert_when_armed = False
 
     async def command(self, code, data=None):
         """
@@ -253,17 +254,45 @@ class G90Alarm:
     @property
     async def alert_config(self):
         """
-        Retrieves the alert configuration from the device. Please note the
-        configuration is cached upon first call, so you need to re-instantiate
-        the class to reflect any updates there.
+        Retrieves the alert configuration flags from the device. Please note
+        the configuration is cached upon first call, so you need to
+        re-instantiate the class to reflect any updates there.
 
-        :return: Instance of :class:`.G90AlertConfig` containing the alerts
-         configured
+        :return: Instance of :class:`.G90AlertConfigFlags` containing the
+         alerts configured
         """
         if not self._alert_config:
-            res = await self.command(G90Commands.GETNOTICEFLAG)
-            self._alert_config = G90AlertConfig(*res)
+            self._alert_config = await self._alert_config_uncached()
         return self._alert_config
+
+    async def _alert_config_uncached(self):
+        """
+        Retrieves the alert configuration flags directly from the device.
+
+        :return: Instance of :class:`.G90AlertConfigFlags` containing the
+         alerts configured
+        """
+        res = await self.command(G90Commands.GETNOTICEFLAG)
+        return G90AlertConfig(*res).flags
+
+    async def set_alert_config(self, value):
+        """
+        It might be possible to implement the async property setter with
+        `async_as_sync` decorator, although it might have implications with the
+        setter not executed if the program terminates earlier. Hence, for the
+        sake of better predictability this is implemented as regular
+        (non-property) method
+        """
+        # Use uncached method retrieving the alert configuration, to ensure the
+        # actual value retrieved from the device
+        alert_config = await self._alert_config_uncached()
+        if alert_config != self._alert_config:
+            _LOGGER.warning(
+                'Alert configuration changed externally,'
+                ' overwriting (read "%s", will be set to "%s")',
+                str(alert_config), str(value)
+            )
+        await self.command(G90Commands.SETNOTICEFLAG, [value])
 
     @property
     async def user_data_crc(self):
@@ -341,7 +370,7 @@ class G90Alarm:
 
             # Determine if door close notifications are available for the given
             # sensor
-            alert_config_flags = (await self.alert_config).flags
+            alert_config_flags = await self.alert_config
             door_close_alert_enabled = (
                 G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags)
             sensor_is_door = sensor[0].type == G90SensorTypes.DOOR
@@ -424,6 +453,18 @@ class G90Alarm:
         :param state: Device state (armed, disarmed, armed home)
         :type state: :class:`G90ArmDisarmTypes`
         """
+        if self._sms_alert_when_armed:
+            if state == G90ArmDisarmTypes.DISARM:
+                # Disable SMS alerts from the device
+                await self.set_alert_config(
+                    await self.alert_config & ~G90AlertConfigFlags.SMS_PUSH
+                )
+            if state in (G90ArmDisarmTypes.ARM_AWAY,
+                         G90ArmDisarmTypes.ARM_HOME):
+                # Enable SMS alerts from the device
+                await self.set_alert_config(
+                    await self.alert_config | G90AlertConfigFlags.SMS_PUSH
+                )
         G90Callback.invoke(self._armdisarm_cb, state)
 
     @property
@@ -465,19 +506,45 @@ class G90Alarm:
         """
         Arms the device in away mode.
         """
+        state = G90ArmDisarmTypes.ARM_AWAY
         await self.command(G90Commands.SETHOSTSTATUS,
-                           [G90ArmDisarmTypes.ARM_AWAY])
+                           [state])
+
+        # Invoke corresponding callback in case the device notifications aren't
+        # available, at the cost of possible duplicate callback invocation if
+        # they are.
+        await self._internal_armdisarm_cb(state)
 
     async def arm_home(self):
         """
         Arms the device in home mode.
         """
+        state = G90ArmDisarmTypes.ARM_HOME
         await self.command(G90Commands.SETHOSTSTATUS,
-                           [G90ArmDisarmTypes.ARM_HOME])
+                           [state])
+
+        # See the clarification above.
+        await self._internal_armdisarm_cb(state)
 
     async def disarm(self):
         """
         Disarms the device.
         """
+        state = G90ArmDisarmTypes.DISARM
         await self.command(G90Commands.SETHOSTSTATUS,
-                           [G90ArmDisarmTypes.DISARM])
+                           [state])
+
+        # See the clarification above.
+        await self._internal_armdisarm_cb(state)
+
+    @property
+    def sms_alert_when_armed(self):
+        """
+        When enabled, allows to save costs on SMS by having corresponding alert
+        enabled only when device is armed.
+        """
+        return self._sms_alert_when_armed
+
+    @sms_alert_when_armed.setter
+    def sms_alert_when_armed(self, value):
+        self._sms_alert_when_armed = value
