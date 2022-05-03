@@ -377,6 +377,12 @@ class TestG90Alarm(G90Fixture):
                 b"ISTART[116,116,[116,[9]]]IEND\0",
             ]
         )
+        # Validate we retrieve same alert configuration just has been set
+        self.assertEqual(
+            await g90.alert_config,
+            G90AlertConfigFlags.AC_POWER_FAILURE
+            | G90AlertConfigFlags.HOST_LOW_VOLTAGE  # noqa:W503
+        )
 
     async def test_sms_alert_when_armed(self):
         """ Tests for enabling SMS alerts when device is armed """
