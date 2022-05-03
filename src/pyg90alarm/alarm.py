@@ -293,6 +293,8 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
                 str(alert_config), str(value)
             )
         await self.command(G90Commands.SETNOTICEFLAG, [value])
+        # Update the alert configuration stored
+        self._alert_config = value
 
     @property
     async def user_data_crc(self):
