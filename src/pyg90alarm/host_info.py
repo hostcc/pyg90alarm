@@ -58,6 +58,7 @@ class G90HostInfoWifiStatus(IntEnum):
     """
     POWERED_OFF = 0
     NOT_CONNECTED = 1
+    NO_SIGNAL = 2
     OPERATIONAL = 3
 
 
