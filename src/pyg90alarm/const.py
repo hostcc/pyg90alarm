@@ -180,6 +180,14 @@ class G90AlertTypes(IntEnum):
     DOOR_OPEN_CLOSE = 4
 
 
+class G90AlertSources(IntEnum):
+    """
+    Defines possible sources of the alert sent by the panel.
+    """
+    SENSOR = 1
+    DOORBELL = 12
+
+
 class G90AlertStateChangeTypes(IntEnum):
     """
     Defines types of alert for device state changes.

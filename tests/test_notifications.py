@@ -109,12 +109,12 @@ class TestG90Notifications(G90Fixture):
                 'ERROR:pyg90alarm.device_notifications:'
                 'Bad alert received from mocked:12345:'
                 " <lambda>() missing 9 required positional arguments: 'type',"
-                " 'event_id', 'resv2', 'resv3', 'zone_name', 'device_id',"
+                " 'event_id', 'source', 'state', 'zone_name', 'device_id',"
                 " 'unix_time', 'resv4', and 'other'",
                 'ERROR:pyg90alarm.device_notifications:'
                 'Bad alert received from mocked:12345:'
                 " __new__() missing 9 required positional arguments: 'type',"
-                " 'event_id', 'resv2', 'resv3', 'zone_name', 'device_id',"
+                " 'event_id', 'source', 'state', 'zone_name', 'device_id',"
                 " 'unix_time', 'resv4', and 'other'",
             ])
         notifications.close()
@@ -153,8 +153,8 @@ class TestG90Notifications(G90Fixture):
             self.assertEqual(cm.output, [
                 'WARNING:pyg90alarm.device_notifications:'
                 'Unknown alert received from mocked:12345: type 999,'
-                ' data G90DeviceAlert(type=999, event_id=100, resv2=1,'
-                " resv3=1, zone_name='Hall', device_id='DUMMYGUID',"
+                ' data G90DeviceAlert(type=999, event_id=100, source=1,'
+                " state=1, zone_name='Hall', device_id='DUMMYGUID',"
                 " unix_time=1631545189, resv4=0, other=[''])"
             ])
         notifications.close()
@@ -216,3 +216,18 @@ class TestG90Notifications(G90Fixture):
         await asyncio.wait([future], timeout=0.1)
         notifications.close()
         door_open_close_cb.assert_called_once_with(100, 'Hall', True)
+
+    async def test_doorbell_callback(self):
+        future = self.loop.create_future()
+        door_open_close_cb = MagicMock()
+        door_open_close_cb.side_effect = lambda *args: future.set_result(True)
+        notifications = G90DeviceNotifications(
+            door_open_close_cb=door_open_close_cb, sock=self.socket_mock)
+        await notifications.listen()
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        self.socket_mock.recvfrom.return_value = (
+            b'[208,[4,111,12,0,"Doorbell","DUMMYGUID",1655745021,0,[""]]]\0',
+            ('mocked', 12345))
+        await asyncio.wait([future], timeout=0.1)
+        notifications.close()
+        door_open_close_cb.assert_called_once_with(111, 'Doorbell', True)
