@@ -33,6 +33,7 @@ from .const import (
     G90AlertTypes,
     G90AlertStateChangeTypes,
     G90ArmDisarmTypes,
+    G90AlertSources,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,7 +76,7 @@ class G90ArmDisarmInfo(namedtuple('G90ArmDisarmInfo',
 
 
 class G90DeviceAlert(namedtuple('G90DeviceAlert',
-                                ['type', 'event_id', 'resv2', 'resv3',
+                                ['type', 'event_id', 'source', 'state',
                                  'zone_name', 'device_id', 'unix_time',
                                  'resv4', 'other'])):
     """
@@ -138,9 +139,9 @@ class G90DeviceNotificationProtocol:
 
     def _handle_alert(self, addr, alert):
         if alert.type == G90AlertTypes.DOOR_OPEN_CLOSE:
-            # `.resv3` field indicates whether the door is opened (1) or closed
-            # (0)
-            is_open = alert.resv3 == 1
+            is_open = (
+                alert.source == G90AlertSources.SENSOR and alert.state == 1
+            ) or alert.source == G90AlertSources.DOORBELL
             _LOGGER.debug('Door open_close alert: %s', alert)
             G90Callback.invoke(self._door_open_close_cb,
                                alert.event_id, alert.zone_name,
