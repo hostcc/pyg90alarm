@@ -69,7 +69,7 @@ class G90Device(G90Sensor):
         """
         Changes the disabled/enabled state of the device (relay).
 
-        :param value bool: Whether to enable or disable the device
+        :param bool value: Whether to enable or disable the device
         """
         _LOGGER.warning(
             'Manipulating with enable/disable for device is unsupported'

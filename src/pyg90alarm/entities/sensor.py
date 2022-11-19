@@ -148,17 +148,17 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     """
     Interacts with sensor on G90 alarm panel.
 
-    :param args: Pass-through positional arguments for
-     :class:`.G90SensorIncomingData` for interpreting protocol fields
+    :param args: Pass-through positional arguments for for interpreting
+     protocol fields
     :param parent: Instance of :class:`.G90Alarm` the sensor is associated
      with
     :type parent: :class:`.G90Alarm`
-    :param subindex int: Index of the sensor within multi-channel devices
+    :param int subindex: Index of the sensor within multi-channel devices
      (those having multiple nodes)
-    :param proto_idx int: Index of the sensor within list of sensors as
+    :param int proto_idx: Index of the sensor within list of sensors as
      retrieved from the alarm panel
-    :param kwargs: Pass-through keyword arguments for
-     :class:`.G90SensorIncomingData` for interpreting protocol fields
+    :param kwargs: Pass-through keyword arguments for for interpreting protocol
+     fields
     """
     def __init__(self, *args, parent, subindex, proto_idx, **kwargs):
         self._protocol_incoming_data_kls = (
@@ -212,7 +212,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         Sets callback for the state changes of the sensor.
 
-        :param value object: Sensor state callback
+        :param object value: Sensor state callback
         """
         self._state_callback = value
 
@@ -232,7 +232,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         Sets occupancy state for the sensor.
 
-        :param value bool: Sensor occupancy
+        :param bool value: Sensor occupancy
         """
         self._occupancy = value
 
@@ -341,7 +341,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         Sets disabled/enabled state of the sensor.
 
-        :param value bool: Whether to enable or disable the sensor
+        :param bool value: Whether to enable or disable the sensor
         """
         if not self.supports_enable_disable:
             _LOGGER.warning(
