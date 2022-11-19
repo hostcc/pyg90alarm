@@ -128,7 +128,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
     def paginated_result(self, code, start=1, end=None):
         """
-        Returns asynchronous generator to for a paginated command, that is -
+        Returns asynchronous generator for a paginated command, that is -
         command operating on a range of records.
 
         :param code: Command code
@@ -136,7 +136,8 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :param int start: Starting record position (one-based)
         :param int end: Ending record position (one-based)
         :return: :class:`.G90PaginatedResult` being asynchronous generator
-          over the result of command invocation
+          over the result of command invocation. Each access to the generator
+          yields :class:`.G90PaginatedResponse` instance
         """
         return G90PaginatedResult(
             self._host, self._port, code, start, end, sock=self._sock
