@@ -148,24 +148,24 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     """
     Interacts with sensor on G90 alarm panel.
 
-    :param args: Pass-through positional arguments for :class:`.G90Sensor` for
-     interpreting protocol fields
-    :param parent: Instance of :class:`..G90Alarm` the sensor is associated
+    :param args: Pass-through positional arguments for
+     :class:`.G90SensorIncomingData` for interpreting protocol fields
+    :param parent: Instance of :class:`.G90Alarm` the sensor is associated
      with
-    :type parent: :class:`..G90Alarm`
+    :type parent: :class:`.G90Alarm`
     :param subindex int: Index of the sensor within multi-channel devices
      (those having multiple nodes)
     :param proto_idx int: Index of the sensor within list of sensors as
      retrieved from the alarm panel
-    :param kwargs: Pass-through keyword arguments for :class:`.G90Sensor` for
-     interpreting protocol fields
+    :param kwargs: Pass-through keyword arguments for
+     :class:`.G90SensorIncomingData` for interpreting protocol fields
     """
     def __init__(self, *args, parent, subindex, proto_idx, **kwargs):
         self._protocol_incoming_data_kls = (
-            namedtuple('G90Sensor', INCOMING_FIELDS)
+            namedtuple('G90SensorIncomingData', INCOMING_FIELDS)
         )
         self._protocol_outgoing_data_kls = (
-            namedtuple('G90Sensor', OUTGOING_FIELDS)
+            namedtuple('G90SensorOutgoingData', OUTGOING_FIELDS)
         )
         self._protocol_data = self._protocol_incoming_data_kls(*args, **kwargs)
         self._parent = parent
@@ -188,7 +188,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     def name(self):
         """
         Returns sensor name, accounting for multi-channel entities (single
-        protocol entiry results in multiple `G90Sensor` instances).
+        protocol entity results in multiple `G90Sensor` instances).
 
         :return: Sensor name
         :rtype: str
@@ -289,11 +289,11 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def parent(self):
         """
-        Returns parent :class:`..G90Alarm` instance the sensor is associated
+        Returns parent :class:`.G90Alarm` instance the sensor is associated
         with.
 
-        :return: Parent :class:`..G90Alarm` instance
-        :rtype: :class:`..G90Alarm`
+        :return: Parent :class:`.G90Alarm` instance
+        :rtype: :class:`.G90Alarm`
         """
         return self._parent
 

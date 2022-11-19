@@ -1,3 +1,3 @@
 """
-Contains various defintiions for G90 devices (sensors etc.)
+Contains various definitions for G90 devices (sensors etc.)
 """
