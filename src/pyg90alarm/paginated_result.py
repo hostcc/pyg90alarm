@@ -95,9 +95,12 @@ class G90PaginatedResult:
                 self._end = cmd.total
 
             # Produce the resulting records for the consumer
-            for proto_idx, data in enumerate(cmd.result):
-                # Protocol uses one-based indexes
-                yield G90PaginatedResponse(proto_idx + 1, data)
+            for idx, data in enumerate(cmd.result):
+                # Protocol uses one-based indexes, `start` implies that so no
+                # further additions to resulting value is needed.
+                # Note the index provided here is running one across multiple
+                # pages hence use of `start` variable
+                yield G90PaginatedResponse(start + idx, data)
 
             # Count the number of processed records
             count += cmd.count
