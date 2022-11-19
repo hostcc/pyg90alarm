@@ -22,25 +22,55 @@
 Provides interface to devices (switches) of G90 alarm panel.
 """
 
+import logging
 from .sensor import G90Sensor
 from ..const import G90Commands
 
 
+_LOGGER = logging.getLogger(__name__)
+
+
 class G90Device(G90Sensor):
     """
-    tbd
+    Interacts with device (relay) on G90 alarm panel.
     """
 
     async def turn_on(self):
         """
-        tbd
+        Turns on the device (relay)
         """
         await self.parent.command(G90Commands.CONTROLDEVICE,
                                   [self.index, 0, self.subindex])
 
     async def turn_off(self):
         """
-        tbd
+        Turns off the device (relay)
         """
         await self.parent.command(G90Commands.CONTROLDEVICE,
                                   [self.index, 1, self.subindex])
+
+    @property
+    def supports_enable_disable(self):
+        """
+        Indicates if disabling/enabling the device (relay) is supported.
+
+        :return: Support for enabling/disabling the device
+        :rtype: bool
+        """
+        # No support for manipulating of disable/enabled for the device, since
+        # single protocol entity read from the G90 alarm panel results in
+        # multiple `G90Device` instances and changing the state would
+        # subsequently require a design change to allow multiple entities to
+        # reflect that. Multiple device entities are for multi-channel relays
+        # mostly.
+        return False
+
+    async def set_enabled(self, value):
+        """
+        Changes the disabled/enabled state of the device (relay).
+
+        :param bool value: Whether to enable or disable the device
+        """
+        _LOGGER.warning(
+            'Manipulating with enable/disable for device is unsupported'
+        )
