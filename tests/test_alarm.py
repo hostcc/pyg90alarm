@@ -448,3 +448,104 @@ class TestG90Alarm(G90Fixture):
                 b"ISTART[116,116,[116,[1]]]IEND\0",
             ]
         )
+
+    async def test_sensor_disable(self):
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        self.socket_mock.recvfrom.side_effect = [
+            (
+                b'ISTART[102,'
+                b'[[2,1,2],'
+                b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
+                b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+                b']]IEND\0',
+                ('mocked', 12345)
+            ),
+            (
+                b'ISTART[102,'
+                b'[[2,2,1],'
+                b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+                b']]IEND\0',
+                ('mocked', 12345)
+            ),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+
+        sensors = await g90.sensors
+        self.assertEqual(sensors[1].enabled, True)
+        await sensors[1].set_enabled(False)
+        self.assertEqual(sensors[1].enabled, False)
+        self.assert_callargs_on_sent_data([
+            b'ISTART[102,102,[102,[1,10]]]IEND\0',
+            b'ISTART[102,102,[102,[2,2]]]IEND\0',
+            b'ISTART[103,103,[103,'
+            b'["Night Light2",10,0,138,0,0,32,0,0,17,1,0,2,"060A0600"]'
+            b']]IEND\0',
+        ])
+
+    async def test_sensor_disable_externally_modified(self):
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        self.socket_mock.recvfrom.side_effect = [
+            (
+                b'ISTART[102,'
+                b'[[2,1,2],'
+                b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
+                b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+                b']]IEND\0',
+                ('mocked', 12345)
+            ),
+            (
+                b'ISTART[102,'
+                b'[[2,2,1],'
+                b'["Night Light2",10,0,138,0,0,1,0,0,17,1,0,""]'
+                b']]IEND\0',
+                ('mocked', 12345)
+            ),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+
+        sensors = await g90.sensors
+        self.assertEqual(sensors[1].enabled, True)
+        await sensors[1].set_enabled(False)
+        self.assertEqual(sensors[1].enabled, True)
+        self.assert_callargs_on_sent_data([
+            b'ISTART[102,102,[102,[1,10]]]IEND\0',
+            b'ISTART[102,102,[102,[2,2]]]IEND\0',
+        ])
+
+    async def test_sensor_unsupported_disable(self):
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        self.socket_mock.recvfrom.side_effect = [
+            (
+                b'ISTART[102,'
+                b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
+                b']]IEND\0',
+                ('mocked', 12345)
+            ),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+
+        sensors = await g90.sensors
+        self.assertEqual(sensors[0].enabled, True)
+        await sensors[0].set_enabled(False)
+        self.assert_callargs_on_sent_data([
+            b'ISTART[102,102,[102,[1,10]]]IEND\0',
+        ])
+
+    async def test_device_unsupported_disable(self):
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        self.socket_mock.recvfrom.side_effect = [
+            (
+                b'ISTART[138,'
+                b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
+                b']]IEND\0',
+                ('mocked', 12345)
+            ),
+            (b"ISTARTIEND\0", ("mocked", 12345)),
+        ]
+
+        devices = await g90.devices
+        self.assertEqual(devices[0].enabled, True)
+        await devices[0].set_enabled(False)
+        self.assert_callargs_on_sent_data([
+            b'ISTART[138,138,[138,[1,10]]]IEND\0',
+        ])

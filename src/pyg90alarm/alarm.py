@@ -190,7 +190,10 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
                 G90Commands.GETSENSORLIST
             )
             async for sensor in sensors:
-                obj = G90Sensor(*sensor, parent=self, subindex=0)
+                obj = G90Sensor(
+                    *sensor.data, parent=self, subindex=0,
+                    proto_idx=sensor.proto_idx
+                )
                 self._sensors.append(obj)
 
             _LOGGER.debug('Total number of sensors: %s', len(self._sensors))
@@ -210,16 +213,22 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :rtype: list(:class:`.G90Device`)
         """
         if not self._devices:
-            cmd = self.paginated_result(
+            devices = self.paginated_result(
                 G90Commands.GETDEVICELIST
             )
-            async for dev in cmd:
-                obj = G90Device(*dev, parent=self, subindex=0)
+            async for device in devices:
+                obj = G90Device(
+                    *device.data, parent=self, subindex=0,
+                    proto_idx=device.proto_idx
+                )
                 self._devices.append(obj)
                 # Multi-node devices (first node has already been added
                 # above
                 for node in range(1, obj.node_count):
-                    obj = G90Device(*dev, parent=self, subindex=node)
+                    obj = G90Device(
+                        *device.data, parent=self,
+                        subindex=node, proto_idx=device.proto_idx
+                    )
                     self._devices.append(obj)
 
             _LOGGER.debug('Total number of devices: %s', len(self._devices))
@@ -325,7 +334,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         """
         res = self.paginated_result(G90Commands.GETHISTORY,
                                     start, count)
-        history = [G90History(*x) async for x in res]
+        history = [G90History(*x.data) async for x in res]
         return history
 
     async def _internal_sensor_cb(self, idx, name, occupancy=True):

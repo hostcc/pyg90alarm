@@ -24,6 +24,7 @@ to work with results of paginated commands.
 """
 
 import logging
+from collections import namedtuple
 from .paginated_cmd import G90PaginatedCommand
 from .const import (
     CMD_PAGE_SIZE,
@@ -32,9 +33,17 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+class G90PaginatedResponse(
+    namedtuple('G90PaginatedResponse', ['proto_idx', 'data'])
+):
+    """
+    Response yielded from the `G90PaginatedResult.process()` method
+    """
+
+
 class G90PaginatedResult:
     """
-    tbd
+    Processes paginated response from G90 corresponding panel commands.
     """
     # pylint: disable=too-few-public-methods
     def __init__(self, host, port, code, start=1, end=None, **kwargs):
@@ -48,7 +57,8 @@ class G90PaginatedResult:
 
     async def process(self):
         """
-        tbd
+        Process paginated response yielding `G90PaginatedResponse` instance for
+        each element.
         """
         page = CMD_PAGE_SIZE
         start = self._start
@@ -85,8 +95,9 @@ class G90PaginatedResult:
                 self._end = cmd.total
 
             # Produce the resulting records for the consumer
-            for res in cmd.result:
-                yield res
+            for proto_idx, data in enumerate(cmd.result):
+                # Protocol uses one-based indexes
+                yield G90PaginatedResponse(proto_idx + 1, data)
 
             # Count the number of processed records
             count += cmd.count
