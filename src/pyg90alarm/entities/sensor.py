@@ -157,7 +157,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
      (those having multiple nodes)
     :param proto_idx int: Index of the sensor within list of sensors as
      retrieved from the alarm panel
-    :param kwargs: Pass-through keyword arguments for :class:`.G90Sensor` for 
+    :param kwargs: Pass-through keyword arguments for :class:`.G90Sensor` for
      interpreting protocol fields
     """
     def __init__(self, *args, parent, subindex, proto_idx, **kwargs):
@@ -289,7 +289,8 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def parent(self):
         """
-        Returns parent :class:`..G90Alarm` instance the sensor is associated with.
+        Returns parent :class:`..G90Alarm` instance the sensor is associated
+        with.
 
         :return: Parent :class:`..G90Alarm` instance
         :rtype: :class:`..G90Alarm`
