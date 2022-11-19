@@ -188,7 +188,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     def name(self):
         """
         Returns sensor name, accounting for multi-channel entities (single
-        protocol entity results in multiple `G90Sensor` instances).
+        protocol entity results in multiple :class:`.G90Sensor` instances).
 
         :return: Sensor name
         :rtype: str

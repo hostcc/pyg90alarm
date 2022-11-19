@@ -37,7 +37,7 @@ class G90PaginatedResponse(
     namedtuple('G90PaginatedResponse', ['proto_idx', 'data'])
 ):
     """
-    Response yielded from the `G90PaginatedResult.process()` method
+    Response yielded from the :meth:`.G90PaginatedResult.process` method
     """
 
 
@@ -57,8 +57,8 @@ class G90PaginatedResult:
 
     async def process(self):
         """
-        Process paginated response yielding `G90PaginatedResponse` instance for
-        each element.
+        Process paginated response yielding :class:`.G90PaginatedResponse`
+        instance for each element.
         """
         page = CMD_PAGE_SIZE
         start = self._start
