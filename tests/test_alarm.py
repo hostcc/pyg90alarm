@@ -37,7 +37,7 @@ class TestG90Alarm(G90Fixture):
         data = b'ISTART[100,[3,"PHONE","PRODUCT","206","206"]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
 
-        res = await g90.host_status
+        res = await g90.get_host_status()
         self.assert_callargs_on_sent_data([b'ISTART[100,100,""]IEND\0'])
         self.assertIsInstance(res, G90HostStatus)
         self.assertEqual(res.host_status, 3)
@@ -51,7 +51,7 @@ class TestG90Alarm(G90Fixture):
             b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
 
-        res = await g90.host_info
+        res = await g90.get_host_info()
         self.assert_callargs_on_sent_data([b'ISTART[206,206,""]IEND\0'])
         self.assertIsInstance(res, G90HostInfo)
         self.assertEqual(res.host_guid, 'DUMMYGUID')
@@ -64,15 +64,21 @@ class TestG90Alarm(G90Fixture):
         data = b'ISTART[160,["1","0xab","3","4","5","6"]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
 
-        res = await g90.user_data_crc
-        self.assert_callargs_on_sent_data([b'ISTART[160,160,""]IEND\0'])
-        self.assertIsInstance(res, G90UserDataCRC)
-        self.assertEqual(res.sensor_list, '1')
-        self.assertEqual(res.device_list, '0xab')
-        self.assertEqual(res.history_list, '3')
-        self.assertEqual(res.scene_list, '4')
-        self.assertEqual(res.ifttt_list, '5')
-        self.assertEqual(res.fingerprint_list, '6')
+        crc = await g90.get_user_data_crc()
+        prop_crc = await g90.user_data_crc
+        assert crc == prop_crc
+
+        self.assert_callargs_on_sent_data([
+            b'ISTART[160,160,""]IEND\0',
+            b'ISTART[160,160,""]IEND\0',
+        ])
+        self.assertIsInstance(crc, G90UserDataCRC)
+        self.assertEqual(crc.sensor_list, '1')
+        self.assertEqual(crc.device_list, '0xab')
+        self.assertEqual(crc.history_list, '3')
+        self.assertEqual(crc.scene_list, '4')
+        self.assertEqual(crc.ifttt_list, '5')
+        self.assertEqual(crc.fingerprint_list, '6')
 
     async def test_devices(self):
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
@@ -80,7 +86,9 @@ class TestG90Alarm(G90Fixture):
                b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
 
-        devices = await g90.devices
+        devices = await g90.get_devices()
+        prop_devices = await g90.devices
+        assert devices == prop_devices
         self.assert_callargs_on_sent_data([
             b'ISTART[138,138,[138,[1,10]]]IEND\0',
         ])
@@ -95,7 +103,9 @@ class TestG90Alarm(G90Fixture):
         data = b'ISTART[138,' \
                b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,2,0,""]]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
-        devices = await g90.devices
+        devices = await g90.get_devices()
+        prop_devices = await g90.devices
+        assert devices == prop_devices
         self.assert_callargs_on_sent_data([
             b'ISTART[138,138,[138,[1,10]]]IEND\0',
         ])
@@ -114,7 +124,9 @@ class TestG90Alarm(G90Fixture):
         data = b'ISTART[138,' \
                b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
-        devices = await g90.devices
+        devices = await g90.get_devices()
+        prop_devices = await g90.devices
+        assert devices == prop_devices
 
         data = b'ISTARTIEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
@@ -132,7 +144,9 @@ class TestG90Alarm(G90Fixture):
                b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assert_callargs_on_sent_data([
             b'ISTART[102,102,[102,[1,10]]]IEND\0',
         ])
@@ -152,7 +166,9 @@ class TestG90Alarm(G90Fixture):
 
         self.socket_mock.recvfrom.side_effect = data
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assert_callargs_on_sent_data([
             b'ISTART[102,102,[102,[1,10]]]IEND\0',
         ])
@@ -190,7 +206,9 @@ class TestG90Alarm(G90Fixture):
 
         self.socket_mock.recvfrom.side_effect = data
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assert_callargs_on_sent_data([
             b'ISTART[102,102,[102,[1,10]]]IEND\0',
             b'ISTART[102,102,[102,[11,11]]]IEND\0',
@@ -214,7 +232,9 @@ class TestG90Alarm(G90Fixture):
                 ]
         self.socket_mock.recvfrom.side_effect = data
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         future = self.loop.create_future()
         sensor = [x for x in sensors if x.index == 10 and x.name == 'Remote']
         sensor[0].state_callback = lambda *args: future.set_result(True)
@@ -288,7 +308,9 @@ class TestG90Alarm(G90Fixture):
         asynctest.set_read_ready(socket_ntfy_mock, self.loop)
         await asyncio.wait([future], timeout=0.1)
         # Corresponding sensor should turn to occupied (=door opened)
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assertEqual(sensors[0].occupancy, True)
 
         # Signal the second alert is ready, the future has to be re-created as
@@ -297,7 +319,9 @@ class TestG90Alarm(G90Fixture):
         asynctest.set_read_ready(socket_ntfy_mock, self.loop)
         await asyncio.wait([future], timeout=0.1)
         # The sensor should become inactive (=door closed)
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assertEqual(sensors[0].occupancy, False)
 
         g90.close_device_notifications()
@@ -352,9 +376,11 @@ class TestG90Alarm(G90Fixture):
         data = b'ISTART[117,[1]]IEND\0'
         self.socket_mock.recvfrom.return_value = (data, ('mocked', 12345))
 
-        res = await g90.alert_config
+        config = await g90.get_alert_config()
+        prop_config = await g90.alert_config
+        assert config == prop_config
         self.assert_callargs_on_sent_data([b'ISTART[117,117,""]IEND\0'])
-        self.assertIsInstance(res, G90AlertConfigFlags)
+        self.assertIsInstance(config, G90AlertConfigFlags)
 
     async def test_set_alert_config(self):
         """ Tests for setting alert configuration to the the device """
@@ -366,7 +392,7 @@ class TestG90Alarm(G90Fixture):
         ]
 
         await g90.set_alert_config(
-            await g90.alert_config
+            await g90.get_alert_config()
             | G90AlertConfigFlags.AC_POWER_FAILURE  # noqa:W503
             | G90AlertConfigFlags.HOST_LOW_VOLTAGE  # noqa:W503
         )
@@ -379,7 +405,7 @@ class TestG90Alarm(G90Fixture):
         )
         # Validate we retrieve same alert configuration just has been set
         self.assertEqual(
-            await g90.alert_config,
+            await g90.get_alert_config(),
             G90AlertConfigFlags.AC_POWER_FAILURE
             | G90AlertConfigFlags.HOST_LOW_VOLTAGE  # noqa:W503
         )
@@ -398,7 +424,7 @@ class TestG90Alarm(G90Fixture):
         asynctest.set_read_ready(socket_ntfy_mock, self.loop)
         self.socket_mock.recvfrom.side_effect = [
             # First command to get alert configuration is from
-            # `G90Alarm.alert_config` property
+            # `G90Alarm.get_alert_config()` property
             (b"ISTART[117,[1]]IEND\0", ("mocked", 12345)),
             # Second command for same is invoked by `G90Alarm.set_alert_config`
             # that checks if alert config has been modified externally
@@ -470,7 +496,9 @@ class TestG90Alarm(G90Fixture):
             (b"ISTARTIEND\0", ("mocked", 12345)),
         ]
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assertEqual(sensors[1].enabled, True)
         await sensors[1].set_enabled(False)
         self.assertEqual(sensors[1].enabled, False)
@@ -503,7 +531,9 @@ class TestG90Alarm(G90Fixture):
             (b"ISTARTIEND\0", ("mocked", 12345)),
         ]
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assertEqual(sensors[1].enabled, True)
         await sensors[1].set_enabled(False)
         self.assertEqual(sensors[1].enabled, True)
@@ -524,7 +554,9 @@ class TestG90Alarm(G90Fixture):
             (b"ISTARTIEND\0", ("mocked", 12345)),
         ]
 
-        sensors = await g90.sensors
+        sensors = await g90.get_sensors()
+        prop_sensors = await g90.sensors
+        assert sensors == prop_sensors
         self.assertEqual(sensors[0].enabled, True)
         await sensors[0].set_enabled(False)
         self.assert_callargs_on_sent_data([
@@ -543,7 +575,9 @@ class TestG90Alarm(G90Fixture):
             (b"ISTARTIEND\0", ("mocked", 12345)),
         ]
 
-        devices = await g90.devices
+        devices = await g90.get_devices()
+        prop_devices = await g90.devices
+        assert devices == prop_devices
         self.assertEqual(devices[0].enabled, True)
         await devices[0].set_enabled(False)
         self.assert_callargs_on_sent_data([

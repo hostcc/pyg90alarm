@@ -19,13 +19,12 @@ class TestG90PaginatedCommand(G90Fixture):
 
         with self.assertRaises(G90Error, ) as cm:
             await g90.process()
-        self.assertIn(cm.exception.args[0],
-                      ['Wrong pagination data [] -'
-                       ' <lambda>() missing 3 required positional arguments:'
-                       " 'total', 'start', and 'count'",
-                       'Wrong pagination data [] -'
-                       ' __new__() missing 3 required positional arguments:'
-                       " 'total', 'start', and 'count'"])
+        self.assertRegex(
+            cm.exception.args[0],
+            r'Wrong pagination data \[\] -'
+            ' .+ missing 3 required positional arguments:'
+            " 'total', 'start', and 'count'",
+        )
 
         self.assert_callargs_on_sent_data([
             b'ISTART[102,102,[102,[1,1]]]IEND\0'

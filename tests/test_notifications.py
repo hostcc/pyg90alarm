@@ -22,15 +22,11 @@ class TestG90Notifications(G90Fixture):
         asynctest.set_read_ready(self.socket_mock, self.loop)
         with self.assertLogs(level='ERROR') as cm:
             await asyncio.wait([future], timeout=0.1)
-            self.assertIn(
-                cm.output[0], [
-                    'ERROR:pyg90alarm.device_notifications:Device message'
-                    " '[170]' is malformed: <lambda>() missing 1 required"
-                    " positional argument: 'data'",
-                    'ERROR:pyg90alarm.device_notifications:Device message'
-                    " '[170]' is malformed: __new__() missing 1 required"
-                    " positional argument: 'data'",
-                ]
+            self.assertRegex(
+                cm.output[0],
+                'ERROR:pyg90alarm.device_notifications:Device message'
+                r" '\[170\]' is malformed: .+ missing 1 required"
+                " positional argument: 'data'",
             )
         notifications.close()
 
@@ -84,14 +80,12 @@ class TestG90Notifications(G90Fixture):
         asynctest.set_read_ready(self.socket_mock, self.loop)
         with self.assertLogs(level='ERROR') as cm:
             await asyncio.wait([future], timeout=0.1)
-            self.assertIn(cm.output[0], [
+            self.assertRegex(
+                cm.output[0],
                 'ERROR:pyg90alarm.device_notifications:'
                 'Bad notification received from mocked:12345:'
-                " <lambda>() missing 1 required positional argument: 'data'",
-                'ERROR:pyg90alarm.device_notifications:'
-                'Bad notification received from mocked:12345:'
-                " __new__() missing 1 required positional argument: 'data'",
-            ])
+                " .+ missing 1 required positional argument: 'data'",
+            )
         notifications.close()
 
     async def test_wrong_device_alert_format(self):
@@ -105,18 +99,14 @@ class TestG90Notifications(G90Fixture):
         asynctest.set_read_ready(self.socket_mock, self.loop)
         with self.assertLogs(level='ERROR') as cm:
             await asyncio.wait([future], timeout=0.1)
-            self.assertIn(cm.output[0], [
+            self.assertRegex(
+                cm.output[0],
                 'ERROR:pyg90alarm.device_notifications:'
                 'Bad alert received from mocked:12345:'
-                " <lambda>() missing 9 required positional arguments: 'type',"
+                " .+ missing 9 required positional arguments: 'type',"
                 " 'event_id', 'source', 'state', 'zone_name', 'device_id',"
                 " 'unix_time', 'resv4', and 'other'",
-                'ERROR:pyg90alarm.device_notifications:'
-                'Bad alert received from mocked:12345:'
-                " __new__() missing 9 required positional arguments: 'type',"
-                " 'event_id', 'source', 'state', 'zone_name', 'device_id',"
-                " 'unix_time', 'resv4', and 'other'",
-            ])
+            )
         notifications.close()
 
     async def test_unknown_device_notification(self):
