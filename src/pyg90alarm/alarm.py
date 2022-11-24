@@ -179,6 +179,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     @property
     async def sensors(self):
         """
+        Property over new :meth:`.get_sensors` method, retained for
+        compatibility.
+        """
+        return await self.get_sensors()
+
+    async def get_sensors(self):
+        """
         Provides list of sensors configured in the device. Please note the list
         is cached upon first call, so you need to re-instantiate the class to
         reflect any updates there.
@@ -203,6 +210,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
     @property
     async def devices(self):
+        """
+        Property over new :meth:`.get_devices` method, retained for
+        compatibility.
+        """
+        return await self.get_devices()
+
+    async def get_devices(self):
         """
         Provides list of devices (switches) configured in the device. Please
         note the list is cached upon first call, so you need to re-instantiate
@@ -239,6 +253,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     @property
     async def host_info(self):
         """
+        Property over new :meth:`.get_host_info` method, retained for
+        compatibility.
+        """
+        return await self.get_host_info()
+
+    async def get_host_info(self):
+        """
         Provides the device information (for example hardware versions, signal
         levels etc.).
 
@@ -250,6 +271,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
     @property
     async def host_status(self):
+        """
+        Property over new :meth:`.get_host_status` method, retained for
+        compatibility.
+        """
+        return await self.get_host_status()
+
+    async def get_host_status(self):
         """
         Provides the device status (for example, armed or disarmed, configured
         phone number, product name etc.).
@@ -263,6 +291,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
     @property
     async def alert_config(self):
+        """
+        Property over new :meth:`.get_alert_config` method, retained for
+        compatibility.
+        """
+        return await self.get_alert_config()
+
+    async def get_alert_config(self):
         """
         Retrieves the alert configuration flags from the device. Please note
         the configuration is cached upon first call, so you need to
@@ -308,6 +343,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
     @property
     async def user_data_crc(self):
+        """
+        Property over new :meth:`.get_user_data_crc` method, retained for
+        compatibility.
+        """
+        return await self.get_user_data_crc()
+
+    async def get_user_data_crc(self):
         """
         Retieves checksums (CRC) for different on-device databases (history,
         sensors etc.). Might be used to detect if there is a change in a
@@ -453,7 +495,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     @door_open_close_callback.setter
     def door_open_close_callback(self, value):
         """
-        tbd
+        Sets callback for door open/close events.
         """
         self._door_open_close_cb = value
 

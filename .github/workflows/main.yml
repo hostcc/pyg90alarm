@@ -17,9 +17,6 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: 3.6
-            toxenv: py
-          - os: ubuntu-latest
             python: 3.7
             toxenv: py
           - os: ubuntu-latest
@@ -27,6 +24,9 @@ jobs:
             toxenv: py
           - os: ubuntu-latest
             python: 3.9
+            toxenv: py
+          - os: ubuntu-latest
+            python: 3.10
             toxenv: py
     runs-on: ${{ matrix.os }}
     steps:
