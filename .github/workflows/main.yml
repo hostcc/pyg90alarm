@@ -53,7 +53,7 @@ jobs:
         id: package-version
         run: |
           package_version=`python3 setup.py --version`
-          echo "::set-output name=VALUE::$package_version"
+          echo "VALUE=$package_version" >> $GITHUB_OUTPUT
       - name: SonarCloud scanning
         uses: sonarsource/sonarcloud-github-action@master
         env:
