@@ -17,27 +17,27 @@ jobs:
       matrix:
         include:
           - os: ubuntu-latest
-            python: 3.7
+            python: '3.7'
             toxenv: py
           - os: ubuntu-latest
-            python: 3.8
+            python: '3.8'
             toxenv: py
           - os: ubuntu-latest
-            python: 3.9
+            python: '3.9'
             toxenv: py
           - os: ubuntu-latest
-            python: 3.10
+            python: '3.10'
             toxenv: py
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # Disable shallow clone for Sonar scanner, as it needs access to the
           # history
           fetch-depth: 0
       - name: Set Python up
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: ${{ matrix.python }}
       - name: Install testing tools
@@ -73,11 +73,11 @@ jobs:
     needs: [tests]
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0  # `setuptools_scm` needs tags
       - name: Set Python up
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v3
         with:
           python-version: 3.9
       - name: Install the PEP517 package builder
