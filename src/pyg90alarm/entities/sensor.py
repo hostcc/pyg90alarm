@@ -368,6 +368,15 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             start=self._proto_idx, end=self._proto_idx
         )
 
+        # Abort if sensor is not found
+        if not sensors:
+            _LOGGER.error(
+                'Sensor index=%s not found when attempting to set its'
+                ' enable/disable state',
+                self.index,
+            )
+            return
+
         # Compare actual sensor data from what the sensor has been instantiated
         # from, and abort the operation if out-of-band changes are detected.
         _sensor_pos, sensor_data = [x async for x in sensors][0]

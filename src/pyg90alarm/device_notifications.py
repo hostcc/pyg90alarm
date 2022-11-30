@@ -93,13 +93,14 @@ class G90DeviceNotificationProtocol:
     :meta private:
     """
     def __init__(self, armdisarm_cb=None, sensor_cb=None,
-                 door_open_close_cb=None):
+                 door_open_close_cb=None, alarm_cb=None):
         """
         tbd
         """
         self._armdisarm_cb = armdisarm_cb
         self._sensor_cb = sensor_cb
         self._door_open_close_cb = door_open_close_cb
+        self._alarm_cb = alarm_cb
 
     def connection_made(self, transport):
         """
@@ -169,6 +170,11 @@ class G90DeviceNotificationProtocol:
                 G90Callback.invoke(self._armdisarm_cb, state)
                 return
 
+        if alert.type == G90AlertTypes.ALARM:
+            _LOGGER.debug('Alarm: %s', alert.zone_name)
+            G90Callback.invoke(self._alarm_cb, alert.event_id, alert.zone_name)
+            return
+
         _LOGGER.warning('Unknown alert received from %s:%s:'
                         ' type %s, data %s',
                         addr[0], addr[1], alert.type, alert)
@@ -227,13 +233,14 @@ class G90DeviceNotifications:
     tbd
     """
     def __init__(self, port=12901, armdisarm_cb=None, sensor_cb=None,
-                 door_open_close_cb=None, sock=None):
+                 door_open_close_cb=None, alarm_cb=None, sock=None):
         # pylint: disable=too-many-arguments
         self._notification_transport = None
         self._port = port
         self._armdisarm_cb = armdisarm_cb
         self._sensor_cb = sensor_cb
         self._door_open_close_cb = door_open_close_cb
+        self._alarm_cb = alarm_cb
         self._sock = sock
 
     def proto_factory(self):
@@ -241,7 +248,11 @@ class G90DeviceNotifications:
         tbd
         """
         return G90DeviceNotificationProtocol(
-            self._armdisarm_cb, self._sensor_cb, self._door_open_close_cb)
+            armdisarm_cb=self._armdisarm_cb,
+            sensor_cb=self._sensor_cb,
+            door_open_close_cb=self._door_open_close_cb,
+            alarm_cb=self._alarm_cb
+        )
 
     async def listen(self):
         """
