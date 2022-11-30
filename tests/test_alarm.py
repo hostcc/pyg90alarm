@@ -564,8 +564,6 @@ class TestG90Alarm(G90Fixture):
         ])
 
     async def test_sensor_disable_sensor_not_found_on_refresh(self):
-        import logging
-        logging.basicConfig(level='DEBUG')
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
         self.socket_mock.recvfrom.side_effect = [
             (
