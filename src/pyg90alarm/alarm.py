@@ -107,6 +107,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         self._sensor_cb = None
         self._armdisarm_cb = None
         self._door_open_close_cb = None
+        self._alarm_cb = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config = None
         self._sms_alert_when_armed = False
@@ -535,6 +536,20 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def armdisarm_callback(self, value):
         self._armdisarm_cb = value
 
+    @property
+    def alarm_callback(self):
+        """
+        Get or set device alarm callback, the callback is invoked when
+        device alarm triggers.
+
+        :type: .. py:function:: ()(sensor_idx: int, sensor_name: str)
+        """
+        return self._alarm_cb
+
+    @alarm_callback.setter
+    def alarm_callback(self, value):
+        self._alarm_cb = value
+
     async def listen_device_notifications(self, sock=None):
         """
         Starts internal listener for device notifications/alerts.
@@ -546,6 +561,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             sensor_cb=self._internal_sensor_cb,
             door_open_close_cb=self._internal_door_open_close_cb,
             armdisarm_cb=self._internal_armdisarm_cb,
+            alarm_cb=self._alarm_cb,
             sock=sock)
         await self._notifications.listen()
 

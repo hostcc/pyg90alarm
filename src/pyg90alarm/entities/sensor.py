@@ -363,14 +363,24 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             'Refreshing sensor at index=%s, position in protocol list=%s',
             self.index, self._proto_idx
         )
-        sensors = self.parent.paginated_result(
+        sensors_result = self.parent.paginated_result(
             G90Commands.GETSENSORLIST,
             start=self._proto_idx, end=self._proto_idx
         )
+        sensors = [x async for x in sensors_result]
+
+        # Abort if sensor is not found
+        if not sensors:
+            _LOGGER.error(
+                'Sensor index=%s not found when attempting to set its'
+                ' enable/disable state',
+                self.index,
+            )
+            return
 
         # Compare actual sensor data from what the sensor has been instantiated
         # from, and abort the operation if out-of-band changes are detected.
-        _sensor_pos, sensor_data = [x async for x in sensors][0]
+        _sensor_pos, sensor_data = sensors[0]
         if self._protocol_incoming_data_kls(
             *sensor_data
         ) != self._protocol_data:

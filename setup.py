@@ -36,17 +36,17 @@ setup(
         'Topic :: System :: Hardware',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Programming Language :: Python :: 3 :: Only',
     ],
 
     keywords='g90, alarm, protocol',
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
-    python_requires='>=3.6, <4',
+    python_requires='>=3.7, <4',
     install_requires=[],
 
     extras_require={

@@ -221,3 +221,18 @@ class TestG90Notifications(G90Fixture):
         await asyncio.wait([future], timeout=0.1)
         notifications.close()
         door_open_close_cb.assert_called_once_with(111, 'Doorbell', True)
+
+    async def test_alarm_callback(self):
+        future = self.loop.create_future()
+        alarm_cb = MagicMock()
+        alarm_cb.side_effect = lambda *args: future.set_result(True)
+        notifications = G90DeviceNotifications(
+            alarm_cb=alarm_cb, sock=self.socket_mock)
+        await notifications.listen()
+        asynctest.set_read_ready(self.socket_mock, self.loop)
+        self.socket_mock.recvfrom.return_value = (
+            b'[208,[3,11,1,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+            ('mocked', 12345))
+        await asyncio.wait([future], timeout=0.1)
+        notifications.close()
+        alarm_cb.assert_called_once_with(11, 'Hall')

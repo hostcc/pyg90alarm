@@ -94,6 +94,11 @@ class G90PaginatedResult:
                                 ' latter', self._end, cmd.total)
                 self._end = cmd.total
 
+            _LOGGER.debug('Retrieved %i records in the iteration,'
+                          ' %i available in total, target end'
+                          ' record number is %i',
+                          cmd.count, cmd.total, self._end)
+
             # Produce the resulting records for the consumer
             for idx, data in enumerate(cmd.result):
                 # Protocol uses one-based indexes, `start` implies that so no
@@ -107,11 +112,9 @@ class G90PaginatedResult:
 
             # End the loop if we processed same number of sensors as in the
             # pagination header (or attempted to process more than that by
-            # an error)
-            _LOGGER.debug('Retrieved %i records in the iteration,'
-                          ' %i available in total, target end'
-                          ' record number is %i',
-                          cmd.count, cmd.total, self._end)
+            # an error), or no records have been received
+            if not cmd.count:
+                break
             if cmd.start + cmd.count - 1 >= self._end:
                 break
             # Move to the next page for another iteration
