@@ -173,6 +173,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._occupancy = False
         self._state_callback = None
         self._proto_idx = proto_idx
+        self._extra_data = None
 
         self._definition = None
         # Get sensor definition corresponds to the sensor type/subtype if any
@@ -436,6 +437,18 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             G90Commands.SETSINGLESENSOR, list(outgoing_data)
         )
 
+    @property
+    def extra_data(self):
+        """
+        Sets extra data for the sensor, that can be used to store
+        caller-specific information and will be carried by the sensor instance.
+        """
+        return self._extra_data
+
+    @extra_data.setter
+    def extra_data(self, val):
+        self._extra_data = val
+
     def __repr__(self):
         """
         Returns string representation of the sensor.
@@ -443,9 +456,10 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         :return: String representation
         :rtype: str
         """
-        return super().__repr__() + f'(name={str(self.name)}' \
+        return super().__repr__() + f"(name='{str(self.name)}'" \
             f' type={str(self.type)}' \
             f' protocol={str(self.protocol)}' \
             f' occupancy={self.occupancy}' \
             f' user flag={str(self.user_flag)}' \
-            f' reserved={str(self.reserved)})'
+            f' reserved={str(self.reserved)}' \
+            f" extra_data={str(self.extra_data)})"

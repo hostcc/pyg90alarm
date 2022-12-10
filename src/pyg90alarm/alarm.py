@@ -209,6 +209,32 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
         return self._sensors
 
+    async def find_sensor(self, idx, name):
+        """
+        Finds sensor by index and name.
+
+        :param int idx: Sensor index
+        :param str name: Sensor name
+        :return: Sensor instance
+        :rtype :class:`.G90Sensor`|None
+        """
+        sensors = await self.get_sensors()
+
+        # Fast lookup by direct index
+        if idx < len(sensors) and sensors[idx].name == name:
+            sensor = sensors[idx]
+            _LOGGER.debug('Found sensor via fast lookup: %s', sensor)
+            return sensor
+
+        # Fast lookup failed, perform slow one over the whole sensors list
+        for sensor in sensors:
+            if sensor.index == idx and sensor.name == name:
+                _LOGGER.debug('Found sensor: %s', sensor)
+                return sensor
+
+        _LOGGER.error('Sensor not found: idx=%s, name=%s', idx, name)
+        return None
+
     @property
     async def devices(self):
         """
@@ -398,22 +424,11 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
          alerts (only for `door` type sensors, if door open/close alerts are
          enabled)
         """
-        sensors = await self.sensors
-
-        # Fast lookup by direct index
-        if idx < len(sensors) and sensors[idx].name == name:
-            sensor = [sensors[idx]]
-        # Fast lookup failed, perform slow one over the whole sensors list
-        else:
-            sensor = [
-                x for x in sensors
-                if x.index == idx and x.name == name
-            ]
+        sensor = await self.find_sensor(idx, name)
         if sensor:
-            _LOGGER.debug('Found sensor: %s', sensor[0])
             _LOGGER.debug('Setting occupancy to %s (previously %s)',
-                          occupancy, sensor[0].occupancy)
-            sensor[0].occupancy = occupancy
+                          occupancy, sensor.occupancy)
+            sensor.occupancy = occupancy
 
             # Emulate turning off the occupancy - most of sensors will not
             # notify the device of that, nor the device would emit such
@@ -428,7 +443,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             alert_config_flags = await self.alert_config
             door_close_alert_enabled = (
                 G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags)
-            sensor_is_door = sensor[0].type == G90SensorTypes.DOOR
+            sensor_is_door = sensor.type == G90SensorTypes.DOOR
 
             # Alarm panel could emit door close alerts (if enabled) for sensors
             # of type `door`, and such event will be used to reset the
@@ -440,16 +455,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
                               ' (alert config flags %s),'
                               ' closing event will be emulated upon'
                               ' %s seconds',
-                              name, sensor[0].type, alert_config_flags,
+                              name, sensor.type, alert_config_flags,
                               self._reset_occupancy_interval)
                 G90Callback.invoke_delayed(
                     self._reset_occupancy_interval,
-                    reset_sensor_occupancy, sensor[0])
+                    reset_sensor_occupancy, sensor)
 
             # Invoke per-sensor callback if provided
-            G90Callback.invoke(sensor[0].state_callback, occupancy)
-        else:
-            _LOGGER.error('Sensor not found: idx=%s, name=%s', idx, name)
+            G90Callback.invoke(sensor.state_callback, occupancy)
 
         # Invoke global callback if provided
         G90Callback.invoke(self._sensor_cb, idx, name, occupancy)
@@ -536,13 +549,35 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def armdisarm_callback(self, value):
         self._armdisarm_cb = value
 
+    async def _internal_alarm_cb(self, sensor_idx, sensor_name):
+        """
+        Callback that invoked when alarm is triggered. Fires alarm callback if
+        set by the user with `:property:G90Alarm.alarm_callback`.
+        Please note the callback is for internal use by the class.
+
+        :param int: Index of the sensor triggered alarm
+        :param str: Sensor name
+        """
+        sensor = await self.find_sensor(sensor_idx, sensor_name)
+        # The callback is still delivered to the caller even if the sensor
+        # isn't found, only `extra_data` is skipped. That is to ensur the
+        # important callback isn't filtered
+        extra_data = sensor.extra_data if sensor else None
+
+        G90Callback.invoke(
+            self._alarm_cb, sensor_idx, sensor_name, extra_data
+        )
+
     @property
     def alarm_callback(self):
         """
         Get or set device alarm callback, the callback is invoked when
         device alarm triggers.
 
-        :type: .. py:function:: ()(sensor_idx: int, sensor_name: str)
+        :type:
+          .. py:function:: ()(
+            sensor_idx: int, sensor_name: str, extra_data: str|None
+          )
         """
         return self._alarm_cb
 
@@ -561,7 +596,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             sensor_cb=self._internal_sensor_cb,
             door_open_close_cb=self._internal_door_open_close_cb,
             armdisarm_cb=self._internal_armdisarm_cb,
-            alarm_cb=self._alarm_cb,
+            alarm_cb=self._internal_alarm_cb,
             sock=sock)
         await self._notifications.listen()
 
