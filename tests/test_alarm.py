@@ -326,6 +326,64 @@ class TestG90Alarm(G90Fixture):
 
         g90.close_device_notifications()
 
+    async def test_alarm_callback(self):
+        future = self.loop.create_future()
+        alarm_cb = MagicMock()
+        alarm_cb.side_effect = lambda *args: future.set_result(True)
+        g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
+        # Simulate panel with two sensors
+        data = [(b'ISTART[102,'
+                 b'[[2,1,2],'
+                 b'["Hall",100,0,1,1,0,32,0,0,16,1,0,""],'
+                 b'["Room",101,0,1,1,0,32,0,0,16,1,0,""]'
+                 b']]IEND\0',
+                 ('mocked', 12345)),
+                ]
+        self.socket_mock.recvfrom.side_effect = data
+        sensors = await g90.get_sensors()
+        # Set extra data for the 1st sensor
+        sensors[0].extra_data = 'Dummy extra data'
+
+        g90.alarm_callback = alarm_cb
+        socket_ntfy_mock = asynctest.SocketMock()
+        socket_ntfy_mock.type = socket.SOCK_DGRAM
+        await g90.listen_device_notifications(socket_ntfy_mock)
+        # Simulate three alarm notifications - for sensor with extra data,
+        # another for sensor with no extra data, and third for non-existent
+        # sensor
+        socket_ntfy_mock.recvfrom.side_effect = [
+            (b'[208,[3,100,1,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+             ('mocked', 12345)),
+            (b'[208,[3,101,1,1,"Room","DUMMYGUID",1630876128,0,[""]]]\0',
+             ('mocked', 12345)),
+            (b'[208,[3,102,1,1,"No Room","DUMMYGUID",1630876128,0,[""]]]\0',
+             ('mocked', 12345)),
+        ]
+
+        # Simulate alarm for sensor with extra data
+        asynctest.set_read_ready(socket_ntfy_mock, self.loop)
+        await asyncio.wait([future], timeout=0.1)
+        # Verify extra data is passed to the callback
+        alarm_cb.assert_called_once_with(100, 'Hall', 'Dummy extra data')
+
+        # Simulate alarm for sensor with no extra data
+        alarm_cb.reset_mock()
+        future = self.loop.create_future()
+        asynctest.set_read_ready(socket_ntfy_mock, self.loop)
+        await asyncio.wait([future], timeout=0.1)
+        # Verify no extra data is passed to the callback
+        alarm_cb.assert_called_once_with(101, 'Room', None)
+
+        # Simulate alarm for non-existent sensor
+        alarm_cb.reset_mock()
+        future = self.loop.create_future()
+        asynctest.set_read_ready(socket_ntfy_mock, self.loop)
+        await asyncio.wait([future], timeout=0.1)
+        # Simulate callback is called with no data
+        alarm_cb.assert_called_once_with(102, 'No Room', None)
+
+        g90.close_device_notifications()
+
     async def test_arm_away(self):
         g90 = G90Alarm(host='mocked', port=12345, sock=self.socket_mock)
         self.socket_mock.recvfrom.return_value = (
