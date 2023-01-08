@@ -2,8 +2,10 @@ import selectors
 import asyncio
 
 
-# Inherited from https://github.com/Martiusweb/asynctest/, credits of respective authors.
-# Please see https://github.com/Martiusweb/asynctest/blob/master/LICENSE for the license. 
+# Inherited from https://github.com/Martiusweb/asynctest/, credits of
+# respective authors.
+# Please see https://github.com/Martiusweb/asynctest/blob/master/LICENSE for
+# the license.
 def set_read_ready(fileobj):
     def _set_event_ready(fileobj, loop, event):
         selector = loop._selector
