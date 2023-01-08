@@ -119,7 +119,7 @@ class G90TargetedDiscovery(G90Discovery):
         super().__init__(**kwargs)
         self._device_id = device_id
 
-    def to_wire(self):  # pylint: disable=no-self-use
+    def to_wire(self):
         """
         tbd
         """

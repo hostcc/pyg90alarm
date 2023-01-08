@@ -132,7 +132,7 @@ class G90BaseCommand:
         self._resp = G90Header()
         self._sock = sock
 
-    def _proto_factory(self):  # pylint: disable=no-self-use
+    def _proto_factory(self):
         """
         tbd
         """
