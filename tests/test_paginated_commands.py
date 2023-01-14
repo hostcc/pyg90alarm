@@ -8,12 +8,12 @@ from pyg90alarm.paginated_cmd import (   # noqa:E402
 from pyg90alarm.exceptions import G90Error  # noqa:E402
 
 
-async def test_missing_pagination(mock_sock):
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[]]]IEND\0',
+])
+async def test_missing_pagination(mock_device):
     g90 = G90PaginatedCommand(
-        host='mocked', port=12345, code=102, start=1, end=1,
-        sock=mock_sock)
-    mock_sock.recvfrom.return_value = (
-        b'ISTART[102,[[]]]IEND\0', ('mocked', 12345))
+        host=mock_device.host, port=mock_device.port, code=102, start=1, end=1)
 
     with pytest.raises(
         G90Error,
@@ -25,17 +25,17 @@ async def test_missing_pagination(mock_sock):
     ):
         await g90.process()
 
-    mock_sock.send.assert_called_with(
+    assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,1]]]IEND\0'
-    )
+    ]
 
 
-async def test_no_paginated_data(mock_sock):
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[1,1,1]]]IEND\0',
+])
+async def test_no_paginated_data(mock_device):
     g90 = G90PaginatedCommand(
-        host='mocked', port=12345, code=102, start=1, end=1,
-        sock=mock_sock)
-    mock_sock.recvfrom.return_value = (
-        b'ISTART[102,[[1,1,1]]]IEND\0', ('mocked', 12345))
+        host=mock_device.host, port=mock_device.port, code=102, start=1, end=1)
 
     with pytest.raises(
         G90Error,
@@ -45,30 +45,30 @@ async def test_no_paginated_data(mock_sock):
         )
     ):
         await g90.process()
-    mock_sock.send.assert_called_with(
+    assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,1]]]IEND\0'
-    )
+    ]
 
 
-async def test_partial_paginated_data(mock_sock):
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[1,1,1],[""]]]IEND\0',
+])
+async def test_partial_paginated_data(mock_device):
     g90 = G90PaginatedCommand(
-        host='mocked', port=12345, code=102, start=1, end=2,
-        sock=mock_sock)
-    mock_sock.recvfrom.return_value = (
-        b'ISTART[102,[[1,1,1],[""]]]IEND\0', ('mocked', 12345))
+        host=mock_device.host, port=mock_device.port, code=102, start=1, end=2)
 
     await g90.process()
-    mock_sock.send.assert_called_with(
+    assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,2]]]IEND\0'
-    )
+    ]
 
 
-async def test_extra_paginated_data(mock_sock):
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[2,1,2],[""],[""]]]IEND\0',
+])
+async def test_extra_paginated_data(mock_device):
     g90 = G90PaginatedCommand(
-        host='mocked', port=12345, code=102, start=1, end=1,
-        sock=mock_sock)
-    mock_sock.recvfrom.return_value = (
-        b'ISTART[102,[[2,1,2],[""],[""]]]IEND\0', ('mocked', 12345))
+        host=mock_device.host, port=mock_device.port, code=102, start=1, end=1)
 
     with pytest.raises(
         G90Error,
@@ -78,6 +78,6 @@ async def test_extra_paginated_data(mock_sock):
         )
     ):
         await g90.process()
-    mock_sock.send.assert_called_with(
+    assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,1]]]IEND\0'
-    )
+    ]
