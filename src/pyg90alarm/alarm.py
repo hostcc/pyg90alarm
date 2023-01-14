@@ -54,6 +54,7 @@ from .const import (
     G90Commands, REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
     LOCAL_TARGETED_DISCOVERY_PORT,
+    NOTIFICATIONS_PORT,
     G90ArmDisarmTypes,
 )
 from .base_cmd import G90BaseCommand
@@ -87,23 +88,18 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
      protocol commands on WiFi interface, currently the devices don't allow it
      to be customized
     :type port: int, optional
-    :param sock: The existing socket to operate on, instead of
-     creating one internally. Primarily used by the tests to mock the network
-     traffic
-    :type sock: socket.socket or None, optional
     :param reset_occupancy_interval: The interval upon that the sensors are
      simulated to go into inactive state.
     :type reset_occupancy_interval: int, optional
     """
     # pylint: disable=too-many-instance-attributes
-    def __init__(self, host, port=REMOTE_PORT, sock=None,
+    def __init__(self, host, port=REMOTE_PORT,
                  reset_occupancy_interval=3):
         self._host = host
         self._port = port
         self._sensors = []
         self._devices = []
         self._notifications = None
-        self._sock = sock
         self._sensor_cb = None
         self._armdisarm_cb = None
         self._door_open_close_cb = None
@@ -124,7 +120,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
          command invocation
         """
         cmd = await G90BaseCommand(
-            self._host, self._port, code, data, sock=self._sock).process()
+            self._host, self._port, code, data).process()
         return cmd.result
 
     def paginated_result(self, code, start=1, end=None):
@@ -141,7 +137,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
           yields :class:`.G90PaginatedResponse` instance
         """
         return G90PaginatedResult(
-            self._host, self._port, code, start, end, sock=self._sock
+            self._host, self._port, code, start, end
         ).process()
 
     @classmethod
@@ -585,19 +581,19 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def alarm_callback(self, value):
         self._alarm_cb = value
 
-    async def listen_device_notifications(self, sock=None):
+    async def listen_device_notifications(
+        self, host='0.0.0.0', port=NOTIFICATIONS_PORT
+    ):
         """
         Starts internal listener for device notifications/alerts.
 
-        :param sock: socket instance to listen on, mostly used by tests
-        :type: socket.socket
         """
         self._notifications = G90DeviceNotifications(
+            host=host, port=port,
             sensor_cb=self._internal_sensor_cb,
             door_open_close_cb=self._internal_door_open_close_cb,
             armdisarm_cb=self._internal_armdisarm_cb,
-            alarm_cb=self._internal_alarm_cb,
-            sock=sock)
+            alarm_cb=self._internal_alarm_cb)
         await self._notifications.listen()
 
     def close_device_notifications(self):

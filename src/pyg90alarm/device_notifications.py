@@ -36,6 +36,7 @@ from .const import (
     G90AlertSources,
 )
 
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -232,16 +233,17 @@ class G90DeviceNotifications:
     """
     tbd
     """
-    def __init__(self, port=12901, armdisarm_cb=None, sensor_cb=None,
-                 door_open_close_cb=None, alarm_cb=None, sock=None):
+    def __init__(self, port, host,
+                 armdisarm_cb=None, sensor_cb=None,
+                 door_open_close_cb=None, alarm_cb=None):
         # pylint: disable=too-many-arguments
         self._notification_transport = None
+        self._host = host
         self._port = port
         self._armdisarm_cb = armdisarm_cb
         self._sensor_cb = sensor_cb
         self._door_open_close_cb = door_open_close_cb
         self._alarm_cb = alarm_cb
-        self._sock = sock
 
     def proto_factory(self):
         """
@@ -263,19 +265,12 @@ class G90DeviceNotifications:
         except AttributeError:
             loop = asyncio.get_event_loop()
 
-        if self._sock:
-            _LOGGER.debug('Using provided socket %s', self._sock)
-            (self._notification_transport,
-             _protocol) = await loop.create_datagram_endpoint(
-                self.proto_factory,
-                sock=self._sock)
-        else:
-            _LOGGER.debug('Creating UDP endpoint for 0.0.0.0:%s',
-                          self._port)
-            (self._notification_transport,
-             _protocol) = await loop.create_datagram_endpoint(
-                self.proto_factory,
-                local_addr=('0.0.0.0', self._port))
+        _LOGGER.debug('Creating UDP endpoint for %s:%s',
+                      self._host, self._port)
+        (self._notification_transport,
+         _protocol) = await loop.create_datagram_endpoint(
+            self.proto_factory,
+            local_addr=(self._host, self._port))
 
     def close(self):
         """

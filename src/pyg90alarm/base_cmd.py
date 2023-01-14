@@ -110,7 +110,7 @@ class G90BaseCommand:
 
     def __init__(self, host, port, code,
                  data=None, local_port=None,
-                 timeout=3.0, retries=3, sock=None):
+                 timeout=3.0, retries=3):
         """
         tbd
         """
@@ -130,7 +130,6 @@ class G90BaseCommand:
                                     # No whitespace around entities
                                     separators=(',', ':'))
         self._resp = G90Header()
-        self._sock = sock
 
     def _proto_factory(self):
         """
@@ -147,23 +146,17 @@ class G90BaseCommand:
         except AttributeError:
             loop = asyncio.get_event_loop()
 
-        if self._sock:
-            _LOGGER.debug('Using provided socket %s', self._sock)
-            transport, protocol = await loop.create_datagram_endpoint(
-                self._proto_factory,
-                sock=self._sock)
-        else:
-            _LOGGER.debug('Creating UDP endpoint for %s:%s',
-                          self.host, self.port)
-            extra_kwargs = {}
-            if self._local_port:
-                extra_kwargs['local_addr'] = ('0.0.0.0', self._local_port)
+        _LOGGER.debug('Creating UDP endpoint for %s:%s',
+                      self.host, self.port)
+        extra_kwargs = {}
+        if self._local_port:
+            extra_kwargs['local_addr'] = ('0.0.0.0', self._local_port)
 
-            transport, protocol = await loop.create_datagram_endpoint(
-                self._proto_factory,
-                remote_addr=(self.host, self.port),
-                **extra_kwargs,
-                allow_broadcast=True)
+        transport, protocol = await loop.create_datagram_endpoint(
+            self._proto_factory,
+            remote_addr=(self.host, self.port),
+            **extra_kwargs,
+            allow_broadcast=True)
 
         return transport, protocol
 
