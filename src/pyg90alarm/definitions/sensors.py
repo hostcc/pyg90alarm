@@ -475,6 +475,16 @@ SENSOR_DEFINITIONS = [
         rwMode=SensorRwMode.READ,
         matchMode=SensorMatchMode.ONLY20BITS
     ),
+    # Door Sensor WRDS01
+    SensorDefinition(
+        type=1,
+        subtype=3,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
     # Door Sensor
     SensorDefinition(
         type=1,
@@ -484,6 +494,96 @@ SENSOR_DEFINITIONS = [
         private_data='F100f5017d02f803f904',
         rwMode=SensorRwMode.READ,
         matchMode=SensorMatchMode.ONLY16BITS
+    ),
+    # Glass Break Sensor BLPS
+    SensorDefinition(
+        type=2,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Gas Detector WGD01
+    SensorDefinition(
+        type=3,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Smoke Detector WSD02
+    SensorDefinition(
+        type=4,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Smoke Detector WSD04
+    SensorDefinition(
+        type=4,
+        subtype=1,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Panic Button WEB01
+    SensorDefinition(
+        type=5,
+        subtype=1,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Panic Button WEB03
+    SensorDefinition(
+        type=5,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Shock Sensor WSS01
+    SensorDefinition(
+        type=6,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Water Detector LSTC02
+    SensorDefinition(
+        type=7,
+        subtype=1,
+        rx=0,
+        tx=0,
+        private_data='',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Water Detector LSTC01
+    SensorDefinition(
+        type=7,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
     ),
     # PIR motion sensor WMS08
     SensorDefinition(
@@ -505,6 +605,66 @@ SENSOR_DEFINITIONS = [
         rwMode=SensorRwMode.READ,
         matchMode=SensorMatchMode.ONLY20BITS
     ),
+    # PIR motion sensor ODPIR
+    SensorDefinition(
+        type=8,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor N650
+    SensorDefinition(
+        type=8,
+        subtype=5,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor WPD02
+    SensorDefinition(
+        type=8,
+        subtype=6,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor WCMS02
+    SensorDefinition(
+        type=8,
+        subtype=8,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor CWMS01
+    SensorDefinition(
+        type=8,
+        subtype=9,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor WMS04
+    SensorDefinition(
+        type=8,
+        subtype=11,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
     # PIR motion sensor WMS07
     SensorDefinition(
         type=8,
@@ -514,6 +674,66 @@ SENSOR_DEFINITIONS = [
         private_data='04000801020200',
         rwMode=SensorRwMode.READ,
         matchMode=SensorMatchMode.ONLY20BITS
+    ),
+    # PIR motion sensor ODPIR03
+    SensorDefinition(
+        type=8,
+        subtype=4,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor WPD01
+    SensorDefinition(
+        type=8,
+        subtype=7,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # PIR motion sensor PIR Ceiling
+    SensorDefinition(
+        type=8,
+        subtype=1,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Beams ABT
+    SensorDefinition(
+        type=9,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Beams ABE
+    SensorDefinition(
+        type=9,
+        subtype=1,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Beams ABH
+    SensorDefinition(
+        type=9,
+        subtype=2,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
     ),
     # Remote RMC08
     SensorDefinition(
@@ -565,6 +785,16 @@ SENSOR_DEFINITIONS = [
         rwMode=SensorRwMode.READ,
         matchMode=SensorMatchMode.ONLY20BITS
     ),
+    # Door Bell WDB
+    SensorDefinition(
+        type=12,
+        subtype=1,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
     # TouchID Detector
     SensorDefinition(
         type=13,
@@ -595,7 +825,17 @@ SENSOR_DEFINITIONS = [
         rwMode=SensorRwMode.READ,
         matchMode=SensorMatchMode.ONLY16BITS
     ),
-    # Gas Detector WGD02
+    # Sub Host SS08S
+    SensorDefinition(
+        type=16,
+        subtype=0,
+        rx=0,
+        tx=0,
+        private_data='00',
+        rwMode=SensorRwMode.READ,
+        matchMode=SensorMatchMode.ALL
+    ),
+    # Gas Valve Detector WGD02
     SensorDefinition(
         type=18,
         subtype=0,
