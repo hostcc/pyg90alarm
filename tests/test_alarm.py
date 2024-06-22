@@ -622,7 +622,7 @@ async def test_sensor_disable_externally_modified(mock_device):
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
-    b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
+    b'[[1,1,1],["Unsupported",10,0,255,0,0,33,0,0,17,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
