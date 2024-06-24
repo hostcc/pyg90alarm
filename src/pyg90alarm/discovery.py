@@ -23,9 +23,12 @@ Discovers G90 alarm panels.
 """
 
 import asyncio
+from asyncio.transports import BaseTransport
+from asyncio.protocols import BaseProtocol
+from typing import Tuple, Any, List, Dict, cast
 import logging
 
-from .base_cmd import G90BaseCommand
+from .base_cmd import G90BaseCommand, Self
 from .host_info import G90HostInfo
 from .const import G90Commands
 
@@ -38,23 +41,23 @@ class G90DiscoveryProtocol:
 
     :meta private:
     """
-    def __init__(self, parent):
+    def __init__(self, parent: 'G90Discovery') -> None:
         """
         tbd
         """
         self._parent = parent
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         tbd
         """
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception) -> None:
         """
         tbd
         """
 
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
         tbd
         """
@@ -74,7 +77,7 @@ class G90DiscoveryProtocol:
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
 
-    def error_received(self, exc):
+    def error_received(self, exc: Exception) -> None:
         """
         tbd
         """
@@ -85,16 +88,16 @@ class G90Discovery(G90BaseCommand):
     tbd
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, timeout=10, **kwargs):
+    def __init__(self, timeout: float = 10, **kwargs: Any):
         """
         tbd
         """
         # pylint: disable=too-many-arguments
         super().__init__(code=G90Commands.GETHOSTINFO, timeout=timeout,
                          **kwargs)
-        self._discovered_devices = []
+        self._discovered_devices: List[Dict[str, Any]] = []
 
-    async def process(self):
+    async def process(self) -> Self:
         """
         tbd
         """
@@ -104,23 +107,24 @@ class G90Discovery(G90BaseCommand):
         await asyncio.sleep(self._timeout)
         transport.close()
         _LOGGER.debug('Discovered %s devices', len(self.devices))
-        return self.devices
+        return cast(Self, self)
 
     @property
-    def devices(self):
+    def devices(self) -> List[Dict[str, Any]]:
         """
         tbd
         """
         return self._discovered_devices
 
-    def add_device(self, value):
+    def add_device(self, value: Dict[str, Any]) -> None:
         """
         tbd
         """
         self._discovered_devices.append(value)
 
-    def _proto_factory(self):
+    def _proto_factory(self) -> BaseProtocol:
         """
         tbd
         """
-        return G90DiscoveryProtocol(self)
+        proto = G90DiscoveryProtocol(self)
+        return cast(BaseProtocol, proto)

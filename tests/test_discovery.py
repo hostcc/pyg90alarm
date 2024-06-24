@@ -20,7 +20,8 @@ async def test_discovery(mock_device):
     g90 = G90Discovery(host=mock_device.host,
                        port=mock_device.port,
                        timeout=0.1)
-    discovered = await g90.process()
+    cmd = await g90.process()
+    discovered = cmd.devices
     assert discovered[0]['guid'] == 'DUMMYGUID1'
     assert discovered[0]['host'] == mock_device.host
     assert discovered[0]['port'] == mock_device.port
@@ -38,7 +39,8 @@ async def test_targeted_discovery(mock_device):
         port=mock_device.port,
         local_port=LOCAL_TARGETED_DISCOVERY_PORT,
         timeout=0.1)
-    discovered = await g90.process()
+    cmd = await g90.process()
+    discovered = cmd.devices
     assert discovered[0]['guid'] == 'DUMMYGUID'
     assert discovered[0]['host'] == mock_device.host
     assert discovered[0]['port'] == mock_device.port

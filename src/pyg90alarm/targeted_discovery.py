@@ -23,36 +23,34 @@ Discovers G90 alarm panel devices with specific ID.
 """
 
 import logging
-from collections import namedtuple
+from typing import NamedTuple, Any, Tuple, cast
+from asyncio.transports import BaseTransport
+from asyncio.protocols import BaseProtocol
 from .discovery import G90Discovery
 from .exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
-INCOMING_FIELDS = [
-    'message',
-    'product_name',
-    'wifi_protocol_version',
-    'cloud_protocol_version',
-    'mcu_hw_version',
-    'fw_version',
-    'gsm_status',
-    'wifi_status',
-    'server_status',
-    'reserved1',
-    'reserved2',
-    'gsm_signal_level',
-    'wifi_signal_level'
-]
 
-
-class G90TargetedDiscoveryInfo(namedtuple('G90TargetedDiscoveryInfo',
-                                          INCOMING_FIELDS)):
+class G90TargetedDiscoveryInfo(NamedTuple):
     """
     tbd
 
     :meta private:
     """
+    message: str
+    product_name: str
+    wifi_protocol_version: str
+    cloud_protocol_version: str
+    mcu_hw_version: str
+    fw_version: str
+    gsm_status: str
+    wifi_status: str
+    server_status: str
+    reserved1: str
+    reserved2: str
+    gsm_signal_level: str
+    wifi_signal_level: str
 
 
 class G90TargetedDiscoveryProtocol:
@@ -61,24 +59,24 @@ class G90TargetedDiscoveryProtocol:
 
     :meta private:
     """
-    def __init__(self, device_id, parent):
+    def __init__(self, device_id: str, parent: 'G90TargetedDiscovery') -> None:
         """
         tbd
         """
         self._parent = parent
         self._device_id = device_id
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         tbd
         """
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception) -> None:
         """
         tbd
         """
 
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
         tbd
         """
@@ -99,7 +97,7 @@ class G90TargetedDiscoveryProtocol:
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
 
-    def error_received(self, exc):
+    def error_received(self, exc: Exception) -> None:
         """
         tbd
         """
@@ -111,7 +109,7 @@ class G90TargetedDiscovery(G90Discovery):
     """
 
     # pylint: disable=too-few-public-methods
-    def __init__(self, device_id, **kwargs):
+    def __init__(self, device_id: str, **kwargs: Any) -> None:
         """
         tbd
         """
@@ -119,15 +117,15 @@ class G90TargetedDiscovery(G90Discovery):
         super().__init__(**kwargs)
         self._device_id = device_id
 
-    def to_wire(self):
+    def to_wire(self) -> bytes:
         """
         tbd
         """
         return bytes(f'IWTAC_PROBE_DEVICE,{self._device_id}\0', 'ascii')
 
-    def _proto_factory(self):
+    def _proto_factory(self) -> BaseProtocol:
         """
         tbd
         """
-        return G90TargetedDiscoveryProtocol(self._device_id,
-                                            self)
+        proto = G90TargetedDiscoveryProtocol(self._device_id, self)
+        return cast(BaseProtocol, proto)

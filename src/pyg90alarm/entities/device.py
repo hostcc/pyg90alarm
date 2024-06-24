@@ -35,14 +35,14 @@ class G90Device(G90Sensor):
     Interacts with device (relay) on G90 alarm panel.
     """
 
-    async def turn_on(self):
+    async def turn_on(self) -> None:
         """
         Turns on the device (relay)
         """
         await self.parent.command(G90Commands.CONTROLDEVICE,
                                   [self.index, 0, self.subindex])
 
-    async def turn_off(self):
+    async def turn_off(self) -> None:
         """
         Turns off the device (relay)
         """
@@ -50,7 +50,7 @@ class G90Device(G90Sensor):
                                   [self.index, 1, self.subindex])
 
     @property
-    def supports_enable_disable(self):
+    def supports_enable_disable(self) -> bool:
         """
         Indicates if disabling/enabling the device (relay) is supported.
 
@@ -65,7 +65,7 @@ class G90Device(G90Sensor):
         # mostly.
         return False
 
-    async def set_enabled(self, value):
+    async def set_enabled(self, value: bool) -> None:
         """
         Changes the disabled/enabled state of the device (relay).
 

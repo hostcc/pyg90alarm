@@ -22,18 +22,15 @@
 Protocol entity for G90 alarm panel status.
 """
 
-from collections import namedtuple
-
-INCOMING_FIELDS = [
-    'host_status',
-    'host_phone_number',
-    'product_name',
-    'mcu_hw_version',
-    'wifi_hw_version',
-]
+from typing import NamedTuple
 
 
-class G90HostStatus(namedtuple('G90HostStatus', INCOMING_FIELDS)):
+class G90HostStatus(NamedTuple):
     """
     tbd
     """
+    host_status: str
+    host_phone_number: str
+    product_name: str
+    mcu_hw_version: str
+    wifi_hw_version: str

@@ -23,34 +23,39 @@ History protocol entity.
 """
 
 import time
-from collections import namedtuple
-
-INCOMING_FIELDS = [
-    'log_type',  # (1 or 3 - alarm, 2 or 4 - notification)
-    'param1',    # (type 1: 1 - SOS, 2 - tamper alarm; type 3 - device ID; type
-                 #  2 - 5 stayarm, 3 - disarm, 4 - awayarm )
-    'param2',    # (type 3: device type)
-    'param3',
-    'sensor_name',
-    'unix_time',
-    'rest',
-]
+from typing import NamedTuple
 
 
-class G90History(namedtuple('G90History', INCOMING_FIELDS)):
+class G90History(NamedTuple):
     """
     tbd
     """
+    # (1 or 3 - alarm, 2 or 4 - notification)
+    log_type: str
+    # (type 1: 1 - SOS, 2 - tamper alarm; type 3 - device ID; type 2 - 5
+    # stayarm: 3 - disarm, 4 - awayarm)
+    param1: str
+    # (type 3: device type)
+    param2: str
+    param3: str
+    sensor_name: str
+    unix_time: int
+    rest: str
 
     @property
-    def datetime(self):
+    def datetime(self) -> str:
         """
         tbd
         """
         return time.ctime(self.unix_time)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         tbd
         """
-        return super().__repr__() + f'(datetime={str(self.datetime)})'
+
+        return (
+            f'{self.__class__.__name__} '
+            f'{self.__dict__},'
+            f' datetime={str(self.datetime)})'
+        )

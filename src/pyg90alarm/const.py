@@ -21,8 +21,9 @@
 """
 Definies different constants for G90 alarm panel.
 """
-
+from __future__ import annotations
 from enum import IntEnum
+from typing import Optional
 
 REMOTE_PORT = 12368
 REMOTE_TARGETED_DISCOVERY_PORT = 12900
@@ -40,7 +41,7 @@ class G90Commands(IntEnum):
     comprehensive or complete.
     """
 
-    def __new__(cls, value, doc=None):
+    def __new__(cls, value: int, doc: Optional[str] = None) -> G90Commands:
         """
         Allows to set the docstring along with the value to enum entry.
         """

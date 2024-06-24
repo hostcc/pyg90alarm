@@ -23,19 +23,16 @@ Protocol entity for G90 alarm panel that provides checksums of different
 on-device databases.
 """
 
-from collections import namedtuple
-
-INCOMING_FIELDS = [
-    'sensor_list',
-    'device_list',
-    'history_list',
-    'scene_list',
-    'ifttt_list',
-    'fingerprint_list',
-]
+from typing import NamedTuple
 
 
-class G90UserDataCRC(namedtuple('G90UserDataCRC', INCOMING_FIELDS)):
+class G90UserDataCRC(NamedTuple):
     """
     tbd
     """
+    sensor_list: str
+    device_list: str
+    history_list: str
+    scene_list: str
+    ifttt_list: str
+    fingerprint_list: str

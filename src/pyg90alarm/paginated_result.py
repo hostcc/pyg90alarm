@@ -24,7 +24,7 @@ to work with results of paginated commands.
 """
 
 import logging
-from collections import namedtuple
+from typing import Any, Optional, AsyncGenerator, Iterable, cast, NamedTuple
 from .paginated_cmd import G90PaginatedCommand
 from .const import (
     CMD_PAGE_SIZE,
@@ -33,12 +33,12 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90PaginatedResponse(
-    namedtuple('G90PaginatedResponse', ['proto_idx', 'data'])
-):
+class G90PaginatedResponse(NamedTuple):
     """
     Response yielded from the :meth:`.G90PaginatedResult.process` method
     """
+    proto_idx: int
+    data: str
 
 
 class G90PaginatedResult:
@@ -46,7 +46,10 @@ class G90PaginatedResult:
     Processes paginated response from G90 corresponding panel commands.
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, host, port, code, start=1, end=None, **kwargs):
+    def __init__(
+        self, host: str, port: int, code: int, start: int = 1,
+        end: Optional[int] = None, **kwargs: Any
+    ):
         # pylint: disable=too-many-arguments
         self._host = host
         self._port = port
@@ -55,7 +58,7 @@ class G90PaginatedResult:
         self._end = end
         self._kwargs = kwargs
 
-    async def process(self):
+    async def process(self) -> AsyncGenerator[G90PaginatedResponse, None]:
         """
         Process paginated response yielding :class:`.G90PaginatedResponse`
         instance for each element.
@@ -76,7 +79,7 @@ class G90PaginatedResult:
 
             _LOGGER.debug('Invoking paginated command for %s..%s range',
                           start, end)
-            cmd = await G90PaginatedCommand(
+            cmd: G90PaginatedCommand = await G90PaginatedCommand(
                 host=self._host, port=self._port, code=self._code,
                 start=start, end=end,
                 **self._kwargs
@@ -100,7 +103,7 @@ class G90PaginatedResult:
                           cmd.count, cmd.total, self._end)
 
             # Produce the resulting records for the consumer
-            for idx, data in enumerate(cmd.result):
+            for idx, data in enumerate(cast(Iterable[str], cmd.result)):
                 # Protocol uses one-based indexes, `start` implies that so no
                 # further additions to resulting value is needed.
                 # Note the index provided here is running one across multiple

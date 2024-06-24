@@ -22,7 +22,7 @@
 Represents various configuration aspects of the alarm panel.
 """
 from enum import IntFlag
-from collections import namedtuple
+from typing import NamedTuple
 
 
 class G90AlertConfigFlags(IntFlag):
@@ -41,13 +41,14 @@ class G90AlertConfigFlags(IntFlag):
     UNKNOWN2 = 8192
 
 
-class G90AlertConfig(namedtuple('G90AlertConfig', ['flags_data'])):
+class G90AlertConfig(NamedTuple):
     """
     Represents alert configuration as received from the alarm panel.
     """
+    flags_data: int
 
     @property
-    def flags(self):
+    def flags(self) -> G90AlertConfigFlags:
         """
         :return: Instance of :class:`G90AlertConfigFlags` that provides
          symbolic names to corresponding flag bits

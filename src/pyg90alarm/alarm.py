@@ -49,7 +49,9 @@ G90HostInfo(host_guid='<...>',
 
 """
 
+from __future__ import annotations
 import logging
+from typing import Any, List, Optional, Dict, AsyncGenerator
 from .const import (
     G90Commands, REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
@@ -57,8 +59,8 @@ from .const import (
     NOTIFICATIONS_PORT,
     G90ArmDisarmTypes,
 )
-from .base_cmd import G90BaseCommand
-from .paginated_result import G90PaginatedResult
+from .base_cmd import (G90BaseCommand, G90BaseCommandResult)
+from .paginated_result import G90PaginatedResult, G90PaginatedResponse
 from .entities.sensor import (G90Sensor, G90SensorTypes)
 from .entities.device import G90Device
 from .device_notifications import (
@@ -93,22 +95,24 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     :type reset_occupancy_interval: int, optional
     """
     # pylint: disable=too-many-instance-attributes
-    def __init__(self, host, port=REMOTE_PORT,
-                 reset_occupancy_interval=3):
+    def __init__(self, host: str, port: int = REMOTE_PORT,
+                 reset_occupancy_interval: int = 3) -> None:
         self._host = host
         self._port = port
-        self._sensors = []
-        self._devices = []
-        self._notifications = None
-        self._sensor_cb = None
-        self._armdisarm_cb = None
-        self._door_open_close_cb = None
-        self._alarm_cb = None
+        self._sensors: List[G90Sensor] = []
+        self._devices: List[G90Device] = []
+        self._notifications: Optional[G90DeviceNotifications] = None
+        self._sensor_cb: Optional[G90Callback] = None
+        self._armdisarm_cb: Optional[G90Callback] = None
+        self._door_open_close_cb: Optional[G90Callback] = None
+        self._alarm_cb: Optional[G90Callback] = None
         self._reset_occupancy_interval = reset_occupancy_interval
-        self._alert_config = None
+        self._alert_config: Optional[G90AlertConfigFlags] = None
         self._sms_alert_when_armed = False
 
-    async def command(self, code, data=None):
+    async def command(
+        self, code: int, data: Optional[List[Any]] = None
+    ) -> G90BaseCommandResult:
         """
         Invokes a command against the alarm panel.
 
@@ -119,11 +123,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :return: :attr:`.G90BaseCommand.result` that contains the result of
          command invocation
         """
-        cmd = await G90BaseCommand(
+        cmd: G90BaseCommand = await G90BaseCommand(
             self._host, self._port, code, data).process()
         return cmd.result
 
-    def paginated_result(self, code, start=1, end=None):
+    def paginated_result(
+        self, code: int, start: int = 1, end: Optional[int] = None
+    ) -> AsyncGenerator[G90PaginatedResponse, None]:
         """
         Returns asynchronous generator for a paginated command, that is -
         command operating on a range of records.
@@ -141,7 +147,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         ).process()
 
     @classmethod
-    async def discover(cls):
+    async def discover(cls) -> List[Dict[str, Any]]:
         """
         Initiates discovering devices available in the same network segment, by
         using global broadcast address as the destination.
@@ -149,13 +155,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :return: List of discovered devices
         :rtype: list[{'guid', 'host', 'port'}]
         """
-        return await G90Discovery(
+        cmd: G90Discovery = await G90Discovery(
             port=REMOTE_PORT,
             host='255.255.255.255'
         ).process()
+        return cmd.devices
 
     @classmethod
-    async def targeted_discover(cls, device_id):
+    async def targeted_discover(cls, device_id: str) -> List[Dict[str, Any]]:
         """
         Initiates discovering devices available in the same network segment
         using targeted protocol, that is - specifying target device GUID in the
@@ -166,22 +173,23 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :return: List of discovered devices
         :rtype: list[{'guid', 'host', 'port'}]
         """
-        return await G90TargetedDiscovery(
+        cmd: G90TargetedDiscovery = await G90TargetedDiscovery(
             device_id=device_id,
             port=REMOTE_TARGETED_DISCOVERY_PORT,
             local_port=LOCAL_TARGETED_DISCOVERY_PORT,
             host='255.255.255.255'
         ).process()
+        return cmd.devices
 
     @property
-    async def sensors(self):
+    async def sensors(self) -> List[G90Sensor]:
         """
         Property over new :meth:`.get_sensors` method, retained for
         compatibility.
         """
         return await self.get_sensors()
 
-    async def get_sensors(self):
+    async def get_sensors(self) -> List[G90Sensor]:
         """
         Provides list of sensors configured in the device. Please note the list
         is cached upon first call, so you need to re-instantiate the class to
@@ -205,7 +213,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
 
         return self._sensors
 
-    async def find_sensor(self, idx, name):
+    async def find_sensor(self, idx: int, name: str) -> Optional[G90Sensor]:
         """
         Finds sensor by index and name.
 
@@ -232,14 +240,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return None
 
     @property
-    async def devices(self):
+    async def devices(self) -> List[G90Device]:
         """
         Property over new :meth:`.get_devices` method, retained for
         compatibility.
         """
         return await self.get_devices()
 
-    async def get_devices(self):
+    async def get_devices(self) -> List[G90Device]:
         """
         Provides list of devices (switches) configured in the device. Please
         note the list is cached upon first call, so you need to re-instantiate
@@ -274,14 +282,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return self._devices
 
     @property
-    async def host_info(self):
+    async def host_info(self) -> G90HostInfo:
         """
         Property over new :meth:`.get_host_info` method, retained for
         compatibility.
         """
         return await self.get_host_info()
 
-    async def get_host_info(self):
+    async def get_host_info(self) -> G90HostInfo:
         """
         Provides the device information (for example hardware versions, signal
         levels etc.).
@@ -293,14 +301,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return G90HostInfo(*res)
 
     @property
-    async def host_status(self):
+    async def host_status(self) -> G90HostStatus:
         """
         Property over new :meth:`.get_host_status` method, retained for
         compatibility.
         """
         return await self.get_host_status()
 
-    async def get_host_status(self):
+    async def get_host_status(self) -> G90HostStatus:
         """
         Provides the device status (for example, armed or disarmed, configured
         phone number, product name etc.).
@@ -313,14 +321,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return G90HostStatus(*res)
 
     @property
-    async def alert_config(self):
+    async def alert_config(self) -> G90AlertConfigFlags:
         """
         Property over new :meth:`.get_alert_config` method, retained for
         compatibility.
         """
         return await self.get_alert_config()
 
-    async def get_alert_config(self):
+    async def get_alert_config(self) -> G90AlertConfigFlags:
         """
         Retrieves the alert configuration flags from the device. Please note
         the configuration is cached upon first call, so you need to
@@ -333,7 +341,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             self._alert_config = await self._alert_config_uncached()
         return self._alert_config
 
-    async def _alert_config_uncached(self):
+    async def _alert_config_uncached(self) -> G90AlertConfigFlags:
         """
         Retrieves the alert configuration flags directly from the device.
 
@@ -343,7 +351,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         res = await self.command(G90Commands.GETNOTICEFLAG)
         return G90AlertConfig(*res).flags
 
-    async def set_alert_config(self, value):
+    async def set_alert_config(self, flags: G90AlertConfigFlags) -> None:
         """
         It might be possible to implement the async property setter with
         `async_as_sync` decorator, although it might have implications with the
@@ -358,21 +366,21 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             _LOGGER.warning(
                 'Alert configuration changed externally,'
                 ' overwriting (read "%s", will be set to "%s")',
-                str(alert_config), str(value)
+                str(alert_config), str(flags)
             )
-        await self.command(G90Commands.SETNOTICEFLAG, [value])
+        await self.command(G90Commands.SETNOTICEFLAG, [flags.value])
         # Update the alert configuration stored
-        self._alert_config = value
+        self._alert_config = flags
 
     @property
-    async def user_data_crc(self):
+    async def user_data_crc(self) -> G90UserDataCRC:
         """
         Property over new :meth:`.get_user_data_crc` method, retained for
         compatibility.
         """
         return await self.get_user_data_crc()
 
-    async def get_user_data_crc(self):
+    async def get_user_data_crc(self) -> G90UserDataCRC:
         """
         Retieves checksums (CRC) for different on-device databases (history,
         sensors etc.). Might be used to detect if there is a change in a
@@ -387,7 +395,9 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         res = await self.command(G90Commands.GETUSERDATACRC)
         return G90UserDataCRC(*res)
 
-    async def history(self, start=1, count=1):
+    async def history(
+        self, start: int = 1, count: int = 1
+    ) -> List[G90History]:
         """
         Retrieves event history from the device.
 
@@ -403,7 +413,9 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         history = [G90History(*x.data) async for x in res]
         return history
 
-    async def _internal_sensor_cb(self, idx, name, occupancy=True):
+    async def _internal_sensor_cb(
+        self, idx: int, name: str, occupancy: bool = True
+    ) -> None:
         """
         Callback that invoked both for sensor notifications and door open/close
         alerts, since the logic for both is same and could be reused. Please
@@ -429,7 +441,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             # Emulate turning off the occupancy - most of sensors will not
             # notify the device of that, nor the device would emit such
             # notification itself
-            def reset_sensor_occupancy(sensor):
+            def reset_sensor_occupancy(sensor: G90Sensor) -> None:
                 _LOGGER.debug('Resetting occupancy for sensor %s', sensor)
                 sensor.occupancy = False
                 G90Callback.invoke(sensor.state_callback, sensor.occupancy)
@@ -464,7 +476,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         G90Callback.invoke(self._sensor_cb, idx, name, occupancy)
 
     @property
-    def sensor_callback(self):
+    def sensor_callback(self) -> Optional[G90Callback]:
         """
         Get or set sensor activity callback, the callback is invoked when
         sensor activates.
@@ -474,10 +486,10 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return self._sensor_cb
 
     @sensor_callback.setter
-    def sensor_callback(self, value):
+    def sensor_callback(self, value: G90Callback) -> None:
         self._sensor_cb = value
 
-    async def _internal_door_open_close_cb(self, idx, name, is_open):
+    async def _internal_door_open_close_cb(self, idx, name, is_open) -> None:
         """
         Callback that invoked when door open/close alert comes from the alarm
         panel. Please note the callback is for internal use by the class.
@@ -492,7 +504,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         G90Callback.invoke(self._door_open_close_cb, idx, name, is_open)
 
     @property
-    def door_open_close_callback(self):
+    def door_open_close_callback(self) -> Optional[G90Callback]:
         """
         Get or set door open/close callback, the callback is invoked when door
         is opened or closed (if corresponding alert is configured on the
@@ -503,13 +515,13 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return self._door_open_close_cb
 
     @door_open_close_callback.setter
-    def door_open_close_callback(self, value):
+    def door_open_close_callback(self, value: G90Callback) -> None:
         """
         Sets callback for door open/close events.
         """
         self._door_open_close_cb = value
 
-    async def _internal_armdisarm_cb(self, state):
+    async def _internal_armdisarm_cb(self, state: G90ArmDisarmTypes) -> None:
         """
         Callback that invoked when the device is armed or disarmed. Please note
         the callback is for internal use by the class.
@@ -532,7 +544,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         G90Callback.invoke(self._armdisarm_cb, state)
 
     @property
-    def armdisarm_callback(self):
+    def armdisarm_callback(self) -> Optional[G90Callback]:
         """
         Get or set device arm/disarm callback, the callback is invoked when
         device state changes.
@@ -542,10 +554,12 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return self._armdisarm_cb
 
     @armdisarm_callback.setter
-    def armdisarm_callback(self, value):
+    def armdisarm_callback(self, value: G90Callback) -> None:
         self._armdisarm_cb = value
 
-    async def _internal_alarm_cb(self, sensor_idx, sensor_name):
+    async def _internal_alarm_cb(
+        self, sensor_idx: int, sensor_name: str
+    ) -> None:
         """
         Callback that invoked when alarm is triggered. Fires alarm callback if
         set by the user with `:property:G90Alarm.alarm_callback`.
@@ -565,7 +579,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         )
 
     @property
-    def alarm_callback(self):
+    def alarm_callback(self) -> Optional[G90Callback]:
         """
         Get or set device alarm callback, the callback is invoked when
         device alarm triggers.
@@ -578,12 +592,12 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return self._alarm_cb
 
     @alarm_callback.setter
-    def alarm_callback(self, value):
+    def alarm_callback(self, value: G90Callback) -> None:
         self._alarm_cb = value
 
     async def listen_device_notifications(
-        self, host='0.0.0.0', port=NOTIFICATIONS_PORT
-    ):
+        self, host: str = '0.0.0.0', port: int = NOTIFICATIONS_PORT
+    ) -> None:
         """
         Starts internal listener for device notifications/alerts.
 
@@ -596,14 +610,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
             alarm_cb=self._internal_alarm_cb)
         await self._notifications.listen()
 
-    def close_device_notifications(self):
+    def close_device_notifications(self) -> None:
         """
         Closes the listener for device notifications/alerts.
         """
         if self._notifications:
             self._notifications.close()
 
-    async def arm_away(self):
+    async def arm_away(self) -> None:
         """
         Arms the device in away mode.
         """
@@ -611,7 +625,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         await self.command(G90Commands.SETHOSTSTATUS,
                            [state])
 
-    async def arm_home(self):
+    async def arm_home(self) -> None:
         """
         Arms the device in home mode.
         """
@@ -619,7 +633,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         await self.command(G90Commands.SETHOSTSTATUS,
                            [state])
 
-    async def disarm(self):
+    async def disarm(self) -> None:
         """
         Disarms the device.
         """
@@ -628,7 +642,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
                            [state])
 
     @property
-    def sms_alert_when_armed(self):
+    def sms_alert_when_armed(self) -> bool:
         """
         When enabled, allows to save costs on SMS by having corresponding alert
         enabled only when device is armed.
@@ -636,5 +650,5 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         return self._sms_alert_when_armed
 
     @sms_alert_when_armed.setter
-    def sms_alert_when_armed(self, value):
+    def sms_alert_when_armed(self, value: bool) -> None:
         self._sms_alert_when_armed = value

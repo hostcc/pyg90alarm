@@ -25,23 +25,25 @@ Provides support for basic commands of G90 alarm panel.
 import logging
 import json
 import asyncio
-from typing import NamedTuple, Optional
+from asyncio import Future
+from asyncio.protocols import BaseProtocol
+from asyncio.transports import DatagramTransport
+from typing import NamedTuple, Optional, Any, cast, Tuple, List, TypeVar
 from .exceptions import (G90Error, G90TimeoutError)
 
 
 _LOGGER = logging.getLogger(__name__)
+G90BaseCommandResult = List[Any]
 
 
 class G90Header(NamedTuple):
     """
     Represents JSON structure of the header used in alarm panel commands.
-    Note that typing.NamedTuple is used (instead of collections.namedtuple) to
-    provide support for Python 3.6 and higher, while providing default values.
 
     :meta private:
     """
     code: Optional[int] = None
-    data: Optional[str] = None
+    data: Optional[List[Any]] = None
 
 
 class G90DeviceProtocol:
@@ -50,41 +52,43 @@ class G90DeviceProtocol:
 
     :meta private:
     """
-    def __init__(self):
+    def __init__(self) -> None:
         """
         tbd
         """
-        self._data = None
+        self._data: Optional[Future[Tuple[Tuple[str, int], bytes]]] = None
 
     @property
-    def future_data(self):
+    def future_data(self) -> Optional[Future[Tuple[Tuple[str, int], bytes]]]:
         """
         tbd
         """
         return self._data
 
     @future_data.setter
-    def future_data(self, value):
+    def future_data(self, value: Optional[Future[Tuple[Tuple[str, int], bytes]]]) -> None:
         """
         tbd
         """
         self._data = value
 
-    def connection_made(self, transport):
+    def connection_made(
+        self, transport: DatagramTransport
+    ) -> None:
         """
         tbd
         """
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Exception) -> None:
         """
         tbd
         """
 
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
         tbd
         """
-        if asyncio.isfuture(self._data):
+        if self._data and asyncio.isfuture(self._data):
             if self._data.done():
                 _LOGGER.warning('Excessive packet received'
                                 ' from %s:%s: %s',
@@ -92,12 +96,19 @@ class G90DeviceProtocol:
                 return
             self._data.set_result((*addr, data))
 
-    def error_received(self, exc):
+    def error_received(self, exc: Exception) -> None:
         """
         tbd
         """
-        if asyncio.isfuture(self._data) and not self._data.done():
+        if (
+            self._data
+            and asyncio.isfuture(self._data)  # noqa=W503
+            and not self._data.done()  # noqa=W503
+        ):
             self._data.set_exception(exc)
+
+
+Self = TypeVar('Self', bound='G90BaseCommand')
 
 
 class G90BaseCommand:
@@ -108,9 +119,10 @@ class G90BaseCommand:
     # Lock need to be shared across all of the class instances
     _sk_lock = asyncio.Lock()
 
-    def __init__(self, host, port, code,
-                 data=None, local_port=None,
-                 timeout=3.0, retries=3):
+    def __init__(self, host: str, port: int, code: int,
+                 data: Optional[List[Any]] = None,
+                 local_port: Optional[int] = None,
+                 timeout: float = 3.0, retries: int = 3) -> None:
         """
         tbd
         """
@@ -122,7 +134,7 @@ class G90BaseCommand:
         self._timeout = timeout
         self._retries = retries
         self._data = '""'
-        self._result = None
+        self._result: G90BaseCommandResult = []
         if data:
             self._data = json.dumps([code, data],
                                     # No newlines to be inserted
@@ -131,13 +143,15 @@ class G90BaseCommand:
                                     separators=(',', ':'))
         self._resp = G90Header()
 
-    def _proto_factory(self):
+    def _proto_factory(self) -> BaseProtocol:
         """
         tbd
         """
-        return G90DeviceProtocol()
+        return cast(BaseProtocol, G90DeviceProtocol())
 
-    async def _create_connection(self):
+    async def _create_connection(self) -> (
+        Tuple[DatagramTransport, G90DeviceProtocol]
+    ):
         """
         tbd
         """
@@ -148,19 +162,19 @@ class G90BaseCommand:
 
         _LOGGER.debug('Creating UDP endpoint for %s:%s',
                       self.host, self.port)
-        extra_kwargs = {}
+        local_addr = None
         if self._local_port:
-            extra_kwargs['local_addr'] = ('0.0.0.0', self._local_port)
+            local_addr = ('0.0.0.0', self._local_port)
 
         transport, protocol = await loop.create_datagram_endpoint(
             self._proto_factory,
             remote_addr=(self.host, self.port),
-            **extra_kwargs,
-            allow_broadcast=True)
+            allow_broadcast=True,
+            local_addr=local_addr)
 
-        return transport, protocol
+        return (transport, cast(G90DeviceProtocol, protocol))
 
-    def to_wire(self):
+    def to_wire(self) -> bytes:
         """
         tbd
         """
@@ -169,15 +183,15 @@ class G90BaseCommand:
         _LOGGER.debug('Encoded to wire format %s', wire)
         return wire
 
-    def from_wire(self, data):
+    def from_wire(self, data: bytes) -> List[Any]:
         """
         tbd
         """
         _LOGGER.debug('To be decoded from wire format %s', data)
         self._parse(data.decode('utf-8', errors='ignore'))
-        return self._resp.data
+        return self._resp.data or []
 
-    def _parse(self, data):
+    def _parse(self, data: str) -> None:
         """
         tbd
         """
@@ -216,27 +230,27 @@ class G90BaseCommand:
                     f"{self._resp.code}, expected code {self._code}")
 
     @property
-    def result(self):
+    def result(self) -> G90BaseCommandResult:
         """
         tbd
         """
         return self._result
 
     @property
-    def host(self):
+    def host(self) -> str:
         """
         tbd
         """
         return self._remote_host
 
     @property
-    def port(self):
+    def port(self) -> int:
         """
         tbd
         """
         return self._remote_port
 
-    async def process(self):
+    async def process(self) -> Self:
         """
         tbd
         """
@@ -266,7 +280,7 @@ class G90BaseCommand:
                 raise G90TimeoutError()
             _LOGGER.debug('Timed out, retrying')
         transport.close()
-        (host, port, data) = protocol.future_data.result()
+        ((host, port), data) = protocol.future_data.result()
         _LOGGER.debug('Received response from %s:%s', host, port)
         if self.host != '255.255.255.255':
             if self.host != host or host == '255.255.255.255':
@@ -278,9 +292,9 @@ class G90BaseCommand:
 
         ret = self.from_wire(data)
         self._result = ret
-        return self
+        return cast(Self, self)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """
         tbd
         """

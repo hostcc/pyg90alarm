@@ -20,7 +20,7 @@ async def test_missing_pagination(mock_device):
         match=(
             r"Wrong pagination data \[\] -"
             ' .+ missing 3 required positional arguments:'
-            " 'total', 'start', and 'count'"
+            " 'total', 'start', and 'nelems'"
         )
     ):
         await g90.process()
