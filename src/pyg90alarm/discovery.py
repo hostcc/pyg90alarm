@@ -32,54 +32,6 @@ from .const import G90Commands
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90DiscoveryProtocol:
-    """
-    tbd
-
-    :meta private:
-    """
-    def __init__(self, parent):
-        """
-        tbd
-        """
-        self._parent = parent
-
-    def connection_made(self, transport):
-        """
-        tbd
-        """
-
-    def connection_lost(self, exc):
-        """
-        tbd
-        """
-
-    def datagram_received(self, data, addr):
-        """
-        tbd
-        """
-        try:
-            ret = self._parent.from_wire(data)
-            host_info = G90HostInfo(*ret)
-            _LOGGER.debug('Received from %s:%s: %s', addr[0], addr[1], ret)
-            res = {
-                'guid': host_info.host_guid,
-                'host': addr[0],
-                'port': addr[1]
-            }
-            res.update(host_info._asdict())
-            _LOGGER.debug('Discovered device: %s', res)
-            self._parent.add_device(res)
-
-        except Exception as exc:  # pylint: disable=broad-except
-            _LOGGER.warning('Got exception, ignoring: %s', exc)
-
-    def error_received(self, exc):
-        """
-        tbd
-        """
-
-
 class G90Discovery(G90BaseCommand):
     """
     tbd
@@ -93,6 +45,28 @@ class G90Discovery(G90BaseCommand):
         super().__init__(code=G90Commands.GETHOSTINFO, timeout=timeout,
                          **kwargs)
         self._discovered_devices = []
+
+    # Implementation of datagram protocol,
+    # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
+    def datagram_received(self, data, addr):
+        """
+        tbd
+        """
+        try:
+            ret = self.from_wire(data)
+            host_info = G90HostInfo(*ret)
+            _LOGGER.debug('Received from %s:%s: %s', addr[0], addr[1], ret)
+            res = {
+                'guid': host_info.host_guid,
+                'host': addr[0],
+                'port': addr[1]
+            }
+            res.update(host_info._asdict())
+            _LOGGER.debug('Discovered device: %s', res)
+            self.add_device(res)
+
+        except Exception as exc:  # pylint: disable=broad-except
+            _LOGGER.warning('Got exception, ignoring: %s', exc)
 
     async def process(self):
         """
@@ -118,9 +92,3 @@ class G90Discovery(G90BaseCommand):
         tbd
         """
         self._discovered_devices.append(value)
-
-    def _proto_factory(self):
-        """
-        tbd
-        """
-        return G90DiscoveryProtocol(self)

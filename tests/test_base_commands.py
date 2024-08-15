@@ -7,7 +7,6 @@ sys.path.extend(['src', '../src'])
 
 from pyg90alarm.base_cmd import (  # noqa:E402
     G90BaseCommand,
-    G90DeviceProtocol,
 )
 from pyg90alarm.exceptions import (G90Error, G90TimeoutError)  # noqa:E402
 
@@ -33,11 +32,11 @@ async def test_network_unreachable():
     b'ISTARTIEND\0',
 ])
 async def test_wrong_host(mock_device, monkeypatch):
-    orig = G90DeviceProtocol.datagram_received
+    orig = G90BaseCommand.datagram_received
     # Alter receving method of the device protocol as if it gets datagaram from
     # `another_host`
     monkeypatch.setattr(
-        G90DeviceProtocol, 'datagram_received',
+        G90BaseCommand, 'datagram_received',
         lambda self, data, addr: orig(self, data, ('another_host', addr[1]))
     )
     g90 = G90BaseCommand(
@@ -57,11 +56,11 @@ async def test_wrong_host(mock_device, monkeypatch):
     b'ISTARTIEND\0',
 ])
 async def test_wrong_port(mock_device, monkeypatch):
-    orig = G90DeviceProtocol.datagram_received
+    orig = G90BaseCommand.datagram_received
     # Alter receving method of the device protocol as if it gets datagaram from
     # proper host but different port `54321`
     monkeypatch.setattr(
-        G90DeviceProtocol, 'datagram_received',
+        G90BaseCommand, 'datagram_received',
         lambda self, data, addr: orig(self, data, (addr[0], 54321))
     )
     g90 = G90BaseCommand(
