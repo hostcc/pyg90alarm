@@ -189,6 +189,16 @@ class G90AlertSources(IntEnum):
     DOORBELL = 12
 
 
+class G90AlertStates(IntEnum):
+    """
+    Defines possible states of the alert sent by the panel.
+    """
+    DOOR_CLOSE = 0
+    DOOR_OPEN = 1
+    TAMPER = 3
+    LOW_BATTERY = 4
+
+
 class G90AlertStateChangeTypes(IntEnum):
     """
     Defines types of alert for device state changes.

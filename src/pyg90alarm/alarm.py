@@ -76,7 +76,9 @@ from .callback import G90Callback
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90Alarm:  # pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods
+class G90Alarm(G90DeviceNotifications):
+
     """
     Allows to interact with G90 alarm panel.
 
@@ -92,9 +94,12 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
      simulated to go into inactive state.
     :type reset_occupancy_interval: int, optional
     """
-    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self, host, port=REMOTE_PORT,
-                 reset_occupancy_interval=3):
+                 reset_occupancy_interval=3,
+                 notifications_host='0.0.0.0',
+                 notifications_port=NOTIFICATIONS_PORT):
+        super().__init__(host=notifications_host, port=notifications_port)
         self._host = host
         self._port = port
         self._sensors = []
@@ -104,6 +109,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         self._armdisarm_cb = None
         self._door_open_close_cb = None
         self._alarm_cb = None
+        self._low_battery_cb = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config = None
         self._sms_alert_when_armed = False
@@ -403,7 +409,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         history = [G90History(*x.data) async for x in res]
         return history
 
-    async def _internal_sensor_cb(self, idx, name, occupancy=True):
+    async def on_sensor_activity(self, idx, name, occupancy=True):
         """
         Callback that invoked both for sensor notifications and door open/close
         alerts, since the logic for both is same and could be reused. Please
@@ -420,6 +426,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
          alerts (only for `door` type sensors, if door open/close alerts are
          enabled)
         """
+        _LOGGER.debug('on_sensor_acitvity: %s %s %s', idx, name, occupancy)
         sensor = await self.find_sensor(idx, name)
         if sensor:
             _LOGGER.debug('Setting occupancy to %s (previously %s)',
@@ -477,19 +484,21 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def sensor_callback(self, value):
         self._sensor_cb = value
 
-    async def _internal_door_open_close_cb(self, idx, name, is_open):
+    async def on_door_open_close(self, event_id, zone_name, is_open):
         """
         Callback that invoked when door open/close alert comes from the alarm
         panel. Please note the callback is for internal use by the class.
 
-        .. seealso:: `method`:_internal_sensor_cb for arguments
+        .. seealso:: `method`:on_sensor_activity for arguments
         """
         # Same internal callback is reused both for door open/close alerts and
         # sensor notifications. The former adds reporting when a door is
         # closed, since the notifications aren't sent for such events
-        await self._internal_sensor_cb(idx, name, is_open)
+        await self.on_sensor_activity(event_id, zone_name, is_open)
         # Invoke user specified callback if any
-        G90Callback.invoke(self._door_open_close_cb, idx, name, is_open)
+        G90Callback.invoke(
+            self._door_open_close_cb, event_id, zone_name, is_open
+        )
 
     @property
     def door_open_close_callback(self):
@@ -509,7 +518,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         """
         self._door_open_close_cb = value
 
-    async def _internal_armdisarm_cb(self, state):
+    async def on_armdisarm(self, state):
         """
         Callback that invoked when the device is armed or disarmed. Please note
         the callback is for internal use by the class.
@@ -545,7 +554,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def armdisarm_callback(self, value):
         self._armdisarm_cb = value
 
-    async def _internal_alarm_cb(self, sensor_idx, sensor_name):
+    async def on_alarm(self, event_id, zone_name):
         """
         Callback that invoked when alarm is triggered. Fires alarm callback if
         set by the user with `:property:G90Alarm.alarm_callback`.
@@ -554,14 +563,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :param int: Index of the sensor triggered alarm
         :param str: Sensor name
         """
-        sensor = await self.find_sensor(sensor_idx, sensor_name)
+        sensor = await self.find_sensor(event_id, zone_name)
         # The callback is still delivered to the caller even if the sensor
         # isn't found, only `extra_data` is skipped. That is to ensur the
         # important callback isn't filtered
         extra_data = sensor.extra_data if sensor else None
 
         G90Callback.invoke(
-            self._alarm_cb, sensor_idx, sensor_name, extra_data
+            self._alarm_cb, event_id, zone_name, extra_data
         )
 
     @property
@@ -581,27 +590,49 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def alarm_callback(self, value):
         self._alarm_cb = value
 
-    async def listen_device_notifications(
-        self, host='0.0.0.0', port=NOTIFICATIONS_PORT
-    ):
+    async def on_low_battery(self, event_id, zone_name):
+        """
+        Callback that invoked when the sensor reports on low battery. Fires
+        corresponding callback if set by the user with
+        `:property:G90Alarm.on_low_battery_callback`.
+        Please note the callback is for internal use by the class.
+
+        :param int: Index of the sensor triggered alarm
+        :param str: Sensor name
+        """
+        sensor = await self.find_sensor(event_id, zone_name)
+        if sensor:
+            # Invoke per-sensor callback if provided
+            G90Callback.invoke(sensor.low_battery_callback)
+
+        G90Callback.invoke(self._low_battery_cb, event_id, zone_name)
+
+    @property
+    def low_battery_callback(self):
+        """
+        Get or set low battery callback, the callback is invoked when sensor
+        the condition is reported by a sensor.
+
+        :type: .. py:function:: ()(idx, name)
+        """
+        return self._low_battery_cb
+
+    @low_battery_callback.setter
+    def low_battery_callback(self, value):
+        self._low_battery_cb = value
+
+    async def listen_device_notifications(self):
         """
         Starts internal listener for device notifications/alerts.
 
         """
-        self._notifications = G90DeviceNotifications(
-            host=host, port=port,
-            sensor_cb=self._internal_sensor_cb,
-            door_open_close_cb=self._internal_door_open_close_cb,
-            armdisarm_cb=self._internal_armdisarm_cb,
-            alarm_cb=self._internal_alarm_cb)
-        await self._notifications.listen()
+        await self.listen()
 
     def close_device_notifications(self):
         """
         Closes the listener for device notifications/alerts.
         """
-        if self._notifications:
-            self._notifications.close()
+        self.close()
 
     async def arm_away(self):
         """

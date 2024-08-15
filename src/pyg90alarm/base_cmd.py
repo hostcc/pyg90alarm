@@ -44,62 +44,6 @@ class G90Header(NamedTuple):
     data: Optional[str] = None
 
 
-class G90DeviceProtocol:
-    """
-    tbd
-
-    :meta private:
-    """
-    def __init__(self):
-        """
-        tbd
-        """
-        self._data = None
-
-    @property
-    def future_data(self):
-        """
-        tbd
-        """
-        return self._data
-
-    @future_data.setter
-    def future_data(self, value):
-        """
-        tbd
-        """
-        self._data = value
-
-    def connection_made(self, transport):
-        """
-        tbd
-        """
-
-    def connection_lost(self, exc):
-        """
-        tbd
-        """
-
-    def datagram_received(self, data, addr):
-        """
-        tbd
-        """
-        if asyncio.isfuture(self._data):
-            if self._data.done():
-                _LOGGER.warning('Excessive packet received'
-                                ' from %s:%s: %s',
-                                addr[0], addr[1], data)
-                return
-            self._data.set_result((*addr, data))
-
-    def error_received(self, exc):
-        """
-        tbd
-        """
-        if asyncio.isfuture(self._data) and not self._data.done():
-            self._data.set_exception(exc)
-
-
 class G90BaseCommand:
     """
     tbd
@@ -123,6 +67,7 @@ class G90BaseCommand:
         self._retries = retries
         self._data = '""'
         self._result = None
+        self._connection_result = None
         if data:
             self._data = json.dumps([code, data],
                                     # No newlines to be inserted
@@ -131,11 +76,37 @@ class G90BaseCommand:
                                     separators=(',', ':'))
         self._resp = G90Header()
 
-    def _proto_factory(self):
+    def connection_made(self, transport):
         """
         tbd
         """
-        return G90DeviceProtocol()
+
+    def connection_lost(self, exc):
+        """
+        tbd
+        """
+
+    def datagram_received(self, data, addr):
+        """
+        tbd
+        """
+        if asyncio.isfuture(self._connection_result):
+            if self._connection_result.done():
+                _LOGGER.warning('Excessive packet received'
+                                ' from %s:%s: %s',
+                                addr[0], addr[1], data)
+                return
+            self._connection_result.set_result((*addr, data))
+
+    def error_received(self, exc):
+        """
+        tbd
+        """
+        if (
+            asyncio.isfuture(self._connection_result) and not
+            self._connection_result.done()
+        ):
+            self._connection_result.set_exception(exc)
 
     async def _create_connection(self):
         """
@@ -153,7 +124,7 @@ class G90BaseCommand:
             extra_kwargs['local_addr'] = ('0.0.0.0', self._local_port)
 
         transport, protocol = await loop.create_datagram_endpoint(
-            self._proto_factory,
+            lambda: self,
             remote_addr=(self.host, self.port),
             **extra_kwargs,
             allow_broadcast=True)
@@ -241,7 +212,7 @@ class G90BaseCommand:
         tbd
         """
 
-        transport, protocol = await self._create_connection()
+        transport, _ = await self._create_connection()
         attempts = self._retries
         while True:
             attempts = attempts - 1
@@ -249,24 +220,24 @@ class G90BaseCommand:
                 loop = asyncio.get_running_loop()
             except AttributeError:
                 loop = asyncio.get_event_loop()
-            protocol.future_data = loop.create_future()
+            self._connection_result = loop.create_future()
             async with self._sk_lock:
                 _LOGGER.debug('(code %s) Sending request to %s:%s',
                               self._code, self.host, self.port)
                 transport.sendto(self.to_wire())
-                done, _ = await asyncio.wait([protocol.future_data],
+                done, _ = await asyncio.wait([self._connection_result],
                                              timeout=self._timeout)
-            if protocol.future_data in done:
+            if self._connection_result in done:
                 break
             # Cancel the future to signal protocol handler it is no longer
             # valid, the future will be re-created on next retry
-            protocol.future_data.cancel()
+            self._connection_result.cancel()
             if not attempts:
                 transport.close()
                 raise G90TimeoutError()
             _LOGGER.debug('Timed out, retrying')
         transport.close()
-        (host, port, data) = protocol.future_data.result()
+        (host, port, data) = self._connection_result.result()
         _LOGGER.debug('Received response from %s:%s', host, port)
         if self.host != '255.255.255.255':
             if self.host != host or host == '255.255.255.255':

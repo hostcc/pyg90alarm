@@ -55,28 +55,18 @@ class G90TargetedDiscoveryInfo(namedtuple('G90TargetedDiscoveryInfo',
     """
 
 
-class G90TargetedDiscoveryProtocol:
+class G90TargetedDiscovery(G90Discovery):
     """
     tbd
-
-    :meta private:
     """
-    def __init__(self, device_id, parent):
+
+    # pylint: disable=too-few-public-methods
+    def __init__(self, device_id, **kwargs):
         """
         tbd
         """
-        self._parent = parent
+        super().__init__(**kwargs)
         self._device_id = device_id
-
-    def connection_made(self, transport):
-        """
-        tbd
-        """
-
-    def connection_lost(self, exc):
-        """
-        tbd
-        """
 
     def datagram_received(self, data, addr):
         """
@@ -95,39 +85,12 @@ class G90TargetedDiscoveryProtocol:
                    'port': addr[1]}
             res.update(host_info._asdict())
             _LOGGER.debug('Discovered device: %s', res)
-            self._parent.add_device(res)
+            self.add_device(res)
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
-
-    def error_received(self, exc):
-        """
-        tbd
-        """
-
-
-class G90TargetedDiscovery(G90Discovery):
-    """
-    tbd
-    """
-
-    # pylint: disable=too-few-public-methods
-    def __init__(self, device_id, **kwargs):
-        """
-        tbd
-        """
-
-        super().__init__(**kwargs)
-        self._device_id = device_id
 
     def to_wire(self):
         """
         tbd
         """
         return bytes(f'IWTAC_PROBE_DEVICE,{self._device_id}\0', 'ascii')
-
-    def _proto_factory(self):
-        """
-        tbd
-        """
-        return G90TargetedDiscoveryProtocol(self._device_id,
-                                            self)
