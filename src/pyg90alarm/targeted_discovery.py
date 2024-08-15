@@ -68,6 +68,8 @@ class G90TargetedDiscovery(G90Discovery):
         super().__init__(**kwargs)
         self._device_id = device_id
 
+    # Implementation of datagram protocol,
+    # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
     def datagram_received(self, data, addr):
         """
         tbd

@@ -43,7 +43,7 @@ _LOGGER = logging.getLogger(__name__)
 class G90Message(namedtuple('G90Message',
                             ['code', 'data'])):
     """
-    tbd
+    Represents the message received from the device.
 
     :meta private:
     """
@@ -52,7 +52,7 @@ class G90Message(namedtuple('G90Message',
 class G90Notification(namedtuple('G90Notification',
                                  ['kind', 'data'])):
     """
-    tbd
+    Represents the notification received from the device.
 
     :meta private:
     """
@@ -61,7 +61,7 @@ class G90Notification(namedtuple('G90Notification',
 class G90ZoneInfo(namedtuple('G90ZoneInfo',
                              ['idx', 'name'])):
     """
-    tbd
+    Represents zone details received from the device.
 
     :meta private:
     """
@@ -70,7 +70,7 @@ class G90ZoneInfo(namedtuple('G90ZoneInfo',
 class G90ArmDisarmInfo(namedtuple('G90ArmDisarmInfo',
                                   ['state'])):
     """
-    tbd
+    Represents the arm/disarm state received from the device.
 
     :meta private:
     """
@@ -81,7 +81,7 @@ class G90DeviceAlert(namedtuple('G90DeviceAlert',
                                  'zone_name', 'device_id', 'unix_time',
                                  'resv4', 'other'])):
     """
-    tbd
+    Represents alert received from the device.
 
     :meta private:
     """
@@ -96,16 +96,6 @@ class G90DeviceNotifications:
         self._notification_transport = None
         self._notifications_host = host
         self._notifications_port = port
-
-    def connection_made(self, transport):
-        """
-        tbd
-        """
-
-    def connection_lost(self, exc):
-        """
-        tbd
-        """
 
     def _handle_notification(self, addr, notification):
         # Sensor activity notification
@@ -193,9 +183,21 @@ class G90DeviceNotifications:
                         ' type %s, data %s',
                         addr[0], addr[1], alert.type, alert)
 
+    # Implementation of datagram protocol,
+    # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
+    def connection_made(self, transport):
+        """
+        Invoked when connection from the device is made.
+        """
+
+    def connection_lost(self, exc):
+        """
+        Same but when the connection is lost.
+        """
+
     def datagram_received(self, data, addr):  # pylint:disable=R0911
         """
-        tbd
+        Invoked from datagram is received from the device.
         """
         s_data = data.decode('utf-8')
         if not s_data.endswith('\0'):
@@ -243,32 +245,32 @@ class G90DeviceNotifications:
 
     async def on_armdisarm(self, state):
         """
-        tbd
+        Invoked when device is armed or disarmed.
         """
 
     async def on_sensor_activity(self, idx, name):
         """
-        tbd
+        Invoked on sensor activity.
         """
 
     async def on_door_open_close(self, event_id, zone_name, is_open):
         """
-        tbd
+        Invoked when door sensor reports it opened or closed.
         """
 
     async def on_low_battery(self, event_id, zone_name):
         """
-        tbd
+        Invoked when a sensor reports it is low on battery.
         """
 
     async def on_alarm(self, event_id, zone_name):
         """
-        tbd
+        Invoked when device triggers the alarm.
         """
 
     async def listen(self):
         """
-        tbd
+        Listens for notifications/alers from the device.
         """
         try:
             loop = asyncio.get_running_loop()
@@ -287,7 +289,7 @@ class G90DeviceNotifications:
 
     def close(self):
         """
-        tbd
+        Closes the listener.
         """
         if self._notification_transport:
             self._notification_transport.close()

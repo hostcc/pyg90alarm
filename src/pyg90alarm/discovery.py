@@ -46,6 +46,8 @@ class G90Discovery(G90BaseCommand):
                          **kwargs)
         self._discovered_devices = []
 
+    # Implementation of datagram protocol,
+    # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
     def datagram_received(self, data, addr):
         """
         tbd

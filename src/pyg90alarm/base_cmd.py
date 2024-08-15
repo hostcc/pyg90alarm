@@ -76,6 +76,8 @@ class G90BaseCommand:
                                     separators=(',', ':'))
         self._resp = G90Header()
 
+    # Implementation of datagram protocol,
+    # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
     def connection_made(self, transport):
         """
         tbd
