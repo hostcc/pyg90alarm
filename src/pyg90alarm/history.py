@@ -188,7 +188,7 @@ class G90History:
     def as_device_alert(self):
         """
         Returns the history entry represented as device alert structure,
-        suitable for :method:`G90DeviceNotifications._handle_alert()`.
+        suitable for :meth:`G90DeviceNotifications._handle_alert`.
 
         :rtype: :class:`.G90DeviceAlert`
         """
