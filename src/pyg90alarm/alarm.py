@@ -688,8 +688,8 @@ class G90Alarm(G90DeviceNotifications):
         notifications will not be processed thus resulting in possible
         duplicated if those could be received from the network.
 
-        :param int interval: Interval between polling for newer history
-          entities
+        :param int interval: Interval (in seconds) between polling for newer
+          history entities
         :param int history_depth: Amount of history entries to fetch during
           each polling cycle
         """
