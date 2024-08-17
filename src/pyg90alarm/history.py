@@ -22,7 +22,7 @@
 History protocol entity.
 """
 
-import time
+from datetime import datetime, timezone
 from collections import namedtuple
 from .const import (
     G90AlertTypes,
@@ -89,9 +89,12 @@ class G90History:
     def datetime(self):
         """
         Date/time of the history entry.
-        :rtype: :class:`Datetime`
+
+        :rtype: :class:`datetime.datetime`
         """
-        return time.ctime(self._protocol_data.unix_time)
+        return datetime.fromtimestamp(
+            self._protocol_data.unix_time, tz=timezone.utc
+        )
 
     @property
     def type(self):
