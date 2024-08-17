@@ -185,6 +185,7 @@ class G90AlertSources(IntEnum):
     """
     Defines possible sources of the alert sent by the panel.
     """
+    DEVICE = 0
     SENSOR = 1
     DOORBELL = 12
 
@@ -211,3 +212,21 @@ class G90AlertStateChangeTypes(IntEnum):
     LOW_BATTERY = 6
     WIFI_CONNECTED = 7
     WIFI_DISCONNECTED = 8
+
+
+class G90HistoryStates(IntEnum):
+    """
+    Defines possible states for history entities.
+    """
+    DOOR_CLOSE = 1
+    DOOR_OPEN = 2
+    TAMPER = 3
+    ALARM = 4
+    AC_POWER_FAILURE = 5
+    AC_POWER_RECOVER = 6
+    DISARM = 7
+    ARM_AWAY = 8
+    ARM_HOME = 9
+    LOW_BATTERY = 10
+    WIFI_CONNECTED = 11
+    WIFI_DISCONNECTED = 12
