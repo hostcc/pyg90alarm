@@ -287,9 +287,20 @@ class G90DeviceNotifications:
                 self._notifications_host, self._notifications_port
             ))
 
+    @property
+    def listener_started(self):
+        """
+        Indicates if the listener of the device notifications has been started.
+
+        :rtype: bool
+        """
+        return self._notification_transport is not None
+
     def close(self):
         """
         Closes the listener.
         """
         if self._notification_transport:
+            _LOGGER.debug('No longer listening for device notifications')
             self._notification_transport.close()
+            self._notification_transport = None

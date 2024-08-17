@@ -493,6 +493,51 @@ async def test_history(mock_device):
 
 
 @pytest.mark.g90device(sent_data=[
+    # The history records will be used to remember the timestamp of most recent
+    # one
+    b'ISTART[200,[[1,1,1],'
+    b'[2,5,0,0,"",1630142871,""]'
+    b']]IEND\0',
+    # The records will be used to simulate the device alerts, but only for
+    # those newer that one above
+    b'ISTART[200,[[3,1,3],'
+    b'[3,33,7,254,"Sensor 1",1630147285,""],'
+    b'[2,3,0,0,"",1630142877,""],'
+    b'[2,5,0,0,"",1630142871,""]'
+    b']]IEND\0',
+    # Simulated list of devices, will be used by alarm callback
+    b'ISTART[102,'
+    b'[[2,1,2],'
+    b'["Sensor 1",33,0,138,0,0,33,0,0,17,1,0,""],'
+    b'["Sensor 2",100,0,138,0,0,33,0,0,17,1,0,""]'
+    b']]IEND\0',
+])
+async def test_simulate_alerts_from_history(mock_device):
+    # Callback handlers for alarm and arm/disarm, just setting their
+    # corresponding future when called
+    future_alarm = asyncio.get_running_loop().create_future()
+    future_armdisarm = asyncio.get_running_loop().create_future()
+    alarm_cb = MagicMock()
+    alarm_cb.side_effect = lambda *args: future_alarm.set_result(True)
+    armdisarm_cb = MagicMock()
+    armdisarm_cb.side_effect = lambda *args: future_armdisarm.set_result(True)
+
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    g90.alarm_callback = alarm_cb
+    g90.armdisarm_callback = armdisarm_cb
+    # Simulate device notifications from the history data above
+    await g90.start_simulating_alerts_from_history()
+    # Both callbacks should be called, wait for that
+    await asyncio.wait([future_alarm, future_armdisarm], timeout=0.1)
+    # Stop simulating the alert from history
+    await g90.stop_simulating_alerts_from_history()
+
+    # Ensure callbacks have been called and with expected arguments
+    alarm_cb.assert_called_once_with(33, 'Sensor 1', None)
+    armdisarm_cb.assert_called_once_with(3)
+
+
+@pytest.mark.g90device(sent_data=[
     b'ISTART[117,[1]]IEND\0',
 ])
 async def test_alert_config(mock_device):

@@ -48,7 +48,7 @@ G90HostInfo(host_guid='<...>',
             wifi_signal_level=100)
 
 """
-
+import asyncio
 import logging
 from .const import (
     G90Commands, REMOTE_PORT,
@@ -113,6 +113,8 @@ class G90Alarm(G90DeviceNotifications):
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config = None
         self._sms_alert_when_armed = False
+        self._alert_simulation_task = None
+        self._alert_simulation_start_listener_back = False
 
     async def command(self, code, data=None):
         """
@@ -406,8 +408,13 @@ class G90Alarm(G90DeviceNotifications):
         """
         res = self.paginated_result(G90Commands.GETHISTORY,
                                     start, count)
-        history = [G90History(*x.data) async for x in res]
-        return history
+
+        # Sort the history entries from older to newer - device typically does
+        # that, but apparently that is not guaranteed
+        return sorted(
+            [G90History(*x.data) async for x in res],
+            key=lambda x: x.datetime, reverse=True
+        )
 
     async def on_sensor_activity(self, idx, name, occupancy=True):
         """
@@ -669,3 +676,108 @@ class G90Alarm(G90DeviceNotifications):
     @sms_alert_when_armed.setter
     def sms_alert_when_armed(self, value):
         self._sms_alert_when_armed = value
+
+    async def start_simulating_alerts_from_history(
+        self, interval=5, history_depth=5
+    ):
+        """
+        Starts the separate task to simulate device alerts from history
+        entries.
+
+        The listener for device notifications will be stopped, so device
+        notifications will not be processed thus resulting in possible
+        duplicated if those could be received from the network.
+
+        :param int interval: Interval (in seconds) between polling for newer
+          history entities
+        :param int history_depth: Amount of history entries to fetch during
+          each polling cycle
+        """
+        # Remember if device notifications listener has been started already
+        self._alert_simulation_start_listener_back = self.listener_started
+        # And then stop it
+        self.close()
+
+        # Start the task
+        self._alert_simulation_task = asyncio.create_task(
+            self._simulate_alerts_from_history(interval, history_depth)
+        )
+
+    async def stop_simulating_alerts_from_history(self):
+        """
+        Stops the task simulating device alerts from history entries.
+
+        The listener for device notifications will be started back, if it was
+        running when simulation has been started.
+        """
+        # Stop the task simulating the device alerts from history if it was
+        # running
+        if self._alert_simulation_task:
+            self._alert_simulation_task.cancel()
+            self._alert_simulation_task = None
+
+        # Start device notifications listener back if it was running when
+        # simulated alerts have been enabled
+        if self._alert_simulation_start_listener_back:
+            await self.listen()
+
+    async def _simulate_alerts_from_history(self, interval, history_depth):
+        """
+        Periodically fetches history entries from the device and simulates
+        device alerts off of those.
+
+        Only the history entries occur after the process is started are
+        handled, to avoid triggering callbacks retrospectively.
+
+        See :method:`start_simulating_alerts_from_history` for the parameters.
+        """
+        last_history_ts = None
+
+        _LOGGER.debug(
+            'Simulating device alerts from history:'
+            ' interval %s, history depth %s',
+            interval, history_depth
+        )
+        while True:
+            # Retrieve the history entries of the specified amount - full
+            # history retrieval might be an unnecessary long operation
+            history = await self.history(count=history_depth)
+
+            # Initial iteration where no timestamp of most recent history entry
+            # is recorded - do that and skip to next iteration, since it isn't
+            # yet known what entries would be considered as new ones
+            if not last_history_ts:
+                # First entry in the list is assumed to be the most recent one
+                last_history_ts = history[0].datetime
+                _LOGGER.debug(
+                    'Initial time stamp of last history entry: %s',
+                    last_history_ts
+                )
+                continue
+
+            # Process history entries from older to newer to preserve the order
+            # of happenings
+            for item in reversed(history):
+                # Process only the entries newer than one been recorded as most
+                # recent one
+                if item.datetime > last_history_ts:
+                    _LOGGER.debug(
+                        'Found newer history entry: %s, simulating alert',
+                        repr(item)
+                    )
+                    # Send the history entry down the device notification code
+                    # as alert, as if it came from the device and its
+                    # notifications port
+                    self._handle_alert(
+                        (self._host, self._notifications_port),
+                        item.as_device_alert()
+                    )
+
+                    # Record the entry as most recent one
+                    last_history_ts = item.datetime
+                    _LOGGER.debug(
+                        'Time stamp of last history entry: %s', last_history_ts
+                    )
+
+            # Sleep to next iteration
+            await asyncio.sleep(interval)
