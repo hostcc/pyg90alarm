@@ -289,9 +289,11 @@ class G90DeviceNotifications:
 
     @property
     def listener_started(self):
-        '''
-        tbd
-        '''
+        """
+        Indicates if the listener of the device notifications has been started.
+
+        :rtype: bool
+        """
         return self._notification_transport is not None
 
     def close(self):
@@ -299,6 +301,6 @@ class G90DeviceNotifications:
         Closes the listener.
         """
         if self._notification_transport:
-            _LOGGER.debug('No longer listenting for device notifications')
+            _LOGGER.debug('No longer listening for device notifications')
             self._notification_transport.close()
             self._notification_transport = None
