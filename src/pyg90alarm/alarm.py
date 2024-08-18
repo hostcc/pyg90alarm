@@ -72,6 +72,7 @@ from .config import (G90AlertConfig, G90AlertConfigFlags)
 from .history import G90History
 from .user_data_crc import G90UserDataCRC
 from .callback import G90Callback
+from .exceptions import G90Error, G90TimeoutError
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -739,45 +740,62 @@ class G90Alarm(G90DeviceNotifications):
             interval, history_depth
         )
         while True:
-            # Retrieve the history entries of the specified amount - full
-            # history retrieval might be an unnecessary long operation
-            history = await self.history(count=history_depth)
+            try:
+                # Retrieve the history entries of the specified amount - full
+                # history retrieval might be an unnecessary long operation
+                history = await self.history(count=history_depth)
 
-            # Initial iteration where no timestamp of most recent history entry
-            # is recorded - do that and skip to next iteration, since it isn't
-            # yet known what entries would be considered as new ones
-            if not last_history_ts:
-                # First entry in the list is assumed to be the most recent one
-                last_history_ts = history[0].datetime
+                # Initial iteration where no timestamp of most recent history
+                # entry is recorded - do that and skip to next iteration, since
+                # it isn't yet known what entries would be considered as new
+                # ones.
+                # Empty history will skip recording the timestamp and the
+                # looping over entries below, effectively skipping to next
+                # iteration
+                if not last_history_ts and history:
+                    # First entry in the list is assumed to be the most recent
+                    # one
+                    last_history_ts = history[0].datetime
+                    _LOGGER.debug(
+                        'Initial time stamp of last history entry: %s',
+                        last_history_ts
+                    )
+                    continue
+
+                # Process history entries from older to newer to preserve the
+                # order of happenings
+                for item in reversed(history):
+                    # Process only the entries newer than one been recorded as
+                    # most recent one
+                    if item.datetime > last_history_ts:
+                        _LOGGER.debug(
+                            'Found newer history entry: %s, simulating alert',
+                            repr(item)
+                        )
+                        # Send the history entry down the device notification
+                        # code as alert, as if it came from the device and its
+                        # notifications port
+                        self._handle_alert(
+                            (self._host, self._notifications_port),
+                            item.as_device_alert()
+                        )
+
+                        # Record the entry as most recent one
+                        last_history_ts = item.datetime
+                        _LOGGER.debug(
+                            'Time stamp of last history entry: %s',
+                            last_history_ts
+                        )
+            except (G90Error, G90TimeoutError) as exc:
                 _LOGGER.debug(
-                    'Initial time stamp of last history entry: %s',
-                    last_history_ts
+                    'Error interacting with device, ignoring %s', repr(exc)
                 )
-                continue
-
-            # Process history entries from older to newer to preserve the order
-            # of happenings
-            for item in reversed(history):
-                # Process only the entries newer than one been recorded as most
-                # recent one
-                if item.datetime > last_history_ts:
-                    _LOGGER.debug(
-                        'Found newer history entry: %s, simulating alert',
-                        repr(item)
-                    )
-                    # Send the history entry down the device notification code
-                    # as alert, as if it came from the device and its
-                    # notifications port
-                    self._handle_alert(
-                        (self._host, self._notifications_port),
-                        item.as_device_alert()
-                    )
-
-                    # Record the entry as most recent one
-                    last_history_ts = item.datetime
-                    _LOGGER.debug(
-                        'Time stamp of last history entry: %s', last_history_ts
-                    )
+            except Exception as exc:
+                _LOGGER.error(
+                    'Exception simulating device alerts from history: %s',
+                    repr(exc)
+                )
+                raise exc
 
             # Sleep to next iteration
             await asyncio.sleep(interval)

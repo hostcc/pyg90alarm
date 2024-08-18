@@ -1,6 +1,7 @@
 import asyncio
 import sys
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, DEFAULT
+from itertools import cycle
 import pytest
 sys.path.extend(['src', '../src'])
 from pyg90alarm import (   # noqa:E402
@@ -26,6 +27,9 @@ from pyg90alarm.user_data_crc import (   # noqa:E402
 )
 from pyg90alarm.config import (  # noqa: E402
     G90AlertConfigFlags,
+)
+from pyg90alarm.exceptions import (  # noqa: E402
+    G90TimeoutError,
 )
 
 
@@ -493,6 +497,8 @@ async def test_history(mock_device):
 
 
 @pytest.mark.g90device(sent_data=[
+    # Simulate empty history initially
+    b'ISTART[200,[[0,0,0]]]IEND\0',
     # The history records will be used to remember the timestamp of most recent
     # one
     b'ISTART[200,[[1,1,1],'
@@ -525,16 +531,45 @@ async def test_simulate_alerts_from_history(mock_device):
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     g90.alarm_callback = alarm_cb
     g90.armdisarm_callback = armdisarm_cb
-    # Simulate device notifications from the history data above
-    await g90.start_simulating_alerts_from_history()
-    # Both callbacks should be called, wait for that
-    await asyncio.wait([future_alarm, future_armdisarm], timeout=0.1)
+    # Simulate device timeout exception every 2nd call to `G90Alarm.history()`
+    # method - the processing should still result in callbacks invoked
+    g90.history = MagicMock(wraps=g90.history)
+    g90.history.side_effect = cycle([G90TimeoutError, DEFAULT])
+    # Simulate device notifications from the history data above, small interval
+    # is set to shorten the test run time
+    await g90.start_simulating_alerts_from_history(interval=0.1)
+    # Both callbacks should be called, wait for that - the timeout should be
+    # sufficient for extra iterations in the method under test, to accommodate
+    # the simulated exceptions above
+    await asyncio.wait([future_alarm, future_armdisarm], timeout=0.5)
     # Stop simulating the alert from history
     await g90.stop_simulating_alerts_from_history()
 
     # Ensure callbacks have been called and with expected arguments
     alarm_cb.assert_called_once_with(33, 'Sensor 1', None)
     armdisarm_cb.assert_called_once_with(3)
+
+
+async def test_simulate_alerts_from_history_exception(mock_device, caplog):
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    # Simulate a generic error fetching history entries
+    g90.history = MagicMock()
+    simulated_error = Exception('dummy error')
+    g90.history.side_effect = simulated_error
+    caplog.set_level('WARNING')
+    # Start simulating alerts from history
+    await g90.start_simulating_alerts_from_history()
+    # Allow task to settle
+    await asyncio.sleep(0.1)
+    # Verify the task is no longer running and resulted in particular exception
+    assert g90._alert_simulation_task.exception() == simulated_error
+    assert g90._alert_simulation_task.done()
+    # Stop simulating the alert from history
+    await g90.stop_simulating_alerts_from_history()
+    # Verify the error logged
+    assert ''.join(caplog.messages).startswith(
+        'Exception simulating device alerts from history'
+    )
 
 
 @pytest.mark.g90device(sent_data=[
