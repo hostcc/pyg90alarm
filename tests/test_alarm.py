@@ -550,6 +550,28 @@ async def test_simulate_alerts_from_history(mock_device):
     armdisarm_cb.assert_called_once_with(3)
 
 
+async def test_simulate_alerts_from_history_exception(mock_device, caplog):
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    # Simulate a generic error fetching history entries
+    g90.history = MagicMock()
+    simulated_error = Exception('dummy error')
+    g90.history.side_effect = simulated_error
+    caplog.set_level('WARNING')
+    # Start simulating alerts from history
+    await g90.start_simulating_alerts_from_history()
+    # Allow task to settle
+    await asyncio.sleep(0.1)
+    # Verify the task is no longer running and resulted in particular exception
+    assert g90._alert_simulation_task.exception() == simulated_error
+    assert g90._alert_simulation_task.done()
+    # Stop simulating the alert from history
+    await g90.stop_simulating_alerts_from_history()
+    # Verify the error logged
+    assert ''.join(caplog.messages).startswith(
+        'Exception simulating device alerts from history'
+    )
+
+
 @pytest.mark.g90device(sent_data=[
     b'ISTART[117,[1]]IEND\0',
 ])
