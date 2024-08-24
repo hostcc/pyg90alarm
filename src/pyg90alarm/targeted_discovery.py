@@ -53,17 +53,16 @@ class G90TargetedDiscoveryInfo(NamedTuple):
     wifi_signal_level: str
 
 
-class G90TargetedDiscoveryProtocol:
+class G90TargetedDiscovery(G90Discovery):
     """
     tbd
-
-    :meta private:
     """
-    def __init__(self, device_id: str, parent: 'G90TargetedDiscovery') -> None:
+    # pylint: disable=too-few-public-methods
+    def __init__(self, device_id, **kwargs):
         """
         tbd
         """
-        self._parent = parent
+        super().__init__(**kwargs)
         self._device_id = device_id
 
     def connection_made(self, transport: BaseTransport) -> None:
@@ -76,6 +75,8 @@ class G90TargetedDiscoveryProtocol:
         tbd
         """
 
+    # Implementation of datagram protocol,
+    # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
     def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
         tbd
@@ -93,7 +94,7 @@ class G90TargetedDiscoveryProtocol:
                    'port': addr[1]}
             res.update(host_info._asdict())
             _LOGGER.debug('Discovered device: %s', res)
-            self._parent.add_device(res)
+            self.add_device(res)
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
 
@@ -122,10 +123,3 @@ class G90TargetedDiscovery(G90Discovery):
         tbd
         """
         return bytes(f'IWTAC_PROBE_DEVICE,{self._device_id}\0', 'ascii')
-
-    def _proto_factory(self) -> BaseProtocol:
-        """
-        tbd
-        """
-        proto = G90TargetedDiscoveryProtocol(self._device_id, self)
-        return cast(BaseProtocol, proto)

@@ -124,6 +124,13 @@ set the IP address allocation up.
    status will not be reflected and those will always be reported as inactive,
    since there is no way to read their state in a polled manner.
 
+   To work that limitation around the package now supports simulating device
+   notifications from periodically polling the history it records - the
+   simulation works only for the alerts, not notifications (e.g. notifications
+   include low battery events and alike). This also requires the particular
+   alert to be enabled in the mobile application, otherwise it won't be
+   recorded in the history.
+
 Quick start
 ===========
 

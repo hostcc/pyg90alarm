@@ -184,6 +184,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._subindex = subindex
         self._occupancy = False
         self._state_callback: Optional[G90Callback] = None
+        self._low_battery_callback = None
         self._proto_idx = proto_idx
         self._extra_data: Any = None
 
@@ -230,7 +231,26 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._state_callback = value
 
     @property
-    def occupancy(self) -> bool:
+    def low_battery_callback(self):
+        """
+        Returns callback the sensor might have set for low battery condition.
+
+        :return: Sensor's low battery callback
+        :rtype: object
+        """
+        return self._low_battery_callback
+
+    @low_battery_callback.setter
+    def low_battery_callback(self, value):
+        """
+        Sets callback for the low battery condition reported by the sensor.
+
+        :param object value: Sensor's low battery callback
+        """
+        self._low_battery_callback = value
+
+    @property
+    def occupancy(self):
         """
         Occupancy (occupied/not occupied, or triggered/not triggered)
         for the sensor.

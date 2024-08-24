@@ -48,8 +48,8 @@ G90HostInfo(host_guid='<...>',
             wifi_signal_level=100)
 
 """
-
 from __future__ import annotations
+import asyncio
 import logging
 from typing import Any, List, Optional, Dict, AsyncGenerator
 from .const import (
@@ -74,11 +74,14 @@ from .config import (G90AlertConfig, G90AlertConfigFlags)
 from .history import G90History
 from .user_data_crc import G90UserDataCRC
 from .callback import G90Callback
+from .exceptions import G90Error, G90TimeoutError
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90Alarm:  # pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods
+class G90Alarm(G90DeviceNotifications):
+
     """
     Allows to interact with G90 alarm panel.
 
@@ -94,9 +97,12 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
      simulated to go into inactive state.
     :type reset_occupancy_interval: int, optional
     """
-    # pylint: disable=too-many-instance-attributes
-    def __init__(self, host: str, port: int = REMOTE_PORT,
-                 reset_occupancy_interval: int = 3) -> None:
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
+    def __init__(self, host, port=REMOTE_PORT,
+                 reset_occupancy_interval=3,
+                 notifications_host='0.0.0.0',
+                 notifications_port=NOTIFICATIONS_PORT):
+        super().__init__(host=notifications_host, port=notifications_port)
         self._host = host
         self._port = port
         self._sensors: List[G90Sensor] = []
@@ -106,9 +112,12 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         self._armdisarm_cb: Optional[G90Callback] = None
         self._door_open_close_cb: Optional[G90Callback] = None
         self._alarm_cb: Optional[G90Callback] = None
+        self._low_battery_cb: Optional[G90Callback] = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config: Optional[G90AlertConfigFlags] = None
         self._sms_alert_when_armed = False
+        self._alert_simulation_task = None
+        self._alert_simulation_start_listener_back = False
 
     async def command(
         self, code: int, data: Optional[List[Any]] = None
@@ -410,12 +419,15 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         """
         res = self.paginated_result(G90Commands.GETHISTORY,
                                     start, count)
-        history = [G90History(*x.data) async for x in res]
-        return history
 
-    async def _internal_sensor_cb(
-        self, idx: int, name: str, occupancy: bool = True
-    ) -> None:
+        # Sort the history entries from older to newer - device typically does
+        # that, but apparently that is not guaranteed
+        return sorted(
+            [G90History(*x.data) async for x in res],
+            key=lambda x: x.datetime, reverse=True
+        )
+
+    async def on_sensor_activity(self, idx, name, occupancy=True):
         """
         Callback that invoked both for sensor notifications and door open/close
         alerts, since the logic for both is same and could be reused. Please
@@ -432,6 +444,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
          alerts (only for `door` type sensors, if door open/close alerts are
          enabled)
         """
+        _LOGGER.debug('on_sensor_acitvity: %s %s %s', idx, name, occupancy)
         sensor = await self.find_sensor(idx, name)
         if sensor:
             _LOGGER.debug('Setting occupancy to %s (previously %s)',
@@ -489,19 +502,21 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def sensor_callback(self, value: G90Callback) -> None:
         self._sensor_cb = value
 
-    async def _internal_door_open_close_cb(self, idx, name, is_open) -> None:
+    async def on_door_open_close(self, event_id, zone_name, is_open):
         """
         Callback that invoked when door open/close alert comes from the alarm
         panel. Please note the callback is for internal use by the class.
 
-        .. seealso:: `method`:_internal_sensor_cb for arguments
+        .. seealso:: `method`:on_sensor_activity for arguments
         """
         # Same internal callback is reused both for door open/close alerts and
         # sensor notifications. The former adds reporting when a door is
         # closed, since the notifications aren't sent for such events
-        await self._internal_sensor_cb(idx, name, is_open)
+        await self.on_sensor_activity(event_id, zone_name, is_open)
         # Invoke user specified callback if any
-        G90Callback.invoke(self._door_open_close_cb, idx, name, is_open)
+        G90Callback.invoke(
+            self._door_open_close_cb, event_id, zone_name, is_open
+        )
 
     @property
     def door_open_close_callback(self) -> Optional[G90Callback]:
@@ -521,7 +536,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         """
         self._door_open_close_cb = value
 
-    async def _internal_armdisarm_cb(self, state: G90ArmDisarmTypes) -> None:
+    async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
         """
         Callback that invoked when the device is armed or disarmed. Please note
         the callback is for internal use by the class.
@@ -557,9 +572,7 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def armdisarm_callback(self, value: G90Callback) -> None:
         self._armdisarm_cb = value
 
-    async def _internal_alarm_cb(
-        self, sensor_idx: int, sensor_name: str
-    ) -> None:
+    async def on_alarm(self, event_id: int, zone_name: str) -> None:
         """
         Callback that invoked when alarm is triggered. Fires alarm callback if
         set by the user with `:property:G90Alarm.alarm_callback`.
@@ -568,14 +581,14 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
         :param int: Index of the sensor triggered alarm
         :param str: Sensor name
         """
-        sensor = await self.find_sensor(sensor_idx, sensor_name)
+        sensor = await self.find_sensor(event_id, zone_name)
         # The callback is still delivered to the caller even if the sensor
         # isn't found, only `extra_data` is skipped. That is to ensur the
         # important callback isn't filtered
         extra_data = sensor.extra_data if sensor else None
 
         G90Callback.invoke(
-            self._alarm_cb, sensor_idx, sensor_name, extra_data
+            self._alarm_cb, event_id, zone_name, extra_data
         )
 
     @property
@@ -595,27 +608,49 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     def alarm_callback(self, value: G90Callback) -> None:
         self._alarm_cb = value
 
-    async def listen_device_notifications(
-        self, host: str = '0.0.0.0', port: int = NOTIFICATIONS_PORT
-    ) -> None:
+    async def on_low_battery(self, event_id: int, zone_name: str) -> None:
+        """
+        Callback that invoked when the sensor reports on low battery. Fires
+        corresponding callback if set by the user with
+        `:property:G90Alarm.on_low_battery_callback`.
+        Please note the callback is for internal use by the class.
+
+        :param int: Index of the sensor triggered alarm
+        :param str: Sensor name
+        """
+        sensor = await self.find_sensor(event_id, zone_name)
+        if sensor:
+            # Invoke per-sensor callback if provided
+            G90Callback.invoke(sensor.low_battery_callback)
+
+        G90Callback.invoke(self._low_battery_cb, event_id, zone_name)
+
+    @property
+    def low_battery_callback(self):
+        """
+        Get or set low battery callback, the callback is invoked when sensor
+        the condition is reported by a sensor.
+
+        :type: .. py:function:: ()(idx, name)
+        """
+        return self._low_battery_cb
+
+    @low_battery_callback.setter
+    def low_battery_callback(self, value):
+        self._low_battery_cb = value
+
+    async def listen_device_notifications(self):
         """
         Starts internal listener for device notifications/alerts.
 
         """
-        self._notifications = G90DeviceNotifications(
-            host=host, port=port,
-            sensor_cb=self._internal_sensor_cb,
-            door_open_close_cb=self._internal_door_open_close_cb,
-            armdisarm_cb=self._internal_armdisarm_cb,
-            alarm_cb=self._internal_alarm_cb)
-        await self._notifications.listen()
+        await self.listen()
 
     def close_device_notifications(self) -> None:
         """
         Closes the listener for device notifications/alerts.
         """
-        if self._notifications:
-            self._notifications.close()
+        self.close()
 
     async def arm_away(self) -> None:
         """
@@ -652,3 +687,125 @@ class G90Alarm:  # pylint: disable=too-many-public-methods
     @sms_alert_when_armed.setter
     def sms_alert_when_armed(self, value: bool) -> None:
         self._sms_alert_when_armed = value
+
+    async def start_simulating_alerts_from_history(
+        self, interval=5, history_depth=5
+    ):
+        """
+        Starts the separate task to simulate device alerts from history
+        entries.
+
+        The listener for device notifications will be stopped, so device
+        notifications will not be processed thus resulting in possible
+        duplicated if those could be received from the network.
+
+        :param int interval: Interval (in seconds) between polling for newer
+          history entities
+        :param int history_depth: Amount of history entries to fetch during
+          each polling cycle
+        """
+        # Remember if device notifications listener has been started already
+        self._alert_simulation_start_listener_back = self.listener_started
+        # And then stop it
+        self.close()
+
+        # Start the task
+        self._alert_simulation_task = asyncio.create_task(
+            self._simulate_alerts_from_history(interval, history_depth)
+        )
+
+    async def stop_simulating_alerts_from_history(self):
+        """
+        Stops the task simulating device alerts from history entries.
+
+        The listener for device notifications will be started back, if it was
+        running when simulation has been started.
+        """
+        # Stop the task simulating the device alerts from history if it was
+        # running
+        if self._alert_simulation_task:
+            self._alert_simulation_task.cancel()
+            self._alert_simulation_task = None
+
+        # Start device notifications listener back if it was running when
+        # simulated alerts have been enabled
+        if self._alert_simulation_start_listener_back:
+            await self.listen()
+
+    async def _simulate_alerts_from_history(self, interval, history_depth):
+        """
+        Periodically fetches history entries from the device and simulates
+        device alerts off of those.
+
+        Only the history entries occur after the process is started are
+        handled, to avoid triggering callbacks retrospectively.
+
+        See :method:`start_simulating_alerts_from_history` for the parameters.
+        """
+        last_history_ts = None
+
+        _LOGGER.debug(
+            'Simulating device alerts from history:'
+            ' interval %s, history depth %s',
+            interval, history_depth
+        )
+        while True:
+            try:
+                # Retrieve the history entries of the specified amount - full
+                # history retrieval might be an unnecessary long operation
+                history = await self.history(count=history_depth)
+
+                # Initial iteration where no timestamp of most recent history
+                # entry is recorded - do that and skip to next iteration, since
+                # it isn't yet known what entries would be considered as new
+                # ones.
+                # Empty history will skip recording the timestamp and the
+                # looping over entries below, effectively skipping to next
+                # iteration
+                if not last_history_ts and history:
+                    # First entry in the list is assumed to be the most recent
+                    # one
+                    last_history_ts = history[0].datetime
+                    _LOGGER.debug(
+                        'Initial time stamp of last history entry: %s',
+                        last_history_ts
+                    )
+                    continue
+
+                # Process history entries from older to newer to preserve the
+                # order of happenings
+                for item in reversed(history):
+                    # Process only the entries newer than one been recorded as
+                    # most recent one
+                    if item.datetime > last_history_ts:
+                        _LOGGER.debug(
+                            'Found newer history entry: %s, simulating alert',
+                            repr(item)
+                        )
+                        # Send the history entry down the device notification
+                        # code as alert, as if it came from the device and its
+                        # notifications port
+                        self._handle_alert(
+                            (self._host, self._notifications_port),
+                            item.as_device_alert()
+                        )
+
+                        # Record the entry as most recent one
+                        last_history_ts = item.datetime
+                        _LOGGER.debug(
+                            'Time stamp of last history entry: %s',
+                            last_history_ts
+                        )
+            except (G90Error, G90TimeoutError) as exc:
+                _LOGGER.debug(
+                    'Error interacting with device, ignoring %s', repr(exc)
+                )
+            except Exception as exc:
+                _LOGGER.error(
+                    'Exception simulating device alerts from history: %s',
+                    repr(exc)
+                )
+                raise exc
+
+            # Sleep to next iteration
+            await asyncio.sleep(interval)
