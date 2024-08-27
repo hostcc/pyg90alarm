@@ -396,7 +396,9 @@ async def test_door_open_close_callback(mock_device):
         b'["Hall",100,0,1,1,0,32,0,0,16,1,0,""],'
         b'["Room",101,0,1,1,0,32,0,0,16,1,0,""]'
         b']]IEND\0',
-
+        # Alert configuration, used by sensor activity callback invoked when
+        # handling alarm
+        b'ISTART[117,[256]]IEND\0',
     ],
     notification_data=[
         b'[208,[3,100,1,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
@@ -425,6 +427,8 @@ async def test_alarm_callback(mock_device):
     await asyncio.wait([future], timeout=0.1)
     # Verify extra data is passed to the callback
     alarm_cb.assert_called_once_with(100, 'Hall', 'Dummy extra data')
+    # Verify the triggering sensor is set to active
+    assert sensors[0].occupancy is True
 
     # Simulate alarm for sensor with no extra data
     alarm_cb.reset_mock()
@@ -433,6 +437,8 @@ async def test_alarm_callback(mock_device):
     await asyncio.wait([future], timeout=0.1)
     # Verify no extra data is passed to the callback
     alarm_cb.assert_called_once_with(101, 'Room', None)
+    # Verify the triggering sensor is set to active
+    assert sensors[0].occupancy is True
 
     # Simulate alarm for non-existent sensor
     alarm_cb.reset_mock()
@@ -517,6 +523,9 @@ async def test_history(mock_device):
     b'["Sensor 1",33,0,138,0,0,33,0,0,17,1,0,""],'
     b'["Sensor 2",100,0,138,0,0,33,0,0,17,1,0,""]'
     b']]IEND\0',
+    # Alert configuration, used by sensor activity callback invoked when
+    # handling alarm
+    b'ISTART[117,[256]]IEND\0',
 ])
 async def test_simulate_alerts_from_history(mock_device):
     # Callback handlers for alarm and arm/disarm, just setting their
@@ -545,9 +554,11 @@ async def test_simulate_alerts_from_history(mock_device):
     # Stop simulating the alert from history
     await g90.stop_simulating_alerts_from_history()
 
+    sensors = await g90.get_sensors()
     # Ensure callbacks have been called and with expected arguments
     alarm_cb.assert_called_once_with(33, 'Sensor 1', None)
     armdisarm_cb.assert_called_once_with(3)
+    assert sensors[0].occupancy is True
 
 
 async def test_simulate_alerts_from_history_exception(mock_device, caplog):
