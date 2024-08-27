@@ -444,7 +444,7 @@ class G90Alarm(G90DeviceNotifications):
          alerts (only for `door` type sensors, if door open/close alerts are
          enabled)
         """
-        _LOGGER.debug('on_sensor_acitvity: %s %s %s', idx, name, occupancy)
+        _LOGGER.debug('on_sensor_activity: %s %s %s', idx, name, occupancy)
         sensor = await self.find_sensor(idx, name)
         if sensor:
             _LOGGER.debug('Setting occupancy to %s (previously %s)',
@@ -583,9 +583,15 @@ class G90Alarm(G90DeviceNotifications):
         """
         sensor = await self.find_sensor(event_id, zone_name)
         # The callback is still delivered to the caller even if the sensor
-        # isn't found, only `extra_data` is skipped. That is to ensur the
+        # isn't found, only `extra_data` is skipped. That is to ensure the
         # important callback isn't filtered
         extra_data = sensor.extra_data if sensor else None
+        # Invoke the sensor activity callback to set the sensor occupancy if
+        # sensor is known, but only if that isn't already set - it helps when
+        # device notifications on triggerring sensor's activity aren't receveid
+        # by a reason
+        if sensor and not sensor.occupancy:
+            await self.on_sensor_activity(event_id, zone_name, True)
 
         G90Callback.invoke(
             self._alarm_cb, event_id, zone_name, extra_data
