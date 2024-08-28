@@ -50,7 +50,6 @@ class G90AlertConfig(NamedTuple):
     @property
     def flags(self) -> G90AlertConfigFlags:
         """
-        :return: Instance of :class:`G90AlertConfigFlags` that provides
-         symbolic names to corresponding flag bits
+        :return: Symbolic names for corresponding flag bits
         """
         return G90AlertConfigFlags(self.flags_data)

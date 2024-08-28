@@ -89,8 +89,6 @@ class G90History:
     def datetime(self) -> datetime:
         """
         Date/time of the history entry.
-
-        :rtype: :class:`datetime.datetime`
         """
         return datetime.fromtimestamp(
             self._protocol_data.unix_time, tz=timezone.utc
@@ -100,8 +98,6 @@ class G90History:
     def type(self) -> G90AlertTypes:
         """
         Type of the history entry.
-
-        :rtype: :class:`.G90AlertTypes`
         """
         return G90AlertTypes(self._protocol_data.type)
 
@@ -109,8 +105,6 @@ class G90History:
     def state(self) -> G90HistoryStates:
         """
         State for the history entry.
-
-        :rtype: :class:`.G90HistoryStates`
         """
         # Door open/close type, mapped against `G90AlertStates` using `state`
         # incoming field
@@ -143,8 +137,6 @@ class G90History:
     def source(self) -> G90AlertSources:
         """
         Source of the history entry.
-
-        :rtype: :class:`.G90AlertSources`
         """
         # Device state changes or open/close events are mapped against
         # `G90AlertSources` using `source` incoming field
@@ -166,8 +158,6 @@ class G90History:
         """
         Name of the sensor related to the history entry, might be empty if none
         associated.
-
-        :rtype: str|None
         """
         return self._protocol_data.sensor_name or None
 
@@ -176,8 +166,6 @@ class G90History:
         """
         ID of the sensor related to the history entry, might be empty if none
         associated.
-
-        :rtype: str|None
         """
         # Sensor ID will only be available if entry source is a sensor
         if self.source == G90AlertSources.SENSOR:
@@ -189,8 +177,6 @@ class G90History:
         """
         Returns the history entry represented as device alert structure,
         suitable for :meth:`G90DeviceNotifications._handle_alert`.
-
-        :rtype: :class:`.G90DeviceAlert`
         """
         return G90DeviceAlert(
             type=self._protocol_data.type,
@@ -207,8 +193,6 @@ class G90History:
     def __repr__(self) -> str:
         """
         Textural representation of the history entry.
-
-        :rtype: str
         """
         return f'type={repr(self.type)}' \
             + f' source={repr(self.source)}' \

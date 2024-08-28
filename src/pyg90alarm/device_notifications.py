@@ -313,8 +313,6 @@ class G90DeviceNotifications(DatagramProtocol):
     def listener_started(self) -> bool:
         """
         Indicates if the listener of the device notifications has been started.
-
-        :rtype: bool
         """
         return self._notification_transport is not None
 

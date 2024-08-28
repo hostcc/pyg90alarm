@@ -69,8 +69,6 @@ class G90HostInfo(NamedTuple):
         """
         Translates the GSM module status received from the device into
         corresponding enum.
-
-        :return: :class:`G90HostInfoGsmStatus`
         """
         return G90HostInfoGsmStatus(self.gsm_status_data)
 
@@ -79,7 +77,5 @@ class G90HostInfo(NamedTuple):
         """
         Translates the Wifi module status received from the device into
         corresponding enum.
-
-        :return: :class:`G90HostInfoWifiStatus`
         """
         return G90HostInfoWifiStatus(self.wifi_status_data)

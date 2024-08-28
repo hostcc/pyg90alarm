@@ -93,10 +93,8 @@ class G90Alarm(G90DeviceNotifications):
     :param port: The UDP port of the device where it listens for the
      protocol commands on WiFi interface, currently the devices don't allow it
      to be customized
-    :type port: int, optional
     :param reset_occupancy_interval: The interval upon that the sensors are
      simulated to go into inactive state.
-    :type reset_occupancy_interval: int, optional
     """
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self, host: str, port: int = REMOTE_PORT,
@@ -157,7 +155,6 @@ class G90Alarm(G90DeviceNotifications):
         using global broadcast address as the destination.
 
         :return: List of discovered devices
-        :rtype: list[{'guid', 'host', 'port'}]
         """
         cmd: G90Discovery = await G90Discovery(
             port=REMOTE_PORT,
@@ -198,7 +195,6 @@ class G90Alarm(G90DeviceNotifications):
         reflect any updates there.
 
         :return: List of sensors
-        :rtype: list(:class:`.G90Sensor`)
         """
         if not self._sensors:
             sensors = self.paginated_result(
@@ -257,7 +253,6 @@ class G90Alarm(G90DeviceNotifications):
         resulting entries.
 
         :return: List of devices
-        :rtype: list(:class:`.G90Device`)
         """
         if not self._devices:
             devices = self.paginated_result(
@@ -296,7 +291,6 @@ class G90Alarm(G90DeviceNotifications):
         levels etc.).
 
         :return: Device information
-        :rtype: Instance of :class:`.G90HostInfo`
         """
         res = await self.command(G90Commands.GETHOSTINFO)
         return G90HostInfo(*res)
@@ -315,7 +309,6 @@ class G90Alarm(G90DeviceNotifications):
         phone number, product name etc.).
 
         :return: Device information
-        :rtype: Instance of :class:`.G90HostStatus`
 
         """
         res = await self.command(G90Commands.GETHOSTSTATUS)
@@ -335,8 +328,7 @@ class G90Alarm(G90DeviceNotifications):
         the configuration is cached upon first call, so you need to
         re-instantiate the class to reflect any updates there.
 
-        :return: Instance of :class:`.G90AlertConfigFlags` containing the
-         alerts configured
+        :return: The alerts configured
         """
         if not self._alert_config:
             self._alert_config = await self._alert_config_uncached()
@@ -346,8 +338,7 @@ class G90Alarm(G90DeviceNotifications):
         """
         Retrieves the alert configuration flags directly from the device.
 
-        :return: Instance of :class:`.G90AlertConfigFlags` containing the
-         alerts configured
+        :return: The alerts configured
         """
         res = await self.command(G90Commands.GETNOTICEFLAG)
         return G90AlertConfig(*res).flags
@@ -390,8 +381,7 @@ class G90Alarm(G90DeviceNotifications):
         .. note:: Note that due to a bug in the firmware CRC for sensos and
           device databases change on each call even if there were no changes
 
-        :return: Instance of :class:`.G90UserDataCRC` containing checksums for
-          different databases
+        :return: Checksums for different databases
         """
         res = await self.command(G90Commands.GETUSERDATACRC)
         return G90UserDataCRC(*res)
@@ -484,8 +474,6 @@ class G90Alarm(G90DeviceNotifications):
         """
         Get or set sensor activity callback, the callback is invoked when
         sensor activates.
-
-        :type: .. py:function:: ()(idx, name, occupancy)
         """
         return self._sensor_cb
 
@@ -500,7 +488,7 @@ class G90Alarm(G90DeviceNotifications):
         Callback that invoked when door open/close alert comes from the alarm
         panel. Please note the callback is for internal use by the class.
 
-        .. seealso:: `method`:on_sensor_activity for arguments
+        .. seealso:: `meth`:on_sensor_activity for arguments
         """
         # Same internal callback is reused both for door open/close alerts and
         # sensor notifications. The former adds reporting when a door is
@@ -517,8 +505,6 @@ class G90Alarm(G90DeviceNotifications):
         Get or set door open/close callback, the callback is invoked when door
         is opened or closed (if corresponding alert is configured on the
         device).
-
-        :type: .. py:function:: ()(idx: int, name: str, is_open: bool)
         """
         return self._door_open_close_cb
 
@@ -555,8 +541,6 @@ class G90Alarm(G90DeviceNotifications):
         """
         Get or set device arm/disarm callback, the callback is invoked when
         device state changes.
-
-        :type: .. py:function:: ()(state: :class:`.G90ArmDisarmTypes`)
         """
         return self._armdisarm_cb
 
@@ -594,11 +578,6 @@ class G90Alarm(G90DeviceNotifications):
         """
         Get or set device alarm callback, the callback is invoked when
         device alarm triggers.
-
-        :type:
-          .. py:function:: ()(
-            sensor_idx: int, sensor_name: str, extra_data: str|None
-          )
         """
         return self._alarm_cb
 
@@ -628,8 +607,6 @@ class G90Alarm(G90DeviceNotifications):
         """
         Get or set low battery callback, the callback is invoked when sensor
         the condition is reported by a sensor.
-
-        :type: .. py:function:: ()(idx, name)
         """
         return self._low_battery_cb
 
@@ -740,7 +717,7 @@ class G90Alarm(G90DeviceNotifications):
         Only the history entries occur after the process is started are
         handled, to avoid triggering callbacks retrospectively.
 
-        See :method:`start_simulating_alerts_from_history` for the parameters.
+        See :meth:`start_simulating_alerts_from_history` for the parameters.
         """
         last_history_ts = None
 
