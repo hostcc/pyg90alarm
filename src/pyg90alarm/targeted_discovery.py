@@ -23,9 +23,8 @@ Discovers G90 alarm panel devices with specific ID.
 """
 
 import logging
-from typing import NamedTuple, Any, Tuple, cast
+from typing import NamedTuple, Tuple, Any, Optional
 from asyncio.transports import BaseTransport
-from asyncio.protocols import BaseProtocol
 from .discovery import G90Discovery
 from .exceptions import G90Error
 
@@ -58,7 +57,7 @@ class G90TargetedDiscovery(G90Discovery):
     tbd
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, device_id, **kwargs):
+    def __init__(self, device_id: str, **kwargs: Any):
         """
         tbd
         """
@@ -70,7 +69,7 @@ class G90TargetedDiscovery(G90Discovery):
         tbd
         """
 
-    def connection_lost(self, exc: Exception) -> None:
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         """
         tbd
         """
@@ -102,21 +101,6 @@ class G90TargetedDiscovery(G90Discovery):
         """
         tbd
         """
-
-
-class G90TargetedDiscovery(G90Discovery):
-    """
-    tbd
-    """
-
-    # pylint: disable=too-few-public-methods
-    def __init__(self, device_id: str, **kwargs: Any) -> None:
-        """
-        tbd
-        """
-
-        super().__init__(**kwargs)
-        self._device_id = device_id
 
     def to_wire(self) -> bytes:
         """

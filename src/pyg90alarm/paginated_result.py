@@ -27,6 +27,7 @@ import logging
 from typing import Any, Optional, AsyncGenerator, Iterable, cast, NamedTuple
 from .paginated_cmd import G90PaginatedCommand
 from .const import (
+    G90Commands,
     CMD_PAGE_SIZE,
 )
 
@@ -47,7 +48,7 @@ class G90PaginatedResult:
     """
     # pylint: disable=too-few-public-methods
     def __init__(
-        self, host: str, port: int, code: int, start: int = 1,
+        self, host: str, port: int, code: G90Commands, start: int = 1,
         end: Optional[int] = None, **kwargs: Any
     ):
         # pylint: disable=too-many-arguments
@@ -79,7 +80,7 @@ class G90PaginatedResult:
 
             _LOGGER.debug('Invoking paginated command for %s..%s range',
                           start, end)
-            cmd: G90PaginatedCommand = await G90PaginatedCommand(
+            cmd = await G90PaginatedCommand(
                 host=self._host, port=self._port, code=self._code,
                 start=start, end=end,
                 **self._kwargs

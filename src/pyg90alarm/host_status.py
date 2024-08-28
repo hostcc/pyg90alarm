@@ -29,7 +29,7 @@ class G90HostStatus(NamedTuple):
     """
     tbd
     """
-    host_status: str
+    host_status: int
     host_phone_number: str
     product_name: str
     mcu_hw_version: str

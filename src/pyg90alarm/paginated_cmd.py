@@ -21,12 +21,13 @@
 """
 Implements paginated command for G90 alarm panel protocol.
 """
-
+from __future__ import annotations
 import logging
-from typing import Any, List
+from typing import Any, cast
 from typing import NamedTuple
-from .base_cmd import G90BaseCommand
+from .base_cmd import G90BaseCommand, G90BaseCommandData
 from .exceptions import G90Error
+from .const import G90Commands
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -47,7 +48,7 @@ class G90PaginatedCommand(G90BaseCommand):
     tbd
     """
     def __init__(
-        self, host: str, port: int, code: int, start: int, end: int,
+        self, host: str, port: int, code: G90Commands, start: int, end: int,
         **kwargs: Any
     ) -> None:
         """
@@ -88,7 +89,7 @@ class G90PaginatedCommand(G90BaseCommand):
         tbd
         """
         super()._parse(data)
-        resp_data: List[Any] = self._resp.data or []
+        resp_data: G90BaseCommandData = self._resp.data or []
         try:
             page_data = resp_data.pop(0)
             page_info = G90PaginationFields(*page_data)
@@ -125,3 +126,9 @@ class G90PaginatedCommand(G90BaseCommand):
         _LOGGER.debug('Paginated command response: '
                       'total records %s, start record %s, record count %s',
                       page_info.total, page_info.start, page_info.nelems)
+
+    async def process(self) -> G90PaginatedCommand:
+        """
+        tbd
+        """
+        return cast(G90PaginatedCommand, await super().process())

@@ -21,8 +21,8 @@
 """
 History protocol entity.
 """
-rom datetime import datetime, timezone
-from collections import namedtuple
+from typing import Any, NamedTuple, Optional
+from datetime import datetime, timezone
 from .const import (
     G90AlertTypes,
     G90AlertSources,
@@ -64,28 +64,29 @@ states_mapping = {
         G90HistoryStates.WIFI_DISCONNECTED,
 }
 
-INCOMING_FIELDS = [
-    'type',
-    'event_id',
-    'source',
-    'state',
-    'sensor_name',
-    'unix_time',
-    'other',
-]
-# Class representing the data incoming from the device
-ProtocolData = namedtuple('ProtocolData', INCOMING_FIELDS)
+
+class ProtocolData(NamedTuple):
+    """
+    Class representing the data incoming from the device
+    """
+    type: G90AlertTypes
+    event_id: G90AlertStateChangeTypes
+    source: G90AlertSources
+    state: int
+    sensor_name: str
+    unix_time: int
+    other: str
 
 
 class G90History:
     """
     tbd
     """
-    def __init__(self, *args, **kwargs):
-        self._protocol_data = ProtocolData(*args, **kwargs)
+    def __init__(self, *args: Any):
+        self._protocol_data = ProtocolData(*args)
 
     @property
-    def datetime(self) -> str:
+    def datetime(self) -> datetime:
         """
         Date/time of the history entry.
 
@@ -96,7 +97,7 @@ class G90History:
         )
 
     @property
-    def type(self):
+    def type(self) -> G90AlertTypes:
         """
         Type of the history entry.
 
@@ -105,7 +106,7 @@ class G90History:
         return G90AlertTypes(self._protocol_data.type)
 
     @property
-    def state(self):
+    def state(self) -> G90HistoryStates:
         """
         State for the history entry.
 
@@ -139,7 +140,7 @@ class G90History:
         )
 
     @property
-    def source(self):
+    def source(self) -> G90AlertSources:
         """
         Source of the history entry.
 
@@ -161,7 +162,7 @@ class G90History:
         return G90AlertSources.DEVICE
 
     @property
-    def sensor_name(self):
+    def sensor_name(self) -> Optional[str]:
         """
         Name of the sensor related to the history entry, might be empty if none
         associated.
@@ -171,7 +172,7 @@ class G90History:
         return self._protocol_data.sensor_name or None
 
     @property
-    def sensor_idx(self):
+    def sensor_idx(self) -> Optional[int]:
         """
         ID of the sensor related to the history entry, might be empty if none
         associated.
@@ -184,7 +185,7 @@ class G90History:
 
         return None
 
-    def as_device_alert(self):
+    def as_device_alert(self) -> G90DeviceAlert:
         """
         Returns the history entry represented as device alert structure,
         suitable for :meth:`G90DeviceNotifications._handle_alert`.
@@ -197,9 +198,9 @@ class G90History:
             source=self._protocol_data.source,
             state=self._protocol_data.state,
             zone_name=self._protocol_data.sensor_name,
-            device_id=None,
+            device_id='',
             unix_time=self._protocol_data.unix_time,
-            resv4=None,
+            resv4=0,
             other=self._protocol_data.other
         )
 

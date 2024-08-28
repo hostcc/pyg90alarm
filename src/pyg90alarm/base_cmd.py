@@ -21,19 +21,20 @@
 """
 Provides support for basic commands of G90 alarm panel.
 """
-
+from __future__ import annotations
 import logging
 import json
 import asyncio
 from asyncio import Future
-from asyncio.protocols import BaseProtocol
-from asyncio.transports import DatagramTransport
-from typing import NamedTuple, Optional, Any, cast, Tuple, List, TypeVar, Self
+from asyncio.protocols import DatagramProtocol
+from asyncio.transports import DatagramTransport, BaseTransport
+from typing import NamedTuple, Optional, Any, Tuple, List
 from .exceptions import (G90Error, G90TimeoutError)
+from .const import G90Commands
 
 
 _LOGGER = logging.getLogger(__name__)
-G90BaseCommandResult = List[Any]
+G90BaseCommandData = List[Any]
 
 
 class G90Header(NamedTuple):
@@ -43,10 +44,10 @@ class G90Header(NamedTuple):
     :meta private:
     """
     code: Optional[int] = None
-    data: Optional[List[Any]] = None
+    data: Optional[G90BaseCommandData] = None
 
 
-class G90BaseCommand:
+class G90BaseCommand(DatagramProtocol):
     """
     tbd
     """
@@ -54,8 +55,8 @@ class G90BaseCommand:
     # Lock need to be shared across all of the class instances
     _sk_lock = asyncio.Lock()
 
-    def __init__(self, host: str, port: int, code: int,
-                 data: Optional[List[Any]] = None,
+    def __init__(self, host: str, port: int, code: G90Commands,
+                 data: Optional[G90BaseCommandData] = None,
                  local_port: Optional[int] = None,
                  timeout: float = 3.0, retries: int = 3) -> None:
         """
@@ -69,8 +70,10 @@ class G90BaseCommand:
         self._timeout = timeout
         self._retries = retries
         self._data = '""'
-        self._result: G90BaseCommandResult = []
-        self._connection_result = None
+        self._result: G90BaseCommandData = []
+        self._connection_result: Optional[
+            Future[Tuple[str, int, bytes]]
+        ] = None
         if data:
             self._data = json.dumps([code, data],
                                     # No newlines to be inserted
@@ -81,12 +84,12 @@ class G90BaseCommand:
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
-    def connection_made(self, transport: DatagramTransport) -> None:
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         tbd
         """
 
-    def connection_lost(self, exc: Exception) -> None:
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         """
         tbd
         """
@@ -114,7 +117,7 @@ class G90BaseCommand:
             self._connection_result.set_exception(exc)
 
     async def _create_connection(self) -> (
-        Tuple[DatagramTransport, G90DeviceProtocol]
+        Tuple[DatagramTransport, DatagramProtocol]
     ):
         """
         tbd
@@ -136,7 +139,7 @@ class G90BaseCommand:
             allow_broadcast=True,
             local_addr=local_addr)
 
-        return (transport, cast(G90DeviceProtocol, protocol))
+        return (transport, protocol)
 
     def to_wire(self) -> bytes:
         """
@@ -147,7 +150,7 @@ class G90BaseCommand:
         _LOGGER.debug('Encoded to wire format %s', wire)
         return wire
 
-    def from_wire(self, data: bytes) -> List[Any]:
+    def from_wire(self, data: bytes) -> G90BaseCommandData:
         """
         tbd
         """
@@ -194,7 +197,7 @@ class G90BaseCommand:
                     f"{self._resp.code}, expected code {self._code}")
 
     @property
-    def result(self) -> G90BaseCommandResult:
+    def result(self) -> G90BaseCommandData:
         """
         tbd
         """
@@ -214,7 +217,7 @@ class G90BaseCommand:
         """
         return self._remote_port
 
-    async def process(self) -> Self:
+    async def process(self) -> G90BaseCommand:
         """
         tbd
         """
@@ -223,10 +226,7 @@ class G90BaseCommand:
         attempts = self._retries
         while True:
             attempts = attempts - 1
-            try:
-                loop = asyncio.get_running_loop()
-            except AttributeError:
-                loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             self._connection_result = loop.create_future()
             async with self._sk_lock:
                 _LOGGER.debug('(code %s) Sending request to %s:%s',
@@ -256,7 +256,7 @@ class G90BaseCommand:
 
         ret = self.from_wire(data)
         self._result = ret
-        return cast(Self, self)
+        return self
 
     def __repr__(self) -> str:
         """

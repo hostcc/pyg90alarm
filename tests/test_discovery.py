@@ -1,22 +1,26 @@
-import sys
+'''
+Tests for G90Discovery class
+'''
 import pytest
-sys.path.extend(['src', '../src'])
-from pyg90alarm.discovery import (   # noqa:E402
+from pytest import LogCaptureFixture
+from pyg90alarm.discovery import (
     G90Discovery,
 )
-from pyg90alarm.targeted_discovery import (   # noqa:E402
+from pyg90alarm.targeted_discovery import (
     G90TargetedDiscovery,
 )
-from pyg90alarm.const import (  # noqa:E402
+from pyg90alarm.const import (
     LOCAL_TARGETED_DISCOVERY_PORT,
 )
+
+from .device_mock import DeviceMock
 
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[206,["DUMMYGUID1","","","","","",0,0,0,0,"",0,0]]IEND\0',
     b'ISTART[206,["DUMMYGUID2","","","","","",0,0,0,0,"",0,0]]IEND\0',
 ])
-async def test_discovery(mock_device):
+async def test_discovery(mock_device: DeviceMock) -> None:
     g90 = G90Discovery(host=mock_device.host,
                        port=mock_device.port,
                        timeout=0.1)
@@ -32,7 +36,7 @@ async def test_discovery(mock_device):
     b'IWTAC_PROBE_DEVICE_ACK,TSV018-3SIA'
     b',1.2,1.1,206,1.8,3,3,1,0,2,50,100\0',
 ])
-async def test_targeted_discovery(mock_device):
+async def test_targeted_discovery(mock_device: DeviceMock) -> None:
     g90 = G90TargetedDiscovery(
         device_id='DUMMYGUID',
         host=mock_device.host,
@@ -52,8 +56,8 @@ async def test_targeted_discovery(mock_device):
     b',1.2,1.1,206,1.8,3,3,1,0,2,50,100\0',
 ])
 async def test_targeted_discovery_wrong_response_start_marker(
-    mock_device, caplog
-):
+    mock_device: DeviceMock, caplog: LogCaptureFixture
+) -> None:
     g90 = G90TargetedDiscovery(
         device_id='DUMMYGUID',
         host=mock_device.host,
@@ -73,8 +77,8 @@ async def test_targeted_discovery_wrong_response_start_marker(
     b',1.2,1.1,206,1.8,3,3,1,0,2,50,100'
 ])
 async def test_targeted_discovery_wrong_response_end_marker(
-    mock_device, caplog
-):
+    mock_device: DeviceMock, caplog: LogCaptureFixture
+) -> None:
     g90 = G90TargetedDiscovery(
         device_id='DUMMYGUID',
         host=mock_device.host,

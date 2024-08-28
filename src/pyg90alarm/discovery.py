@@ -21,14 +21,12 @@
 """
 Discovers G90 alarm panels.
 """
-
+from __future__ import annotations
 import asyncio
-from asyncio.transports import BaseTransport
-from asyncio.protocols import BaseProtocol
-from typing import Tuple, Any, List, Dict, cast
+from typing import Any, List, Dict, Tuple
 import logging
 
-from .base_cmd import G90BaseCommand, Self
+from .base_cmd import G90BaseCommand
 from .host_info import G90HostInfo
 from .const import G90Commands
 
@@ -51,7 +49,7 @@ class G90Discovery(G90BaseCommand):
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
         tbd
         """
@@ -71,7 +69,7 @@ class G90Discovery(G90BaseCommand):
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
 
-    async def process(self):
+    async def process(self) -> G90Discovery:
         """
         tbd
         """
@@ -81,7 +79,7 @@ class G90Discovery(G90BaseCommand):
         await asyncio.sleep(self._timeout)
         transport.close()
         _LOGGER.debug('Discovered %s devices', len(self.devices))
-        return cast(Self, self)
+        return self
 
     @property
     def devices(self) -> List[Dict[str, Any]]:

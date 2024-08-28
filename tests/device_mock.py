@@ -21,40 +21,45 @@
 """
 Simulates a G90 device with real network exhanges for tests.
 """
+from __future__ import annotations
+from typing import Optional, Tuple, List, Any, cast, Iterator
 import asyncio
+from asyncio.protocols import DatagramProtocol
+from asyncio.transports import DatagramTransport, BaseTransport
+from asyncio import Future
 import logging
 
 _LOGGER = logging.getLogger('Mock device')
 
 
-class MockDeviceProtocol:
+class MockDeviceProtocol(DatagramProtocol):
     """
     asyncio protocol for simulate G90 device exchange over network.
 
-    :param list(bytes) device_sent_data: List of datagram payloads to simulate
-     being sent from device as response to client requests
+    :param device_sent_data: List of datagram payloads to simulate being sent
+     from device as response to client requests
     """
-    def __init__(self, device_sent_data):
-        self._device_sent_data = iter(device_sent_data or [])
-        self._device_recv_data = []
-        self._transport = None
+    def __init__(self, device_sent_data: List[bytes]):
+        self._device_sent_data: Iterator[bytes] = iter(device_sent_data or [])
+        self._device_recv_data: List[bytes] = []
+        self._transport: Optional[DatagramTransport] = None
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         Invoked when connection is made.
 
         :param transport: asyncio transport instance
         """
-        self._transport = transport
+        self._transport = cast(DatagramTransport, transport)
 
-    def connection_lost(self, _err):
+    def connection_lost(self, _err: Optional[Exception]) -> None:
         """
         Invoked when connection is lost.
 
         :param _err: Exception object
         """
 
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
         Invoked when a datagram is received.
         """
@@ -70,32 +75,36 @@ class MockDeviceProtocol:
             )
             return
 
+        if not self._transport:
+            _LOGGER.error('Transport is not available, not sending')
+            return
+
         _LOGGER.debug('Sent %s to %s:%s', sent_data, *addr)
         self._transport.sendto(sent_data, addr)
 
     @property
-    def device_recv_data(self):
+    def device_recv_data(self) -> List[Any]:
         """
         Returns all data received by the simulated device from the client.
 
-        :return list: List of datagram paylods received
+        :return: List of datagram paylods received
         """
         return self._device_recv_data
 
 
-class MockNotificationProtocol:
+class MockNotificationProtocol(DatagramProtocol):
     """
     asyncio protocol for simulate G90 device notifications over network.
 
     :param list(bytes) notification_data: List of datagram payloads to simulate
      being sent from device to client
     """
-    def __init__(self, notification_data):
+    def __init__(self, notification_data: bytes):
         self._notification_data = notification_data
         self._transport = None
         self._done = asyncio.get_running_loop().create_future()
 
-    def connection_made(self, transport):
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         Invoked when connection is made to the client and simulated
         notification is ready to be sent.
@@ -108,10 +117,10 @@ class MockNotificationProtocol:
             'Sent notification data %s to %s:%s',
             self._notification_data, *remote_addr
         )
-        transport.sendto(self._notification_data)
+        cast(DatagramTransport, transport).sendto(self._notification_data)
         self._done.set_result(True)
 
-    def connection_lost(self, _err):
+    def connection_lost(self, _err: Optional[Exception]) -> None:
         """
         Invoked when connection is lost.
 
@@ -119,11 +128,11 @@ class MockNotificationProtocol:
         """
 
     @property
-    def is_done(self):
+    def is_done(self) -> Future[bool]:
         """
         Indicates if sending the notification payload has been completed.
 
-        :return bool: True if sending has been completed
+        :return: Completed future if sending has been completed
         """
         return self._done
 
@@ -133,30 +142,30 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
     Simulates G90 responses and notification messages over a real network
     connection.
 
-    :param list(bytes) data: List of datagram payloads to simulate being sent
+    :param data: List of datagram payloads to simulate being sent
      from device as response to client requests
-    :param list(bytes) notification_data: List of datagram payloads to simulate
+    :param notification_data: List of datagram payloads to simulate
      notifications being sent from device to client
-    :param int device_port: The port simulated device listens on for client
+    :param device_port: The port simulated device listens on for client
      requests
-    :param int notification_port: The destination port on the client the
+    :param notification_port: The destination port on the client the
      notifications will be sent to
-    :param str device_host: The host the simulated device listen on for client
+    :param device_host: The host the simulated device listen on for client
      requests
-    :param str notification_host: The destination client host the notifications
+    :param notification_host: The destination client host the notifications
      will be sent to
     """
     def __init__(  # pylint:disable=too-many-arguments
-        self, data, notification_data,
-        device_port, notification_port,
-        device_host='127.0.0.1',
-        notification_host='127.0.0.1',
+        self, data: List[bytes], notification_data: List[bytes],
+        device_port: int, notification_port: int,
+        device_host: str = '127.0.0.1',
+        notification_host: str = '127.0.0.1',
     ):
         self._host = device_host
         self._port = device_port
         self._data = data
-        self._transport = None
-        self._protocol = None
+        self._transport: Optional[BaseTransport] = None
+        self._protocol: Optional[MockDeviceProtocol] = None
         self._notification_data = iter(notification_data or [])
         self._notification_port = notification_port
         self._notification_host = notification_host
@@ -165,7 +174,7 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
             self._port, self._notification_port
         )
 
-    async def start(self):
+    async def start(self) -> None:
         """
         Starts listening the simulate device for client requests.
         """
@@ -179,61 +188,65 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         )
 
     @property
-    def host(self):
+    def host(self) -> str:
         """
         Returns the host the simulated device listens on.
 
-        :return str: Host name or address
+        :return: Host name or address
         """
         return self._host
 
     @property
-    def port(self):
+    def port(self) -> int:
         """
         Returns the port the simulated device listens on.
 
-        :return int: Port number
+        :return: Port number
         """
         return self._port
 
     @property
-    def notification_host(self):
+    def notification_host(self) -> str:
         """
         Returns the host the simulated notifications will be sent to.
 
-        :return str: Host name or address
+        :return: Host name or address
         """
         return self._notification_host
 
     @property
-    def notification_port(self):
+    def notification_port(self) -> int:
         """
         Returns the destination port will be used to send notifications to the
         client.
 
-        :return int: Port number
+        :return: Port number
         """
         return self._notification_port
 
     @property
-    def recv_data(self):
+    def recv_data(self) -> List[bytes]:
         """
         Returns the data received by the simulated device from the client.
 
-        :return list(bytes): Data received
+        :return: Data received
         """
+        if not self._protocol:
+            return []
+
         return self._protocol.device_recv_data
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Stops listening for client requests.
         """
         _LOGGER.debug(
             'Closing UDP server endpoint %s:%s', self._host, self._port
         )
-        self._transport.close()
+        if self._transport:
+            self._transport.close()
 
-    async def send_next_notification(self):
+    async def send_next_notification(self) -> None:
         """
         Sends next simulated notification message to the client.
 

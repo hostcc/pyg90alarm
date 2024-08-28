@@ -21,11 +21,13 @@
 """
 Performs runtime configuration and exposes custom fixtures for Pytest.
 """
+from __future__ import annotations
+from typing import AsyncIterator, Callable
 import pytest
-from device_mock import DeviceMock
+from .device_mock import DeviceMock
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     """
     Configures `pytest`.
     """
@@ -33,7 +35,9 @@ def pytest_configure(config):
 
 
 @pytest.fixture
-async def mock_device(request, unused_udp_port_factory):
+async def mock_device(
+    request: pytest.FixtureRequest, unused_udp_port_factory: Callable[..., int]
+) -> AsyncIterator[DeviceMock]:
     """
     Fixture to instantiate a simulated G90 device allocating random unused
     ports for network exchanges.

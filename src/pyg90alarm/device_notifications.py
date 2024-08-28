@@ -24,11 +24,11 @@ Implements support for notifications/alerts sent by G90 alarm panel.
 import json
 import logging
 from typing import (
-    Callable, Optional, Tuple, cast, NamedTuple, List, Any, Union, Coroutine
+    Optional, Tuple, NamedTuple, List, Any
 )
 import asyncio
 from asyncio.transports import BaseTransport
-from asyncio.protocols import BaseProtocol
+from asyncio.protocols import DatagramProtocol
 from .callback import G90Callback
 from .const import (
     G90MessageTypes,
@@ -82,7 +82,6 @@ class G90ArmDisarmInfo(NamedTuple):
     """
     state: int
 
-# DEBUG:pyg90alarm.device_notifications:Door open_close alert: G90DeviceAlert(type=4, event_id=26, source=1, state=4, zone_name='Окно_детская_2эт', device_id='GA18018B3001021', unix_time=1719223959, resv4=0, other=[''])
 
 class G90DeviceAlert(NamedTuple):
     """
@@ -101,43 +100,13 @@ class G90DeviceAlert(NamedTuple):
     other: str
 
 
-TArmdisarmCb = Callable[[int], None]
-TSensorCb = Callable[[int, str], None]
-TDoorOpenCloseCb = Callable[[int, str, bool], Union[None, Coroutine]]
-TAlarmCb = Callable[[int, str], None]
-
-
-class G90DeviceNotifications:
+class G90DeviceNotifications(DatagramProtocol):
     """
     tbd
     """
-    def __init__(
-        self, armdisarm_cb: Optional[TArmdisarmCb] = None,
-        sensor_cb: Optional[TSensorCb] = None,
-        door_open_close_cb: Optional[TDoorOpenCloseCb] = None,
-        alarm_cb: Optional[TAlarmCb] = None
-    ):
-        """
-        tbd
-        """
-        self._armdisarm_cb = armdisarm_cb
-        self._sensor_cb = sensor_cb
-        self._door_open_close_cb = door_open_close_cb
-        self._alarm_cb = alarm_cb
-
-    def connection_made(self, transport: BaseTransport) -> None:
-        """
-        tbd
-        """
-
-    def connection_lost(self, exc: Exception) -> None:
-        """
-        tbd
-        """
-
-    def __init__(self, port, host):
+    def __init__(self, port: int, host: str):
         # pylint: disable=too-many-arguments
-        self._notification_transport = None
+        self._notification_transport: Optional[BaseTransport] = None
         self._notifications_host = host
         self._notifications_port = port
 
@@ -233,12 +202,12 @@ class G90DeviceNotifications:
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
-    def connection_made(self, transport):
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         Invoked when connection from the device is made.
         """
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         """
         Same but when the connection is lost.
         """
@@ -294,27 +263,29 @@ class G90DeviceNotifications:
         _LOGGER.warning('Unknown message received from %s:%s: %s',
                         addr[0], addr[1], message)
 
-    async def on_armdisarm(self, state):
+    async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
         """
         Invoked when device is armed or disarmed.
         """
 
-    async def on_sensor_activity(self, idx, name):
+    async def on_sensor_activity(self, idx: int, name: str) -> None:
         """
         Invoked on sensor activity.
         """
 
-    async def on_door_open_close(self, event_id, zone_name, is_open):
+    async def on_door_open_close(
+        self, event_id: int, zone_name: str, is_open: bool
+    ) -> None:
         """
         Invoked when door sensor reports it opened or closed.
         """
 
-    async def on_low_battery(self, event_id, zone_name):
+    async def on_low_battery(self, event_id: int, zone_name: str) -> None:
         """
         Invoked when a sensor reports it is low on battery.
         """
 
-    async def on_alarm(self, event_id, zone_name):
+    async def on_alarm(self, event_id: int, zone_name: str) -> None:
         """
         Invoked when device triggers the alarm.
         """
@@ -339,7 +310,7 @@ class G90DeviceNotifications:
             ))
 
     @property
-    def listener_started(self):
+    def listener_started(self) -> bool:
         """
         Indicates if the listener of the device notifications has been started.
 

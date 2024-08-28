@@ -27,7 +27,7 @@ from dataclasses import dataclass, asdict, astuple
 from typing import Any, Optional, TYPE_CHECKING
 from enum import IntEnum, IntFlag
 from ..definitions.sensors import SENSOR_DEFINITIONS, SensorDefinition
-from ..callback import G90Callback
+from ..callback import TCallback
 from ..const import G90Commands
 if TYPE_CHECKING:
     from ..alarm import G90Alarm
@@ -183,8 +183,8 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._parent = parent
         self._subindex = subindex
         self._occupancy = False
-        self._state_callback: Optional[G90Callback] = None
-        self._low_battery_callback = None
+        self._state_callback: Optional[TCallback] = None
+        self._low_battery_callback: Optional[TCallback] = None
         self._proto_idx = proto_idx
         self._extra_data: Any = None
 
@@ -212,7 +212,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         return f'{self._protocol_data.parent_name}#{self._subindex + 1}'
 
     @property
-    def state_callback(self) -> Optional[G90Callback]:
+    def state_callback(self) -> Optional[TCallback]:
         """
         Returns state callback the sensor might have set.
 
@@ -222,7 +222,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         return self._state_callback
 
     @state_callback.setter
-    def state_callback(self, value: G90Callback) -> None:
+    def state_callback(self, value: TCallback) -> None:
         """
         Sets callback for the state changes of the sensor.
 
@@ -231,7 +231,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._state_callback = value
 
     @property
-    def low_battery_callback(self):
+    def low_battery_callback(self) -> Optional[TCallback]:
         """
         Returns callback the sensor might have set for low battery condition.
 
@@ -241,7 +241,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         return self._low_battery_callback
 
     @low_battery_callback.setter
-    def low_battery_callback(self, value):
+    def low_battery_callback(self, value: TCallback) -> None:
         """
         Sets callback for the low battery condition reported by the sensor.
 
@@ -250,7 +250,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._low_battery_callback = value
 
     @property
-    def occupancy(self):
+    def occupancy(self) -> bool:
         """
         Occupancy (occupied/not occupied, or triggered/not triggered)
         for the sensor.

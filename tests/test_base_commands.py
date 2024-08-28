@@ -1,22 +1,25 @@
-import sys
+'''
+Tests for G90BaseCommand class
+'''
 from unittest.mock import patch, DEFAULT
 import re
 import pytest
 
-sys.path.extend(['src', '../src'])
-
-from pyg90alarm.base_cmd import (  # noqa:E402
+from pyg90alarm.base_cmd import (
     G90BaseCommand,
 )
-from pyg90alarm.exceptions import (G90Error, G90TimeoutError)  # noqa:E402
+from pyg90alarm.exceptions import (G90Error, G90TimeoutError)
+from pyg90alarm.const import G90Commands
+
+from .device_mock import DeviceMock
 
 
-async def test_network_unreachable():
+async def test_network_unreachable() -> None:
     with patch.multiple(
         'socket', socket=DEFAULT, getaddrinfo=DEFAULT
     ) as mocks:
         g90 = G90BaseCommand(
-            host='mocked', port=12345, code=206)
+            host='mocked', port=12345, code=G90Commands.GETHOSTINFO)
 
         # Simulate sending to device results in OS error
         mocks['socket'].return_value.send.side_effect = OSError(
@@ -31,7 +34,9 @@ async def test_network_unreachable():
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
-async def test_wrong_host(mock_device, monkeypatch):
+async def test_wrong_host(
+    mock_device: DeviceMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     orig = G90BaseCommand.datagram_received
     # Alter receving method of the device protocol as if it gets datagaram from
     # `another_host`
@@ -40,7 +45,9 @@ async def test_wrong_host(mock_device, monkeypatch):
         lambda self, data, addr: orig(self, data, ('another_host', addr[1]))
     )
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(
         G90Error,
@@ -55,7 +62,9 @@ async def test_wrong_host(mock_device, monkeypatch):
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
-async def test_wrong_port(mock_device, monkeypatch):
+async def test_wrong_port(
+    mock_device: DeviceMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     orig = G90BaseCommand.datagram_received
     # Alter receving method of the device protocol as if it gets datagaram from
     # proper host but different port `54321`
@@ -64,7 +73,9 @@ async def test_wrong_port(mock_device, monkeypatch):
         lambda self, data, addr: orig(self, data, (addr[0], 54321))
     )
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(
         G90Error,
@@ -79,10 +90,12 @@ async def test_wrong_port(mock_device, monkeypatch):
 # No data the simulated device sends back will result in receive timeout for
 # the client
 @pytest.mark.g90device(sent_data=[])
-async def test_timeout(mock_device):
+async def test_timeout(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206,
-        timeout=0.1, retries=2)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO,
+        timeout=0.1, retries=2
+    )
 
     with pytest.raises(G90TimeoutError):
         await g90.process()
@@ -95,9 +108,11 @@ async def test_timeout(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[IEND\0',
 ])
-async def test_wrong_format(mock_device):
+async def test_wrong_format(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(
         G90Error,
@@ -110,9 +125,11 @@ async def test_wrong_format(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
-async def test_empty_response(mock_device):
+async def test_empty_response(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     await g90.process()
     assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
@@ -121,9 +138,11 @@ async def test_empty_response(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[]IEND\0',
 ])
-async def test_no_code_response(mock_device):
+async def test_no_code_response(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(
         G90Error,
@@ -136,9 +155,11 @@ async def test_no_code_response(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[106,[""]]IEND\0',
 ])
-async def test_wrong_code_response(mock_device):
+async def test_wrong_code_response(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(
         G90Error,
@@ -151,9 +172,11 @@ async def test_wrong_code_response(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[206]IEND\0',
 ])
-async def test_no_data_response(mock_device):
+async def test_no_data_response(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(
         G90Error,
@@ -166,9 +189,11 @@ async def test_no_data_response(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'dummy',
 ])
-async def test_no_start_marker(mock_device):
+async def test_no_start_marker(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(G90Error, match='Missing start marker in data'):
         await g90.process()
@@ -178,9 +203,11 @@ async def test_no_start_marker(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[206,[]]IEND',
 ])
-async def test_no_end_marker(mock_device):
+async def test_no_end_marker(mock_device: DeviceMock) -> None:
     g90 = G90BaseCommand(
-        host=mock_device.host, port=mock_device.port, code=206)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
 
     with pytest.raises(G90Error, match='Missing end marker in data'):
         await g90.process()

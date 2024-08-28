@@ -50,6 +50,7 @@ G90HostInfo(host_guid='<...>',
 """
 from __future__ import annotations
 import asyncio
+from asyncio import Task
 import logging
 from typing import Any, List, Optional, Dict, AsyncGenerator
 from .const import (
@@ -59,7 +60,7 @@ from .const import (
     NOTIFICATIONS_PORT,
     G90ArmDisarmTypes,
 )
-from .base_cmd import (G90BaseCommand, G90BaseCommandResult)
+from .base_cmd import (G90BaseCommand, G90BaseCommandData)
 from .paginated_result import G90PaginatedResult, G90PaginatedResponse
 from .entities.sensor import (G90Sensor, G90SensorTypes)
 from .entities.device import G90Device
@@ -73,7 +74,7 @@ from .host_status import G90HostStatus
 from .config import (G90AlertConfig, G90AlertConfigFlags)
 from .history import G90History
 from .user_data_crc import G90UserDataCRC
-from .callback import G90Callback
+from .callback import G90Callback, TCallback
 from .exceptions import G90Error, G90TimeoutError
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ class G90Alarm(G90DeviceNotifications):
     """
     Allows to interact with G90 alarm panel.
 
-    :param str host: Hostname or IP address of the alarm panel. Since the
+    :param host: Hostname or IP address of the alarm panel. Since the
      protocol is UDP-based it is ok to use broadcast or directed broadcast
      addresses, such as `255.255.255.255` or `10.10.10.255` (the latter assumes
      the device is on `10.10.10.0/24` network)
@@ -98,58 +99,52 @@ class G90Alarm(G90DeviceNotifications):
     :type reset_occupancy_interval: int, optional
     """
     # pylint: disable=too-many-instance-attributes,too-many-arguments
-    def __init__(self, host, port=REMOTE_PORT,
-                 reset_occupancy_interval=3,
-                 notifications_host='0.0.0.0',
-                 notifications_port=NOTIFICATIONS_PORT):
+    def __init__(self, host: str, port: int = REMOTE_PORT,
+                 reset_occupancy_interval: float = 3.0,
+                 notifications_host: str = '0.0.0.0',
+                 notifications_port: int = NOTIFICATIONS_PORT):
         super().__init__(host=notifications_host, port=notifications_port)
         self._host = host
         self._port = port
         self._sensors: List[G90Sensor] = []
         self._devices: List[G90Device] = []
         self._notifications: Optional[G90DeviceNotifications] = None
-        self._sensor_cb: Optional[G90Callback] = None
-        self._armdisarm_cb: Optional[G90Callback] = None
-        self._door_open_close_cb: Optional[G90Callback] = None
-        self._alarm_cb: Optional[G90Callback] = None
-        self._low_battery_cb: Optional[G90Callback] = None
+        self._sensor_cb: TCallback = None
+        self._armdisarm_cb: TCallback = None
+        self._door_open_close_cb: TCallback = None
+        self._alarm_cb: TCallback = None
+        self._low_battery_cb: TCallback = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config: Optional[G90AlertConfigFlags] = None
         self._sms_alert_when_armed = False
-        self._alert_simulation_task = None
+        self._alert_simulation_task: Optional[Task[Any]] = None
         self._alert_simulation_start_listener_back = False
 
     async def command(
-        self, code: int, data: Optional[List[Any]] = None
-    ) -> G90BaseCommandResult:
+        self, code: G90Commands, data: Optional[List[Any]] = None
+    ) -> G90BaseCommandData:
         """
         Invokes a command against the alarm panel.
 
         :param code: Command code
-        :type code: :class:`.G90Commands`
         :param data: Command data
-        :type data: object or None, optional
-        :return: :attr:`.G90BaseCommand.result` that contains the result of
-         command invocation
+        :return: The result of command invocation
         """
         cmd: G90BaseCommand = await G90BaseCommand(
             self._host, self._port, code, data).process()
         return cmd.result
 
     def paginated_result(
-        self, code: int, start: int = 1, end: Optional[int] = None
+        self, code: G90Commands, start: int = 1, end: Optional[int] = None
     ) -> AsyncGenerator[G90PaginatedResponse, None]:
         """
         Returns asynchronous generator for a paginated command, that is -
         command operating on a range of records.
 
         :param code: Command code
-        :type code: :class:`.G90Commands`
-        :param int start: Starting record position (one-based)
-        :param int end: Ending record position (one-based)
-        :return: :class:`.G90PaginatedResult` being asynchronous generator
-          over the result of command invocation. Each access to the generator
-          yields :class:`.G90PaginatedResponse` instance
+        :param start: Starting record position (one-based)
+        :param end: Ending record position (one-based)
+        :return: Asynchronous generator over the result of command invocation.
         """
         return G90PaginatedResult(
             self._host, self._port, code, start, end
@@ -178,11 +173,9 @@ class G90Alarm(G90DeviceNotifications):
         request, so only the specific device should respond to the query.
 
         :param device_id: GUID of the target device to discover
-        :type device_id: str
         :return: List of discovered devices
-        :rtype: list[{'guid', 'host', 'port'}]
         """
-        cmd: G90TargetedDiscovery = await G90TargetedDiscovery(
+        cmd = await G90TargetedDiscovery(
             device_id=device_id,
             port=REMOTE_TARGETED_DISCOVERY_PORT,
             local_port=LOCAL_TARGETED_DISCOVERY_PORT,
@@ -226,10 +219,9 @@ class G90Alarm(G90DeviceNotifications):
         """
         Finds sensor by index and name.
 
-        :param int idx: Sensor index
-        :param str name: Sensor name
+        :param idx: Sensor index
+        :param name: Sensor name
         :return: Sensor instance
-        :rtype :class:`.G90Sensor`|None
         """
         sensors = await self.get_sensors()
 
@@ -411,11 +403,8 @@ class G90Alarm(G90DeviceNotifications):
         Retrieves event history from the device.
 
         :param start: Starting record number (one-based)
-        :type start: int
         :param count: Number of records to retrieve
-        :type count: int
         :return: List of history entries
-        :rtype: list[:class:`.G90History`]
         """
         res = self.paginated_result(G90Commands.GETHISTORY,
                                     start, count)
@@ -427,18 +416,20 @@ class G90Alarm(G90DeviceNotifications):
             key=lambda x: x.datetime, reverse=True
         )
 
-    async def on_sensor_activity(self, idx, name, occupancy=True):
+    async def on_sensor_activity(
+        self, idx: int, name: str, occupancy: bool = True
+    ) -> None:
         """
         Callback that invoked both for sensor notifications and door open/close
         alerts, since the logic for both is same and could be reused. Please
         note the callback is for internal use by the class.
 
-        :param int idx: The index of the sensor the callback is invoked for.
+        :param idx: The index of the sensor the callback is invoked for.
          Please note the index is a property of sensor, not the direct index of
          :attr:`sensors` array
-        :param str name: The name of the sensor, along with the `idx` parameter
+        :param name: The name of the sensor, along with the `idx` parameter
          it is used to look the sensor up from the :attr:`sensors` list
-        :param bool occupancy: The flag indicating the target sensor state
+        :param occupancy: The flag indicating the target sensor state
          (=occupancy), will always be `True` for callbacks invoked from alarm
          panel notifications, and reflects actual sensor state for device
          alerts (only for `door` type sensors, if door open/close alerts are
@@ -489,7 +480,7 @@ class G90Alarm(G90DeviceNotifications):
         G90Callback.invoke(self._sensor_cb, idx, name, occupancy)
 
     @property
-    def sensor_callback(self) -> Optional[G90Callback]:
+    def sensor_callback(self) -> Optional[TCallback]:
         """
         Get or set sensor activity callback, the callback is invoked when
         sensor activates.
@@ -499,10 +490,12 @@ class G90Alarm(G90DeviceNotifications):
         return self._sensor_cb
 
     @sensor_callback.setter
-    def sensor_callback(self, value: G90Callback) -> None:
+    def sensor_callback(self, value: TCallback) -> None:
         self._sensor_cb = value
 
-    async def on_door_open_close(self, event_id, zone_name, is_open):
+    async def on_door_open_close(
+        self, event_id: int, zone_name: str, is_open: bool
+    ) -> None:
         """
         Callback that invoked when door open/close alert comes from the alarm
         panel. Please note the callback is for internal use by the class.
@@ -519,7 +512,7 @@ class G90Alarm(G90DeviceNotifications):
         )
 
     @property
-    def door_open_close_callback(self) -> Optional[G90Callback]:
+    def door_open_close_callback(self) -> Optional[TCallback]:
         """
         Get or set door open/close callback, the callback is invoked when door
         is opened or closed (if corresponding alert is configured on the
@@ -530,7 +523,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._door_open_close_cb
 
     @door_open_close_callback.setter
-    def door_open_close_callback(self, value: G90Callback) -> None:
+    def door_open_close_callback(self, value: TCallback) -> None:
         """
         Sets callback for door open/close events.
         """
@@ -542,7 +535,6 @@ class G90Alarm(G90DeviceNotifications):
         the callback is for internal use by the class.
 
         :param state: Device state (armed, disarmed, armed home)
-        :type state: :class:`G90ArmDisarmTypes`
         """
         if self._sms_alert_when_armed:
             if state == G90ArmDisarmTypes.DISARM:
@@ -559,7 +551,7 @@ class G90Alarm(G90DeviceNotifications):
         G90Callback.invoke(self._armdisarm_cb, state)
 
     @property
-    def armdisarm_callback(self) -> Optional[G90Callback]:
+    def armdisarm_callback(self) -> Optional[TCallback]:
         """
         Get or set device arm/disarm callback, the callback is invoked when
         device state changes.
@@ -569,7 +561,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._armdisarm_cb
 
     @armdisarm_callback.setter
-    def armdisarm_callback(self, value: G90Callback) -> None:
+    def armdisarm_callback(self, value: TCallback) -> None:
         self._armdisarm_cb = value
 
     async def on_alarm(self, event_id: int, zone_name: str) -> None:
@@ -578,8 +570,8 @@ class G90Alarm(G90DeviceNotifications):
         set by the user with `:property:G90Alarm.alarm_callback`.
         Please note the callback is for internal use by the class.
 
-        :param int: Index of the sensor triggered alarm
-        :param str: Sensor name
+        :param event_id: Index of the sensor triggered alarm
+        :param zone_name: Sensor name
         """
         sensor = await self.find_sensor(event_id, zone_name)
         # The callback is still delivered to the caller even if the sensor
@@ -598,7 +590,7 @@ class G90Alarm(G90DeviceNotifications):
         )
 
     @property
-    def alarm_callback(self) -> Optional[G90Callback]:
+    def alarm_callback(self) -> Optional[TCallback]:
         """
         Get or set device alarm callback, the callback is invoked when
         device alarm triggers.
@@ -611,7 +603,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._alarm_cb
 
     @alarm_callback.setter
-    def alarm_callback(self, value: G90Callback) -> None:
+    def alarm_callback(self, value: TCallback) -> None:
         self._alarm_cb = value
 
     async def on_low_battery(self, event_id: int, zone_name: str) -> None:
@@ -621,8 +613,8 @@ class G90Alarm(G90DeviceNotifications):
         `:property:G90Alarm.on_low_battery_callback`.
         Please note the callback is for internal use by the class.
 
-        :param int: Index of the sensor triggered alarm
-        :param str: Sensor name
+        :param event_id: Index of the sensor triggered alarm
+        :param zone_name: Sensor name
         """
         sensor = await self.find_sensor(event_id, zone_name)
         if sensor:
@@ -632,7 +624,7 @@ class G90Alarm(G90DeviceNotifications):
         G90Callback.invoke(self._low_battery_cb, event_id, zone_name)
 
     @property
-    def low_battery_callback(self):
+    def low_battery_callback(self) -> Optional[TCallback]:
         """
         Get or set low battery callback, the callback is invoked when sensor
         the condition is reported by a sensor.
@@ -642,10 +634,10 @@ class G90Alarm(G90DeviceNotifications):
         return self._low_battery_cb
 
     @low_battery_callback.setter
-    def low_battery_callback(self, value):
+    def low_battery_callback(self, value: TCallback) -> None:
         self._low_battery_cb = value
 
-    async def listen_device_notifications(self):
+    async def listen_device_notifications(self) -> None:
         """
         Starts internal listener for device notifications/alerts.
 
@@ -695,8 +687,8 @@ class G90Alarm(G90DeviceNotifications):
         self._sms_alert_when_armed = value
 
     async def start_simulating_alerts_from_history(
-        self, interval=5, history_depth=5
-    ):
+        self, interval: float = 5, history_depth: int = 5
+    ) -> None:
         """
         Starts the separate task to simulate device alerts from history
         entries.
@@ -705,9 +697,9 @@ class G90Alarm(G90DeviceNotifications):
         notifications will not be processed thus resulting in possible
         duplicated if those could be received from the network.
 
-        :param int interval: Interval (in seconds) between polling for newer
+        :param interval: Interval (in seconds) between polling for newer
           history entities
-        :param int history_depth: Amount of history entries to fetch during
+        :param history_depth: Amount of history entries to fetch during
           each polling cycle
         """
         # Remember if device notifications listener has been started already
@@ -720,7 +712,7 @@ class G90Alarm(G90DeviceNotifications):
             self._simulate_alerts_from_history(interval, history_depth)
         )
 
-    async def stop_simulating_alerts_from_history(self):
+    async def stop_simulating_alerts_from_history(self) -> None:
         """
         Stops the task simulating device alerts from history entries.
 
@@ -738,7 +730,9 @@ class G90Alarm(G90DeviceNotifications):
         if self._alert_simulation_start_listener_back:
             await self.listen()
 
-    async def _simulate_alerts_from_history(self, interval, history_depth):
+    async def _simulate_alerts_from_history(
+        self, interval: float, history_depth: int
+    ) -> None:
         """
         Periodically fetches history entries from the device and simulates
         device alerts off of those.
@@ -783,7 +777,7 @@ class G90Alarm(G90DeviceNotifications):
                 for item in reversed(history):
                     # Process only the entries newer than one been recorded as
                     # most recent one
-                    if item.datetime > last_history_ts:
+                    if last_history_ts and item.datetime > last_history_ts:
                         _LOGGER.debug(
                             'Found newer history entry: %s, simulating alert',
                             repr(item)

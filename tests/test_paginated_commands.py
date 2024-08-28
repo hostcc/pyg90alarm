@@ -1,19 +1,26 @@
-import sys
+'''
+Tests for G90PaginatedCommand class
+'''
 import pytest
-sys.path.extend(['src', '../src'])
 
-from pyg90alarm.paginated_cmd import (   # noqa:E402
+from pyg90alarm.paginated_cmd import (
     G90PaginatedCommand,
 )
-from pyg90alarm.exceptions import G90Error  # noqa:E402
+from pyg90alarm.exceptions import G90Error
+from pyg90alarm.const import G90Commands
+
+from .device_mock import DeviceMock
 
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,[[]]]IEND\0',
 ])
-async def test_missing_pagination(mock_device):
+async def test_missing_pagination(mock_device: DeviceMock) -> None:
     g90 = G90PaginatedCommand(
-        host=mock_device.host, port=mock_device.port, code=102, start=1, end=1)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETSENSORLIST,
+        start=1, end=1
+    )
 
     with pytest.raises(
         G90Error,
@@ -33,9 +40,12 @@ async def test_missing_pagination(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,[[1,1,1]]]IEND\0',
 ])
-async def test_no_paginated_data(mock_device):
+async def test_no_paginated_data(mock_device: DeviceMock) -> None:
     g90 = G90PaginatedCommand(
-        host=mock_device.host, port=mock_device.port, code=102, start=1, end=1)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETSENSORLIST,
+        start=1, end=1
+    )
 
     with pytest.raises(
         G90Error,
@@ -53,9 +63,12 @@ async def test_no_paginated_data(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,[[1,1,1],[""]]]IEND\0',
 ])
-async def test_partial_paginated_data(mock_device):
+async def test_partial_paginated_data(mock_device: DeviceMock) -> None:
     g90 = G90PaginatedCommand(
-        host=mock_device.host, port=mock_device.port, code=102, start=1, end=2)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETSENSORLIST,
+        start=1, end=2
+    )
 
     await g90.process()
     assert mock_device.recv_data == [
@@ -66,9 +79,12 @@ async def test_partial_paginated_data(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,[[2,1,2],[""],[""]]]IEND\0',
 ])
-async def test_extra_paginated_data(mock_device):
+async def test_extra_paginated_data(mock_device: DeviceMock) -> None:
     g90 = G90PaginatedCommand(
-        host=mock_device.host, port=mock_device.port, code=102, start=1, end=1)
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETSENSORLIST,
+        start=1, end=1
+    )
 
     with pytest.raises(
         G90Error,
