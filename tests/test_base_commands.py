@@ -1,6 +1,6 @@
-'''
+"""
 Tests for G90BaseCommand class
-'''
+"""
 from unittest.mock import patch, DEFAULT
 import re
 import pytest
@@ -15,6 +15,9 @@ from .device_mock import DeviceMock
 
 
 async def test_network_unreachable() -> None:
+    """
+    Verifies that network unreachable error is handled properly.
+    """
     with patch.multiple(
         'socket', socket=DEFAULT, getaddrinfo=DEFAULT
     ) as mocks:
@@ -37,6 +40,9 @@ async def test_network_unreachable() -> None:
 async def test_wrong_host(
     mock_device: DeviceMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """
+    Verifies that response from wrong host is handled properly.
+    """
     orig = G90BaseCommand.datagram_received
     # Alter receving method of the device protocol as if it gets datagaram from
     # `another_host`
@@ -65,6 +71,9 @@ async def test_wrong_host(
 async def test_wrong_port(
     mock_device: DeviceMock, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """
+    Verifies that response from wrong port is handled properly.
+    """
     orig = G90BaseCommand.datagram_received
     # Alter receving method of the device protocol as if it gets datagaram from
     # proper host but different port `54321`
@@ -91,6 +100,9 @@ async def test_wrong_port(
 # the client
 @pytest.mark.g90device(sent_data=[])
 async def test_timeout(mock_device: DeviceMock) -> None:
+    """
+    Verifies that timeout is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO,
@@ -109,6 +121,9 @@ async def test_timeout(mock_device: DeviceMock) -> None:
     b'ISTART[IEND\0',
 ])
 async def test_wrong_format(mock_device: DeviceMock) -> None:
+    """
+    Verifies that wrong format of response is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO
@@ -126,6 +141,9 @@ async def test_wrong_format(mock_device: DeviceMock) -> None:
     b'ISTARTIEND\0',
 ])
 async def test_empty_response(mock_device: DeviceMock) -> None:
+    """
+    Verifies that empty response is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO
@@ -139,6 +157,9 @@ async def test_empty_response(mock_device: DeviceMock) -> None:
     b'ISTART[]IEND\0',
 ])
 async def test_no_code_response(mock_device: DeviceMock) -> None:
+    """
+    Verifies that response without code is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO
@@ -156,6 +177,9 @@ async def test_no_code_response(mock_device: DeviceMock) -> None:
     b'ISTART[106,[""]]IEND\0',
 ])
 async def test_wrong_code_response(mock_device: DeviceMock) -> None:
+    """
+    Verifies that response with wrong code is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO
@@ -173,6 +197,9 @@ async def test_wrong_code_response(mock_device: DeviceMock) -> None:
     b'ISTART[206]IEND\0',
 ])
 async def test_no_data_response(mock_device: DeviceMock) -> None:
+    """
+    Verifies that response without data is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO
@@ -190,6 +217,9 @@ async def test_no_data_response(mock_device: DeviceMock) -> None:
     b'dummy',
 ])
 async def test_no_start_marker(mock_device: DeviceMock) -> None:
+    """
+    Verifies that response without start marker is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO
@@ -204,6 +234,9 @@ async def test_no_start_marker(mock_device: DeviceMock) -> None:
     b'ISTART[206,[]]IEND',
 ])
 async def test_no_end_marker(mock_device: DeviceMock) -> None:
+    """
+    Verifies that response without end marker is handled properly.
+    """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETHOSTINFO

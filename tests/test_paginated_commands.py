@@ -15,7 +15,10 @@ from .device_mock import DeviceMock
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,[[]]]IEND\0',
 ])
-async def test_missing_pagination(mock_device: DeviceMock) -> None:
+async def test_missing_pagination_header(mock_device: DeviceMock) -> None:
+    '''
+    Verifies that missing pagination header raises an exception.
+    '''
     g90 = G90PaginatedCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETSENSORLIST,
@@ -41,6 +44,9 @@ async def test_missing_pagination(mock_device: DeviceMock) -> None:
     b'ISTART[102,[[1,1,1]]]IEND\0',
 ])
 async def test_no_paginated_data(mock_device: DeviceMock) -> None:
+    '''
+    Verifies that no paginated data raises an exception.
+    '''
     g90 = G90PaginatedCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETSENSORLIST,
@@ -64,6 +70,9 @@ async def test_no_paginated_data(mock_device: DeviceMock) -> None:
     b'ISTART[102,[[1,1,1],[""]]]IEND\0',
 ])
 async def test_partial_paginated_data(mock_device: DeviceMock) -> None:
+    '''
+    Verifies that paginated data shorter than requested is properly handled.
+    '''
     g90 = G90PaginatedCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETSENSORLIST,
@@ -80,6 +89,9 @@ async def test_partial_paginated_data(mock_device: DeviceMock) -> None:
     b'ISTART[102,[[2,1,2],[""],[""]]]IEND\0',
 ])
 async def test_extra_paginated_data(mock_device: DeviceMock) -> None:
+    '''
+    Verifies that extra paginated data raises an exception.
+    '''
     g90 = G90PaginatedCommand(
         host=mock_device.host, port=mock_device.port,
         code=G90Commands.GETSENSORLIST,
