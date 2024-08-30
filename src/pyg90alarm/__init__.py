@@ -22,12 +22,31 @@
 Python package to control G90-based alarm systems.
 """
 
-from .alarm import G90Alarm  # noqa: F401
-from .base_cmd import G90BaseCommand  # noqa: F401
-from .paginated_result import G90PaginatedResult  # noqa: F401
-from .device_notifications import (  # noqa: F401
+from .alarm import G90Alarm
+from .base_cmd import G90BaseCommand
+from .paginated_result import G90PaginatedResult
+from .device_notifications import (
     G90DeviceAlert,
 )
+from .entities.sensor import G90Sensor
+from .entities.device import G90Device
+from .host_info import G90HostInfo
+from .host_status import G90HostStatus
+from .const import (
+    G90MessageTypes,
+    G90NotificationTypes,
+    G90ArmDisarmTypes,
+    G90AlertTypes,
+    G90AlertSources,
+    G90AlertStates,
+    G90AlertStateChangeTypes,
+    G90HistoryStates,
+)
+
 __all__ = [
     'G90Alarm', 'G90BaseCommand', 'G90PaginatedResult', 'G90DeviceAlert',
+    'G90Sensor', 'G90Device', 'G90HostInfo', 'G90HostStatus',
+    'G90MessageTypes', 'G90NotificationTypes', 'G90ArmDisarmTypes',
+    'G90AlertTypes', 'G90AlertSources', 'G90AlertStates',
+    'G90AlertStateChangeTypes', 'G90HistoryStates',
 ]
