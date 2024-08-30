@@ -82,8 +82,8 @@ class G90History:
     """
     tbd
     """
-    def __init__(self, *args: Any):
-        self._protocol_data = ProtocolData(*args)
+    def __init__(self, *args: Any, **kwargs: Any):
+        self._protocol_data = ProtocolData(*args, **kwargs)
 
     @property
     def datetime(self) -> datetime:
