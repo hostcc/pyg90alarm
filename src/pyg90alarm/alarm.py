@@ -88,6 +88,9 @@ from .exceptions import G90Error, G90TimeoutError
 _LOGGER = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
+    # Type alias for the callback functions available to the user, should be
+    # compatible with `G90Callback.Callback` type, since `G90Callback.invoke`
+    # is used to invoke them
     AlarmCallback: TypeAlias = Union[
         Callable[[int, str, Any], None],
         Callable[[int, str, Any], Coroutine[None, None, None]]
