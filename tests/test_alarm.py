@@ -53,6 +53,7 @@ async def test_host_status(mock_device: DeviceMock) -> None:
     assert res.host_status == 3
     assert res.product_name == 'PRODUCT'
     assert res.host_phone_number == 'PHONE'
+    assert isinstance(res._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -74,6 +75,7 @@ async def test_host_info(mock_device: DeviceMock) -> None:
     assert res.product_name == 'DUMMYPRODUCT'
     assert res.gsm_status == G90HostInfoGsmStatus.OPERATIONAL
     assert res.wifi_status == G90HostInfoWifiStatus.OPERATIONAL
+    assert isinstance(res._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -125,6 +127,7 @@ async def test_devices(mock_device: DeviceMock) -> None:
     assert isinstance(devices[0], G90Device)
     assert devices[0].name == 'Switch'
     assert devices[0].index == 10
+    assert isinstance(devices[0]._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -203,6 +206,7 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
     assert isinstance(sensors[0], G90Sensor)
     assert sensors[0].name == 'Remote'
     assert sensors[0].index == 10
+    assert isinstance(sensors[0]._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -565,6 +569,7 @@ async def test_history(mock_device: DeviceMock) -> None:
     assert mock_device.recv_data == [
         b'ISTART[200,200,[200,[1,5]]]IEND\0',
     ]
+    assert isinstance(history[0]._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[

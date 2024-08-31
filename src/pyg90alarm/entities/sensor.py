@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, asdict, astuple
 from typing import (
-    Any, Optional, TYPE_CHECKING
+    Any, Optional, TYPE_CHECKING, Dict
 )
 
 from enum import IntEnum, IntFlag
@@ -472,6 +472,28 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @extra_data.setter
     def extra_data(self, val: Any) -> None:
         self._extra_data = val
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns dictionary representation of the sensor.
+
+        :return: Dictionary representation
+        """
+        return {
+            'name': self.name,
+            'type': self.type,
+            'subtype': self.subtype,
+            'index': self.index,
+            'subindex': self.subindex,
+            'node_count': self.node_count,
+            'protocol': self.protocol,
+            'occupancy': self.occupancy,
+            'user_flag': self.user_flag,
+            'reserved': self.reserved,
+            'extra_data': self.extra_data,
+            'enabled': self.enabled,
+            'supports_enable_disable': self.supports_enable_disable,
+        }
 
     def __repr__(self) -> str:
         """
