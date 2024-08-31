@@ -15,3 +15,5 @@ flake8.txt
 pylint.txt
 .coverage*
 coverage.xml
+.mypy_cache/
+mypy/
