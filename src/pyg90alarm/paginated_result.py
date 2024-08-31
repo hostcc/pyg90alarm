@@ -24,21 +24,24 @@ to work with results of paginated commands.
 """
 
 import logging
-from collections import namedtuple
+from typing import Any, Optional, AsyncGenerator, Iterable, cast
+from dataclasses import dataclass
 from .paginated_cmd import G90PaginatedCommand
 from .const import (
+    G90Commands,
     CMD_PAGE_SIZE,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90PaginatedResponse(
-    namedtuple('G90PaginatedResponse', ['proto_idx', 'data'])
-):
+@dataclass
+class G90PaginatedResponse:
     """
     Response yielded from the :meth:`.G90PaginatedResult.process` method
     """
+    proto_idx: int
+    data: str
 
 
 class G90PaginatedResult:
@@ -46,7 +49,10 @@ class G90PaginatedResult:
     Processes paginated response from G90 corresponding panel commands.
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, host, port, code, start=1, end=None, **kwargs):
+    def __init__(
+        self, host: str, port: int, code: G90Commands, start: int = 1,
+        end: Optional[int] = None, **kwargs: Any
+    ):
         # pylint: disable=too-many-arguments
         self._host = host
         self._port = port
@@ -55,7 +61,7 @@ class G90PaginatedResult:
         self._end = end
         self._kwargs = kwargs
 
-    async def process(self):
+    async def process(self) -> AsyncGenerator[G90PaginatedResponse, None]:
         """
         Process paginated response yielding :class:`.G90PaginatedResponse`
         instance for each element.
@@ -100,7 +106,7 @@ class G90PaginatedResult:
                           cmd.count, cmd.total, self._end)
 
             # Produce the resulting records for the consumer
-            for idx, data in enumerate(cmd.result):
+            for idx, data in enumerate(cast(Iterable[str], cmd.result)):
                 # Protocol uses one-based indexes, `start` implies that so no
                 # further additions to resulting value is needed.
                 # Note the index provided here is running one across multiple

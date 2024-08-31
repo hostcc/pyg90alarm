@@ -21,19 +21,32 @@
 """
 Protocol entity for G90 alarm panel status.
 """
-
-from collections import namedtuple
-
-INCOMING_FIELDS = [
-    'host_status',
-    'host_phone_number',
-    'product_name',
-    'mcu_hw_version',
-    'wifi_hw_version',
-]
+from __future__ import annotations
+from typing import Any, Dict
+from dataclasses import dataclass, asdict
+from .const import G90ArmDisarmTypes
 
 
-class G90HostStatus(namedtuple('G90HostStatus', INCOMING_FIELDS)):
+@dataclass
+class G90HostStatus:
     """
-    tbd
+    Interprets data fields of GETHOSTSTATUS command.
     """
+    host_status_data: int
+    host_phone_number: str
+    product_name: str
+    mcu_hw_version: str
+    wifi_hw_version: str
+
+    @property
+    def host_status(self) -> G90ArmDisarmTypes:
+        """
+        Translates host status data to G90ArmDisarmTypes.
+        """
+        return G90ArmDisarmTypes(self.host_status_data)
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the host information as dictionary.
+        """
+        return asdict(self)

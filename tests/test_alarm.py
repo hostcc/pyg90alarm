@@ -1,42 +1,49 @@
+"""
+Tests for G90Alarm class
+"""
 import asyncio
-import sys
 from unittest.mock import MagicMock, DEFAULT
 from itertools import cycle
 import pytest
-sys.path.extend(['src', '../src'])
-from pyg90alarm import (   # noqa:E402
+from pytest import LogCaptureFixture
+from pyg90alarm.alarm import (
     G90Alarm,
 )
-from pyg90alarm.host_info import (   # noqa:E402
+from pyg90alarm.host_info import (
     G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
 )
-from pyg90alarm.entities.sensor import (   # noqa:E402
+from pyg90alarm.entities.sensor import (
     G90Sensor,
 )
-from pyg90alarm.entities.device import (   # noqa:E402
+from pyg90alarm.entities.device import (
     G90Device,
 )
-from pyg90alarm.history import (   # noqa:E402
+from pyg90alarm.history import (
     G90History,
 )
-from pyg90alarm.host_status import (   # noqa:E402
+from pyg90alarm.host_status import (
     G90HostStatus,
 )
-from pyg90alarm.user_data_crc import (   # noqa:E402
+from pyg90alarm.user_data_crc import (
     G90UserDataCRC,
 )
-from pyg90alarm.config import (  # noqa: E402
+from pyg90alarm.config import (
     G90AlertConfigFlags,
 )
-from pyg90alarm.exceptions import (  # noqa: E402
+from pyg90alarm.exceptions import (
     G90TimeoutError,
 )
+
+from .device_mock import DeviceMock
 
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[100,[3,"PHONE","PRODUCT","206","206"]]IEND\0',
 ])
-async def test_host_status(mock_device):
+async def test_host_status(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving host status from the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     res = await g90.get_host_status()
@@ -46,6 +53,7 @@ async def test_host_status(mock_device):
     assert res.host_status == 3
     assert res.product_name == 'PRODUCT'
     assert res.host_phone_number == 'PHONE'
+    assert isinstance(res._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -53,7 +61,10 @@ async def test_host_status(mock_device):
     b'["DUMMYGUID","DUMMYPRODUCT",'
     b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0',
 ])
-async def test_host_info(mock_device):
+async def test_host_info(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving host information from the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     res = await g90.get_host_info()
@@ -64,13 +75,17 @@ async def test_host_info(mock_device):
     assert res.product_name == 'DUMMYPRODUCT'
     assert res.gsm_status == G90HostInfoGsmStatus.OPERATIONAL
     assert res.wifi_status == G90HostInfoWifiStatus.OPERATIONAL
+    assert isinstance(res._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[160,["1","0xab","3","4","5","6"]]IEND\0',
     b'ISTART[160,["1","0xab","3","4","5","6"]]IEND\0',
 ])
-async def test_user_data_crc(mock_device):
+async def test_user_data_crc(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving user data CRCs from the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     crc = await g90.get_user_data_crc()
@@ -94,7 +109,10 @@ async def test_user_data_crc(mock_device):
     b'ISTART[138,'
     b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
 ])
-async def test_devices(mock_device):
+async def test_devices(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving devices from the panel.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     devices = await g90.get_devices()
@@ -109,13 +127,18 @@ async def test_devices(mock_device):
     assert isinstance(devices[0], G90Device)
     assert devices[0].name == 'Switch'
     assert devices[0].index == 10
+    assert isinstance(devices[0]._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[138,'
     b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,2,0,""]]]IEND\0'
 ])
-async def test_multinode_device(mock_device):
+async def test_multinode_device(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving multi-node devices (e.g. multi-channel switch) from
+    the panel.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     devices = await g90.get_devices()
@@ -142,7 +165,10 @@ async def test_multinode_device(mock_device):
     b'ISTARTIEND\0',
     b'ISTARTIEND\0',
 ])
-async def test_control_device(mock_device):
+async def test_control_device(mock_device: DeviceMock) -> None:
+    """
+    Tests for controlling devices from the panel.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     devices = await g90.get_devices()
@@ -162,7 +188,10 @@ async def test_control_device(mock_device):
     b'ISTART[102,'
     b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
 ])
-async def test_single_sensor(mock_device):
+async def test_single_sensor(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving single sensor from the panel.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     sensors = await g90.get_sensors()
@@ -177,6 +206,7 @@ async def test_single_sensor(mock_device):
     assert isinstance(sensors[0], G90Sensor)
     assert sensors[0].name == 'Remote'
     assert sensors[0].index == 10
+    assert isinstance(sensors[0]._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -184,7 +214,13 @@ async def test_single_sensor(mock_device):
     b'[[2,1,2],["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
     b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
 ])
-async def test_multiple_sensors_shorter_than_page(mock_device):
+async def test_multiple_sensors_shorter_than_page(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for retrieving multiple sensors from the panel, while the number of
+    those is shorter than a single page.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     sensors = await g90.get_sensors()
@@ -223,7 +259,13 @@ async def test_multiple_sensors_shorter_than_page(mock_device):
     b'["Remote 11",20,0,10,1,0,32,0,0,16,1,0,""]'
     b']]IEND\0',
 ])
-async def test_multiple_sensors_longer_than_page(mock_device):
+async def test_multiple_sensors_longer_than_page(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for retrieving multiple sensors from the panel, while the number of
+    those is longer than a single page.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     sensors = await g90.get_sensors()
@@ -251,7 +293,10 @@ async def test_multiple_sensors_longer_than_page(mock_device):
         b'[170,[5,[10,"Remote"]]]\0',
     ]
 )
-async def test_sensor_event(mock_device):
+async def test_sensor_event(mock_device: DeviceMock) -> None:
+    """
+    Tests for sensor callback.
+    """
     reset_interval = 0.5
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
                    reset_occupancy_interval=reset_interval,
@@ -292,7 +337,10 @@ async def test_sensor_event(mock_device):
         b'[208,[4,26,1,4,"Remote","DUMMYGUID",1719223959,0,[""]]]\0'
     ]
 )
-async def test_sensor_low_battery_event(mock_device):
+async def test_sensor_low_battery_event(mock_device: DeviceMock) -> None:
+    """
+    Tests for sensor low battery callback.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
                    notifications_host=mock_device.notification_host,
                    notifications_port=mock_device.notification_port)
@@ -322,7 +370,10 @@ async def test_sensor_low_battery_event(mock_device):
         b'[170,[1,[1]]]\0'
     ]
 )
-async def test_armdisarm_callback(mock_device):
+async def test_armdisarm_callback(mock_device: DeviceMock) -> None:
+    """
+    Tests for arm/disarm callback.
+    """
     future = asyncio.get_running_loop().create_future()
     armdisarm_cb = MagicMock()
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
@@ -351,7 +402,10 @@ async def test_armdisarm_callback(mock_device):
         b'[208,[4,100,1,0,"Door","DUMMYGUID",1631545189,0,[""]]]\0',
     ]
 )
-async def test_door_open_close_callback(mock_device):
+async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
+    """
+    Tests for door open/close callback.
+    """
     future = asyncio.get_running_loop().create_future()
     door_open_close_cb = MagicMock()
     door_open_close_cb.side_effect = lambda *args: future.set_result(True)
@@ -406,7 +460,10 @@ async def test_door_open_close_callback(mock_device):
         b'[208,[3,102,1,1,"No Room","DUMMYGUID",1630876128,0,[""]]]\0',
     ]
 )
-async def test_alarm_callback(mock_device):
+async def test_alarm_callback(mock_device: DeviceMock) -> None:
+    """
+    Tests for alarm callback.
+    """
     future = asyncio.get_running_loop().create_future()
     alarm_cb = MagicMock()
     alarm_cb.side_effect = lambda *args: future.set_result(True)
@@ -454,7 +511,10 @@ async def test_alarm_callback(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
-async def test_arm_away(mock_device):
+async def test_arm_away(mock_device: DeviceMock) -> None:
+    """
+    Tests for arming the device in away mode.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.arm_away()
     assert mock_device.recv_data == [
@@ -465,7 +525,10 @@ async def test_arm_away(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
-async def test_arm_home(mock_device):
+async def test_arm_home(mock_device: DeviceMock) -> None:
+    """
+    Tests for arming the device in home mode.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.arm_home()
     assert mock_device.recv_data == [
@@ -476,7 +539,10 @@ async def test_arm_home(mock_device):
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
-async def test_disarm(mock_device):
+async def test_disarm(mock_device: DeviceMock) -> None:
+    """
+    Tests for disarming the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.disarm()
     assert mock_device.recv_data == [
@@ -492,7 +558,10 @@ async def test_disarm(mock_device):
     b'[2,4,0,0,"",1630142757,""],'
     b'[3,100,126,1,"Sensor 2",1630142297,""]]]IEND\0',
 ])
-async def test_history(mock_device):
+async def test_history(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving history from the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     history = await g90.history(count=5)
     assert len(history) == 5
@@ -500,6 +569,7 @@ async def test_history(mock_device):
     assert mock_device.recv_data == [
         b'ISTART[200,200,[200,[1,5]]]IEND\0',
     ]
+    assert isinstance(history[0]._asdict(), dict)
 
 
 @pytest.mark.g90device(sent_data=[
@@ -527,7 +597,10 @@ async def test_history(mock_device):
     # handling alarm
     b'ISTART[117,[256]]IEND\0',
 ])
-async def test_simulate_alerts_from_history(mock_device):
+async def test_simulate_alerts_from_history(mock_device: DeviceMock) -> None:
+    """
+    Tests for simulating device alerts from the history.
+    """
     # Callback handlers for alarm and arm/disarm, just setting their
     # corresponding future when called
     future_alarm = asyncio.get_running_loop().create_future()
@@ -542,7 +615,7 @@ async def test_simulate_alerts_from_history(mock_device):
     g90.armdisarm_callback = armdisarm_cb
     # Simulate device timeout exception every 2nd call to `G90Alarm.history()`
     # method - the processing should still result in callbacks invoked
-    g90.history = MagicMock(wraps=g90.history)
+    g90.history = MagicMock(wraps=g90.history)  # type: ignore[method-assign]
     g90.history.side_effect = cycle([G90TimeoutError, DEFAULT])
     # Simulate device notifications from the history data above, small interval
     # is set to shorten the test run time
@@ -561,10 +634,16 @@ async def test_simulate_alerts_from_history(mock_device):
     assert sensors[0].occupancy is True
 
 
-async def test_simulate_alerts_from_history_exception(mock_device, caplog):
+async def test_simulate_alerts_from_history_exception(
+    mock_device: DeviceMock, caplog: LogCaptureFixture
+) -> None:
+    """
+    Tests for simulating device alerts from the history, when an exception is
+    raised when interacting with the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     # Simulate a generic error fetching history entries
-    g90.history = MagicMock()
+    g90.history = MagicMock()  # type: ignore[method-assign]
     simulated_error = Exception('dummy error')
     g90.history.side_effect = simulated_error
     caplog.set_level('WARNING')
@@ -573,8 +652,10 @@ async def test_simulate_alerts_from_history_exception(mock_device, caplog):
     # Allow task to settle
     await asyncio.sleep(0.1)
     # Verify the task is no longer running and resulted in particular exception
-    assert g90._alert_simulation_task.exception() == simulated_error
-    assert g90._alert_simulation_task.done()
+    task = g90._alert_simulation_task  # pylint:disable=protected-access
+    assert task is not None
+    assert task.exception() == simulated_error
+    assert task.done()
     # Stop simulating the alert from history
     await g90.stop_simulating_alerts_from_history()
     # Verify the error logged
@@ -586,8 +667,10 @@ async def test_simulate_alerts_from_history_exception(mock_device, caplog):
 @pytest.mark.g90device(sent_data=[
     b'ISTART[117,[1]]IEND\0',
 ])
-async def test_alert_config(mock_device):
-    """ Tests for retrieving alert configuration from the device """
+async def test_alert_config(mock_device: DeviceMock) -> None:
+    """
+    Tests for retrieving alert configuration from the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     config = await g90.get_alert_config()
@@ -602,8 +685,10 @@ async def test_alert_config(mock_device):
     b"ISTART[117,[3]]IEND\0",
     b"ISTARTIEND\0",
 ])
-async def test_set_alert_config(mock_device):
-    """ Tests for setting alert configuration to the the device """
+async def test_set_alert_config(mock_device: DeviceMock) -> None:
+    """
+    Tests for setting alert configuration to the the device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     await g90.set_alert_config(
@@ -637,8 +722,10 @@ async def test_set_alert_config(mock_device):
         b'[170,[1,[1]]]\0',
     ]
 )
-async def test_sms_alert_when_armed(mock_device):
-    """ Tests for enabling SMS alerts when device is armed """
+async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
+    """
+    Tests for enabling SMS alerts when device is armed.
+    """
     future = asyncio.get_running_loop().create_future()
     armdisarm_cb = MagicMock()
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
@@ -669,8 +756,10 @@ async def test_sms_alert_when_armed(mock_device):
         b'[170,[1,[3]]]\0',
     ]
 )
-async def test_sms_alert_when_disarmed(mock_device):
-    """ Tests for disabling SMS alerts when device is disarmed """
+async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
+    """
+    Tests for disabling SMS alerts when device is disarmed.
+    """
     future = asyncio.get_running_loop().create_future()
     armdisarm_cb = MagicMock()
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
@@ -702,7 +791,10 @@ async def test_sms_alert_when_disarmed(mock_device):
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
-async def test_sensor_disable(mock_device):
+async def test_sensor_disable(mock_device: DeviceMock) -> None:
+    """
+    Tests for disabling a sensor.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     sensors = await g90.get_sensors()
     prop_sensors = await g90.sensors
@@ -731,7 +823,12 @@ async def test_sensor_disable(mock_device):
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
-async def test_sensor_disable_externally_modified(mock_device):
+async def test_sensor_disable_externally_modified(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for disabling a sensor that has been modified externally.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     sensors = await g90.get_sensors()
@@ -752,7 +849,10 @@ async def test_sensor_disable_externally_modified(mock_device):
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
-async def test_sensor_unsupported_disable(mock_device):
+async def test_sensor_unsupported_disable(mock_device: DeviceMock) -> None:
+    """
+    Tests for disabling an unsupported sensor.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     sensors = await g90.get_sensors()
@@ -773,7 +873,12 @@ async def test_sensor_unsupported_disable(mock_device):
     b']]IEND\0',
     b'ISTART[102,[[2,2,0]]]IEND\0',
 ])
-async def test_sensor_disable_sensor_not_found_on_refresh(mock_device):
+async def test_sensor_disable_sensor_not_found_on_refresh(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for disabling a sensor that is not found on refresh.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     sensors = await g90.get_sensors()
@@ -792,7 +897,10 @@ async def test_sensor_disable_sensor_not_found_on_refresh(mock_device):
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
-async def test_device_unsupported_disable(mock_device):
+async def test_device_unsupported_disable(mock_device: DeviceMock) -> None:
+    """
+    Tests for disabling an unsupported device.
+    """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
     devices = await g90.get_devices()

@@ -23,8 +23,13 @@ Implements support for notifications/alerts sent by G90 alarm panel.
 """
 import json
 import logging
-from collections import namedtuple
+from typing import (
+    Optional, Tuple, List, Any
+)
+from dataclasses import dataclass
 import asyncio
+from asyncio.transports import BaseTransport
+from asyncio.protocols import DatagramProtocol
 from .callback import G90Callback
 from .const import (
     G90MessageTypes,
@@ -40,64 +45,78 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90Message(namedtuple('G90Message',
-                            ['code', 'data'])):
+@dataclass
+class G90Message:
     """
     Represents the message received from the device.
 
     :meta private:
     """
+    code: G90MessageTypes
+    data: List[Any]
 
 
-class G90Notification(namedtuple('G90Notification',
-                                 ['kind', 'data'])):
+@dataclass
+class G90Notification:
     """
     Represents the notification received from the device.
 
     :meta private:
     """
+    kind: G90NotificationTypes
+    data: List[Any]
 
 
-class G90ZoneInfo(namedtuple('G90ZoneInfo',
-                             ['idx', 'name'])):
+@dataclass
+class G90ZoneInfo:
     """
     Represents zone details received from the device.
 
     :meta private:
     """
+    idx: int
+    name: str
 
 
-class G90ArmDisarmInfo(namedtuple('G90ArmDisarmInfo',
-                                  ['state'])):
+@dataclass
+class G90ArmDisarmInfo:
     """
     Represents the arm/disarm state received from the device.
 
     :meta private:
     """
+    state: int
 
 
-class G90DeviceAlert(namedtuple('G90DeviceAlert',
-                                ['type', 'event_id', 'source', 'state',
-                                 'zone_name', 'device_id', 'unix_time',
-                                 'resv4', 'other'])):
+@dataclass
+class G90DeviceAlert:  # pylint: disable=too-many-instance-attributes
     """
     Represents alert received from the device.
-
-    :meta private:
     """
+    type: G90AlertTypes
+    event_id: G90AlertStateChangeTypes
+    source: G90AlertSources
+    state: int
+    zone_name: str
+    device_id: str
+    unix_time: int
+    resv4: int
+    other: str
 
 
-class G90DeviceNotifications:
+class G90DeviceNotifications(DatagramProtocol):
     """
-    tbd
+    Implements support for notifications/alerts sent by alarm panel.
     """
-    def __init__(self, port, host):
+    def __init__(self, port: int, host: str):
         # pylint: disable=too-many-arguments
-        self._notification_transport = None
+        self._notification_transport: Optional[BaseTransport] = None
         self._notifications_host = host
         self._notifications_port = port
 
-    def _handle_notification(self, addr, notification):
+    def _handle_notification(
+        self, addr: Tuple[str, int], notification: G90Notification
+    ) -> None:
         # Sensor activity notification
         if notification.kind == G90NotificationTypes.SENSOR_ACTIVITY:
             g90_zone_info = G90ZoneInfo(*notification.data)
@@ -123,7 +142,9 @@ class G90DeviceNotifications:
                         ' kind %s, data %s',
                         addr[0], addr[1], notification.kind, notification.data)
 
-    def _handle_alert(self, addr, alert):
+    def _handle_alert(
+        self, addr: Tuple[str, int], alert: G90DeviceAlert
+    ) -> None:
         if alert.type == G90AlertTypes.DOOR_OPEN_CLOSE:
             if alert.state in (
                 G90AlertStates.DOOR_OPEN, G90AlertStates.DOOR_CLOSE
@@ -163,7 +184,7 @@ class G90DeviceNotifications:
                 G90AlertStateChangeTypes.DISARM: G90ArmDisarmTypes.DISARM
             }
 
-            state = alarm_arm_disarm_state_map.get(alert.event_id, None)
+            state = alarm_arm_disarm_state_map.get(alert.event_id)
             if state:
                 # We received the device state change related to arm/disarm,
                 # invoke the corresponding callback
@@ -185,17 +206,20 @@ class G90DeviceNotifications:
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
-    def connection_made(self, transport):
+    def connection_made(self, transport: BaseTransport) -> None:
         """
         Invoked when connection from the device is made.
         """
 
-    def connection_lost(self, exc):
+    def connection_lost(self, exc: Optional[Exception]) -> None:
         """
         Same but when the connection is lost.
         """
 
-    def datagram_received(self, data, addr):  # pylint:disable=R0911
+    def datagram_received(  # pylint:disable=R0911
+        self, data: bytes, addr: Tuple[str, int]
+    ) -> None:
+
         """
         Invoked from datagram is received from the device.
         """
@@ -221,54 +245,56 @@ class G90DeviceNotifications:
         # Device notifications
         if g90_message.code == G90MessageTypes.NOTIFICATION:
             try:
-                data = G90Notification(*g90_message.data)
+                notification_data = G90Notification(*g90_message.data)
             except TypeError as exc:
                 _LOGGER.error('Bad notification received from %s:%s: %s',
                               addr[0], addr[1], exc)
                 return
-            self._handle_notification(addr, data)
+            self._handle_notification(addr, notification_data)
             return
 
         # Device alerts
         if g90_message.code == G90MessageTypes.ALERT:
             try:
-                data = G90DeviceAlert(*g90_message.data)
+                alert_data = G90DeviceAlert(*g90_message.data)
             except TypeError as exc:
                 _LOGGER.error('Bad alert received from %s:%s: %s',
                               addr[0], addr[1], exc)
                 return
-            self._handle_alert(addr, data)
+            self._handle_alert(addr, alert_data)
             return
 
         _LOGGER.warning('Unknown message received from %s:%s: %s',
                         addr[0], addr[1], message)
 
-    async def on_armdisarm(self, state):
+    async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
         """
         Invoked when device is armed or disarmed.
         """
 
-    async def on_sensor_activity(self, idx, name):
+    async def on_sensor_activity(self, idx: int, name: str) -> None:
         """
         Invoked on sensor activity.
         """
 
-    async def on_door_open_close(self, event_id, zone_name, is_open):
+    async def on_door_open_close(
+        self, event_id: int, zone_name: str, is_open: bool
+    ) -> None:
         """
         Invoked when door sensor reports it opened or closed.
         """
 
-    async def on_low_battery(self, event_id, zone_name):
+    async def on_low_battery(self, event_id: int, zone_name: str) -> None:
         """
         Invoked when a sensor reports it is low on battery.
         """
 
-    async def on_alarm(self, event_id, zone_name):
+    async def on_alarm(self, event_id: int, zone_name: str) -> None:
         """
         Invoked when device triggers the alarm.
         """
 
-    async def listen(self):
+    async def listen(self) -> None:
         """
         Listens for notifications/alers from the device.
         """
@@ -288,15 +314,13 @@ class G90DeviceNotifications:
             ))
 
     @property
-    def listener_started(self):
+    def listener_started(self) -> bool:
         """
         Indicates if the listener of the device notifications has been started.
-
-        :rtype: bool
         """
         return self._notification_transport is not None
 
-    def close(self):
+    def close(self) -> None:
         """
         Closes the listener.
         """

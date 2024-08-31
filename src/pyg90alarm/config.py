@@ -21,12 +21,15 @@
 """
 Represents various configuration aspects of the alarm panel.
 """
+from __future__ import annotations
 from enum import IntFlag
-from collections import namedtuple
+from dataclasses import dataclass
 
 
 class G90AlertConfigFlags(IntFlag):
-    """ Alert configuration flags, used bitwise """
+    """
+    Alert configuration flags, used bitwise
+    """
     AC_POWER_FAILURE = 1
     AC_POWER_RECOVER = 2
     ARM_DISARM = 4
@@ -41,15 +44,16 @@ class G90AlertConfigFlags(IntFlag):
     UNKNOWN2 = 8192
 
 
-class G90AlertConfig(namedtuple('G90AlertConfig', ['flags_data'])):
+@dataclass
+class G90AlertConfig:
     """
     Represents alert configuration as received from the alarm panel.
     """
+    flags_data: int
 
     @property
-    def flags(self):
+    def flags(self) -> G90AlertConfigFlags:
         """
-        :return: Instance of :class:`G90AlertConfigFlags` that provides
-         symbolic names to corresponding flag bits
+        :return: Symbolic names for corresponding flag bits
         """
         return G90AlertConfigFlags(self.flags_data)

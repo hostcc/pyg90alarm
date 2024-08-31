@@ -21,22 +21,33 @@
 """
 Implements callbacks.
 """
-
+from __future__ import annotations
 import asyncio
 from functools import (partial, wraps)
+from asyncio import Task
+from typing import Any, Callable, Coroutine, cast, Optional, Union
 import logging
 
 _LOGGER = logging.getLogger(__name__)
 
+Callback = Optional[
+    Union[
+        Callable[..., None],
+        Callable[..., Coroutine[None, None, None]],
+    ]
+]
+
 
 class G90Callback:
     """
-    tbd
+    Implements callbacks.
     """
     @staticmethod
-    def invoke(callback, *args, **kwargs):
+    def invoke(
+        callback: Callback, *args: Any, **kwargs: Any
+    ) -> None:
         """
-        tbd
+        Invokes the callback.
         """
         if not callback:
             return
@@ -46,73 +57,52 @@ class G90Callback:
                       callback, args, kwargs)
 
         if not asyncio.iscoroutinefunction(callback):
-            def async_wrapper(func):
+            def async_wrapper(
+                func: Callable[..., None]
+            ) -> Callable[..., Coroutine[Any, Any, None]]:
                 """
                 Wraps the regular callback function into coroutine, so it could
                 later be created as async task.
                 """
                 @wraps(func)
-                async def wrapper(*args, **kwds):
+                async def wrapper(
+                    *args: Any, **kwds: Any
+                ) -> None:
                     return func(*args, **kwds)
-                return wrapper
 
-            callback = async_wrapper(callback)
+                return cast(Callable[..., Coroutine[Any, Any, None]], wrapper)
 
-        if hasattr(asyncio, 'create_task'):
-            task = asyncio.create_task(callback(*args, **kwargs))
+            task = asyncio.create_task(
+                async_wrapper(
+                    cast(Callable[..., None], callback)
+                )(*args, **kwargs)
+            )
         else:
-            # Python 3.6 has only `ensure_future` method
-            task = asyncio.ensure_future(callback(*args, **kwargs))
+            task = asyncio.create_task(callback(*args, **kwargs))
 
-        def reap_callback_exception(task):
+        def reap_callback_exception(task: Task[Any]) -> None:
             """
             Reaps an exception (if any) from the task logging it, to prevent
             `asyncio` reporting that task exception was never retrieved.
             """
             exc = task.exception()
             if exc:
-                _LOGGER.error('Got exception when invoking'
-                              " callback '%s(...)':",
-                              task.get_coro().__qualname__,
-                              exc_info=exc, stack_info=False)
+                _LOGGER.error(
+                    "Got exception when invoking callback '%s(...)':",
+                    cast(
+                        Coroutine[Any, Any, None], task.get_coro()
+                    ).__qualname__,
+                    exc_info=exc, stack_info=False
+                )
 
         task.add_done_callback(reap_callback_exception)
 
     @staticmethod
-    def invoke_delayed(delay, callback, *args, **kwargs):
+    def invoke_delayed(
+        delay: float, callback: Callable[..., None], *args: Any, **kwargs: Any
+    ) -> None:
         """
-        tbd
+        Invokes the callback after a delay.
         """
-        if hasattr(asyncio, 'get_running_loop'):
-            loop = asyncio.get_running_loop()
-        else:
-            # Python 3.6 has no `get_running_loop`, only `get_event_loop`
-            loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         loop.call_later(delay, partial(callback, *args, **kwargs))
-
-
-def async_as_sync(func):
-    """
-    Invokes an async function as regular one via :py:func:`G90Callback.invoke`.
-    One of possible use cases is implementing property setter for async code,
-    where the function could be used an decorator:
-
-    .. code-block:: python
-
-     @property
-     async def a_property(...):
-         ...
-
-     @a_property.setter
-     @async_as_sync
-     async def a_property(...):
-         ...
-
-    Since the function internally submits the wrapped async code as
-    :py:mod:`asyncio` task, it execution isn't guaranteed as the program could
-    be terminated earlier that it is processed in the loop.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        return G90Callback.invoke(func, *args, **kwargs)
-    return wrapper

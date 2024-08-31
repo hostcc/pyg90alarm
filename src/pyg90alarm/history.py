@@ -21,9 +21,9 @@
 """
 History protocol entity.
 """
-
+from typing import Any, Optional, Dict
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from collections import namedtuple
 from .const import (
     G90AlertTypes,
     G90AlertSources,
@@ -65,52 +65,50 @@ states_mapping = {
         G90HistoryStates.WIFI_DISCONNECTED,
 }
 
-INCOMING_FIELDS = [
-    'type',
-    'event_id',
-    'source',
-    'state',
-    'sensor_name',
-    'unix_time',
-    'other',
-]
-# Class representing the data incoming from the device
-ProtocolData = namedtuple('ProtocolData', INCOMING_FIELDS)
+
+@dataclass
+class ProtocolData:
+    """
+    Class representing the data incoming from the device
+
+    :meta private:
+    """
+    type: G90AlertTypes
+    event_id: G90AlertStateChangeTypes
+    source: G90AlertSources
+    state: int
+    sensor_name: str
+    unix_time: int
+    other: str
 
 
 class G90History:
     """
-    tbd
+    Represents a history entry from the alarm panel.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         self._protocol_data = ProtocolData(*args, **kwargs)
 
     @property
-    def datetime(self):
+    def datetime(self) -> datetime:
         """
         Date/time of the history entry.
-
-        :rtype: :class:`datetime.datetime`
         """
         return datetime.fromtimestamp(
             self._protocol_data.unix_time, tz=timezone.utc
         )
 
     @property
-    def type(self):
+    def type(self) -> G90AlertTypes:
         """
         Type of the history entry.
-
-        :rtype: :class:`.G90AlertTypes`
         """
         return G90AlertTypes(self._protocol_data.type)
 
     @property
-    def state(self):
+    def state(self) -> G90HistoryStates:
         """
         State for the history entry.
-
-        :rtype: :class:`.G90HistoryStates`
         """
         # Door open/close type, mapped against `G90AlertStates` using `state`
         # incoming field
@@ -140,11 +138,9 @@ class G90History:
         )
 
     @property
-    def source(self):
+    def source(self) -> G90AlertSources:
         """
         Source of the history entry.
-
-        :rtype: :class:`.G90AlertSources`
         """
         # Device state changes or open/close events are mapped against
         # `G90AlertSources` using `source` incoming field
@@ -162,22 +158,18 @@ class G90History:
         return G90AlertSources.DEVICE
 
     @property
-    def sensor_name(self):
+    def sensor_name(self) -> Optional[str]:
         """
         Name of the sensor related to the history entry, might be empty if none
         associated.
-
-        :rtype: str|None
         """
         return self._protocol_data.sensor_name or None
 
     @property
-    def sensor_idx(self):
+    def sensor_idx(self) -> Optional[int]:
         """
         ID of the sensor related to the history entry, might be empty if none
         associated.
-
-        :rtype: str|None
         """
         # Sensor ID will only be available if entry source is a sensor
         if self.source == G90AlertSources.SENSOR:
@@ -185,12 +177,10 @@ class G90History:
 
         return None
 
-    def as_device_alert(self):
+    def as_device_alert(self) -> G90DeviceAlert:
         """
         Returns the history entry represented as device alert structure,
         suitable for :meth:`G90DeviceNotifications._handle_alert`.
-
-        :rtype: :class:`.G90DeviceAlert`
         """
         return G90DeviceAlert(
             type=self._protocol_data.type,
@@ -198,17 +188,28 @@ class G90History:
             source=self._protocol_data.source,
             state=self._protocol_data.state,
             zone_name=self._protocol_data.sensor_name,
-            device_id=None,
+            device_id='',
             unix_time=self._protocol_data.unix_time,
-            resv4=None,
+            resv4=0,
             other=self._protocol_data.other
         )
 
-    def __repr__(self):
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the history entry as dictionary.
+        """
+        return {
+            'type': self.type,
+            'source': self.source,
+            'state': self.state,
+            'sensor_name': self.sensor_name,
+            'sensor_idx': self.sensor_idx,
+            'datetime': self.datetime,
+        }
+
+    def __repr__(self) -> str:
         """
         Textural representation of the history entry.
-
-        :rtype: str
         """
         return f'type={repr(self.type)}' \
             + f' source={repr(self.source)}' \

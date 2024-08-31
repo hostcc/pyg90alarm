@@ -21,8 +21,10 @@
 """
 Discovers G90 alarm panels.
 """
-
+from __future__ import annotations
 import asyncio
+from typing import Any, List, Tuple
+from dataclasses import dataclass
 import logging
 
 from .base_cmd import G90BaseCommand
@@ -32,45 +34,52 @@ from .const import G90Commands
 _LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class G90DiscoveredDevice(G90HostInfo):
+    """
+    Represents discovered alarm panel.
+    """
+    host: str
+    port: int
+    guid: str
+
+
 class G90Discovery(G90BaseCommand):
     """
-    tbd
+    Discovers alarm panels.
     """
     # pylint: disable=too-few-public-methods
-    def __init__(self, timeout=10, **kwargs):
-        """
-        tbd
-        """
+    def __init__(self, timeout: float = 10, **kwargs: Any):
         # pylint: disable=too-many-arguments
         super().__init__(code=G90Commands.GETHOSTINFO, timeout=timeout,
                          **kwargs)
-        self._discovered_devices = []
+        self._discovered_devices: List[G90DiscoveredDevice] = []
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
-        tbd
+        Invoked when some data is received.
         """
         try:
             ret = self.from_wire(data)
             host_info = G90HostInfo(*ret)
             _LOGGER.debug('Received from %s:%s: %s', addr[0], addr[1], ret)
-            res = {
-                'guid': host_info.host_guid,
-                'host': addr[0],
-                'port': addr[1]
-            }
-            res.update(host_info._asdict())
+            res = G90DiscoveredDevice(
+                host=addr[0],
+                port=addr[1],
+                guid=host_info.host_guid,
+                **host_info._asdict()
+            )
             _LOGGER.debug('Discovered device: %s', res)
             self.add_device(res)
 
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
 
-    async def process(self):
+    async def process(self) -> G90Discovery:
         """
-        tbd
+        Initiates device discovery.
         """
         _LOGGER.debug('Attempting device discovery...')
         transport, _ = await self._create_connection()
@@ -78,17 +87,17 @@ class G90Discovery(G90BaseCommand):
         await asyncio.sleep(self._timeout)
         transport.close()
         _LOGGER.debug('Discovered %s devices', len(self.devices))
-        return self.devices
+        return self
 
     @property
-    def devices(self):
+    def devices(self) -> List[G90DiscoveredDevice]:
         """
-        tbd
+        The list of discovered devices.
         """
         return self._discovered_devices
 
-    def add_device(self, value):
+    def add_device(self, value: G90DiscoveredDevice) -> None:
         """
-        tbd
+        Adds discovered device to the list.
         """
         self._discovered_devices.append(value)

@@ -21,58 +21,85 @@
 """
 Discovers G90 alarm panel devices with specific ID.
 """
-
+from __future__ import annotations
 import logging
-from collections import namedtuple
-from .discovery import G90Discovery
+from typing import Tuple, Any, Optional, Dict, List
+from dataclasses import dataclass, asdict
+import asyncio
+from asyncio.transports import BaseTransport
+from .base_cmd import G90BaseCommand
+from .const import G90Commands
 from .exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
-INCOMING_FIELDS = [
-    'message',
-    'product_name',
-    'wifi_protocol_version',
-    'cloud_protocol_version',
-    'mcu_hw_version',
-    'fw_version',
-    'gsm_status',
-    'wifi_status',
-    'server_status',
-    'reserved1',
-    'reserved2',
-    'gsm_signal_level',
-    'wifi_signal_level'
-]
 
-
-class G90TargetedDiscoveryInfo(namedtuple('G90TargetedDiscoveryInfo',
-                                          INCOMING_FIELDS)):
+@dataclass
+# pylint: disable=too-many-instance-attributes
+class G90TargetedDiscoveryInfo:
     """
-    tbd
-
-    :meta private:
+    Wire representation of the information about discovered device.
     """
+    message: str
+    product_name: str
+    wifi_protocol_version: str
+    cloud_protocol_version: str
+    mcu_hw_version: str
+    fw_version: str
+    gsm_status: str
+    wifi_status: str
+    server_status: str
+    reserved1: str
+    reserved2: str
+    gsm_signal_level: str
+    wifi_signal_level: str
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the information about discovered device as dictionary.
+        """
+        return asdict(self)
 
 
-class G90TargetedDiscovery(G90Discovery):
+@dataclass
+class G90DiscoveredDeviceTargeted(G90TargetedDiscoveryInfo):
     """
-    tbd
+    Discovered device with specific ID.
     """
+    host: str
+    port: int
+    guid: str
 
+
+class G90TargetedDiscovery(G90BaseCommand):
+    """
+    Discovers alarm panel devices with specific ID.
+    """
     # pylint: disable=too-few-public-methods
-    def __init__(self, device_id, **kwargs):
-        """
-        tbd
-        """
-        super().__init__(**kwargs)
+    def __init__(self, device_id: str, **kwargs: Any):
+        super().__init__(
+            # No actual command will be processed by base class, `NONE` is used
+            # for proper typing only
+            code=G90Commands.NONE, **kwargs
+        )
         self._device_id = device_id
+        self._discovered_devices: List[G90DiscoveredDeviceTargeted] = []
+
+    def connection_made(self, transport: BaseTransport) -> None:
+        """
+        Invoked when connection is established.
+        """
+
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        """
+        Invoked when connection is lost.
+        """
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
-    def datagram_received(self, data, addr):
+    def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
-        tbd
+        Invoked when datagram is received.
         """
         try:
             _LOGGER.debug('Received from %s:%s: %s', addr[0], addr[1], data)
@@ -82,17 +109,49 @@ class G90TargetedDiscovery(G90Discovery):
             host_info = G90TargetedDiscoveryInfo(*decoded[:-1].split(','))
             if host_info.message != 'IWTAC_PROBE_DEVICE_ACK':
                 raise G90Error('Invalid discovery response')
-            res = {'guid': self._device_id,
-                   'host': addr[0],
-                   'port': addr[1]}
-            res.update(host_info._asdict())
+            res = G90DiscoveredDeviceTargeted(
+                host=addr[0],
+                port=addr[1],
+                guid=self._device_id,
+                **host_info._asdict()
+            )
             _LOGGER.debug('Discovered device: %s', res)
             self.add_device(res)
         except Exception as exc:  # pylint: disable=broad-except
             _LOGGER.warning('Got exception, ignoring: %s', exc)
 
-    def to_wire(self):
+    def error_received(self, exc: Exception) -> None:
         """
-        tbd
+        Invoked when error is received.
+        """
+
+    def to_wire(self) -> bytes:
+        """
+        Converts the command to wire representation.
         """
         return bytes(f'IWTAC_PROBE_DEVICE,{self._device_id}\0', 'ascii')
+
+    async def process(self) -> G90TargetedDiscovery:
+        """
+        Initiates the device discovery process.
+        """
+        _LOGGER.debug('Attempting device discovery...')
+        transport, _ = await self._create_connection()
+        transport.sendto(self.to_wire())
+        await asyncio.sleep(self._timeout)
+        transport.close()
+        _LOGGER.debug('Discovered %s devices', len(self.devices))
+        return self
+
+    @property
+    def devices(self) -> List[G90DiscoveredDeviceTargeted]:
+        """
+        The list of discovered devices.
+        """
+        return self._discovered_devices
+
+    def add_device(self, value: G90DiscoveredDeviceTargeted) -> None:
+        """
+        Adds discovered device to the list.
+        """
+        self._discovered_devices.append(value)

@@ -22,7 +22,7 @@
 Sensor definitions for G90 devices, required when modifying them since writing
 a sensor to the device requires values not present on read.
 """
-from collections import namedtuple
+from typing import NamedTuple
 from enum import IntEnum
 
 
@@ -44,21 +44,22 @@ class SensorRwMode(IntEnum):
     READ_WRITE = 2
 
 
-class SensorDefinition(
-    namedtuple(
-        'SensorDefinition', [
-            'type', 'subtype', 'rx', 'tx',
-            'private_data', 'rwMode', 'matchMode',
-        ]
-    )
-):
+class SensorDefinition(NamedTuple):
     """
     Holds sensor definition data.
     """
+    type: int
+    subtype: int
+    rx: int
+    tx: int
+    private_data: str
+    rwMode: SensorRwMode
+    matchMode: SensorMatchMode
+
     @property
-    def reserved_data(self):
+    def reserved_data(self) -> int:
         """
-        Returns sensor 'reserved_data' field to be written, combined of match
+        Sensor's 'reserved_data' field to be written, combined of match
         and RW mode values bitwise.
         """
         return self.matchMode.value << 4 | self.rwMode.value
