@@ -50,6 +50,8 @@ class G90Commands(IntEnum):
         obj.__doc__ = doc
         return obj
 
+    #
+    NONE = 0
     # Host status
     GETHOSTSTATUS = (100, 'Get host status')
     SETHOSTSTATUS = (101, 'Set host status')

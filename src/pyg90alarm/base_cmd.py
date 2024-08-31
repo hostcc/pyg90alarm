@@ -28,7 +28,8 @@ import asyncio
 from asyncio import Future
 from asyncio.protocols import DatagramProtocol
 from asyncio.transports import DatagramTransport, BaseTransport
-from typing import NamedTuple, Optional, Any, Tuple, List
+from typing import Optional, Tuple, List, Any
+from dataclasses import dataclass
 from .exceptions import (G90Error, G90TimeoutError)
 from .const import G90Commands
 
@@ -37,7 +38,8 @@ _LOGGER = logging.getLogger(__name__)
 G90BaseCommandData = List[Any]
 
 
-class G90Header(NamedTuple):
+@dataclass
+class G90Header:
     """
     Represents JSON structure of the header used in alarm panel commands.
 
@@ -49,7 +51,7 @@ class G90Header(NamedTuple):
 
 class G90BaseCommand(DatagramProtocol):
     """
-    tbd
+    Implements basic command handling for alarm panel protocol.
     """
     # pylint: disable=too-many-instance-attributes
     # Lock need to be shared across all of the class instances
@@ -59,9 +61,6 @@ class G90BaseCommand(DatagramProtocol):
                  data: Optional[G90BaseCommandData] = None,
                  local_port: Optional[int] = None,
                  timeout: float = 3.0, retries: int = 3) -> None:
-        """
-        tbd
-        """
         # pylint: disable=too-many-arguments
         self._remote_host = host
         self._remote_port = port
@@ -86,17 +85,17 @@ class G90BaseCommand(DatagramProtocol):
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
     def connection_made(self, transport: BaseTransport) -> None:
         """
-        tbd
+        Invoked when connection is established.
         """
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
         """
-        tbd
+        Invoked when connection is lost.
         """
 
     def datagram_received(self, data: bytes, addr: Tuple[str, int]) -> None:
         """
-        tbd
+        Invoked when datagram is received.
         """
         if asyncio.isfuture(self._connection_result):
             if self._connection_result.done():
@@ -108,7 +107,7 @@ class G90BaseCommand(DatagramProtocol):
 
     def error_received(self, exc: Exception) -> None:
         """
-        tbd
+        Invoked when error is received.
         """
         if (
             asyncio.isfuture(self._connection_result) and not
@@ -120,7 +119,7 @@ class G90BaseCommand(DatagramProtocol):
         Tuple[DatagramTransport, DatagramProtocol]
     ):
         """
-        tbd
+        Creates UDP connection to the alarm panel.
         """
         try:
             loop = asyncio.get_running_loop()
@@ -143,7 +142,7 @@ class G90BaseCommand(DatagramProtocol):
 
     def to_wire(self) -> bytes:
         """
-        tbd
+        Returns the command in wire format.
         """
         wire = bytes(f'ISTART[{self._code},{self._code},{self._data}]IEND\0',
                      'utf-8')
@@ -152,7 +151,7 @@ class G90BaseCommand(DatagramProtocol):
 
     def from_wire(self, data: bytes) -> G90BaseCommandData:
         """
-        tbd
+        Parses the response from the alarm panel.
         """
         _LOGGER.debug('To be decoded from wire format %s', data)
         self._parse(data.decode('utf-8', errors='ignore'))
@@ -160,7 +159,7 @@ class G90BaseCommand(DatagramProtocol):
 
     def _parse(self, data: str) -> None:
         """
-        tbd
+        Processes the response from the alarm panel.
         """
         if not data.startswith('ISTART'):
             raise G90Error('Missing start marker in data')
@@ -199,29 +198,28 @@ class G90BaseCommand(DatagramProtocol):
     @property
     def result(self) -> G90BaseCommandData:
         """
-        tbd
+        Returns the result of the command.
         """
         return self._result
 
     @property
     def host(self) -> str:
         """
-        tbd
+        Returns the host of the alarm panel.
         """
         return self._remote_host
 
     @property
     def port(self) -> int:
         """
-        tbd
+        Returns the port of the alarm panel.
         """
         return self._remote_port
 
     async def process(self) -> G90BaseCommand:
         """
-        tbd
+        Processes the command.
         """
-
         transport, _ = await self._create_connection()
         attempts = self._retries
         while True:
@@ -260,7 +258,7 @@ class G90BaseCommand(DatagramProtocol):
 
     def __repr__(self) -> str:
         """
-        tbd
+        Returns string representation of the command.
         """
         return f'Command: {self._code}, request: {self._data},' \
             f' response: {self._resp.data}'

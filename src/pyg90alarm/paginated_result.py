@@ -24,7 +24,8 @@ to work with results of paginated commands.
 """
 
 import logging
-from typing import Any, Optional, AsyncGenerator, Iterable, cast, NamedTuple
+from typing import Any, Optional, AsyncGenerator, Iterable, cast
+from dataclasses import dataclass
 from .paginated_cmd import G90PaginatedCommand
 from .const import (
     G90Commands,
@@ -34,7 +35,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90PaginatedResponse(NamedTuple):
+@dataclass
+class G90PaginatedResponse:
     """
     Response yielded from the :meth:`.G90PaginatedResult.process` method
     """

@@ -30,24 +30,24 @@ import logging
 
 _LOGGER = logging.getLogger(__name__)
 
-TCallback = Optional[
+Callback = Optional[
     Union[
         Callable[..., None],
-        Callable[..., Coroutine[Any, Any, None]],
+        Callable[..., Coroutine[None, None, None]],
     ]
 ]
 
 
 class G90Callback:
     """
-    tbd
+    Implements callbacks.
     """
     @staticmethod
     def invoke(
-        callback: TCallback, *args: Any, **kwargs: Any
+        callback: Callback, *args: Any, **kwargs: Any
     ) -> None:
         """
-        tbd
+        Invokes the callback.
         """
         if not callback:
             return
@@ -102,7 +102,7 @@ class G90Callback:
         delay: float, callback: Callable[..., None], *args: Any, **kwargs: Any
     ) -> None:
         """
-        tbd
+        Invokes the callback after a delay.
         """
         loop = asyncio.get_running_loop()
         loop.call_later(delay, partial(callback, *args, **kwargs))

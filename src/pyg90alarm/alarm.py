@@ -52,7 +52,13 @@ from __future__ import annotations
 import asyncio
 from asyncio import Task
 import logging
-from typing import Any, List, Optional, Dict, AsyncGenerator
+from typing import (
+    TYPE_CHECKING, Any, List, Optional, AsyncGenerator,
+    Callable, Coroutine, Union
+)
+from typing_extensions import (
+    TypeAlias
+)
 from .const import (
     G90Commands, REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
@@ -67,17 +73,49 @@ from .entities.device import G90Device
 from .device_notifications import (
     G90DeviceNotifications,
 )
-from .discovery import G90Discovery
-from .targeted_discovery import G90TargetedDiscovery
+from .discovery import G90Discovery, G90DiscoveredDevice
+from .targeted_discovery import (
+    G90TargetedDiscovery, G90DiscoveredDeviceTargeted,
+)
 from .host_info import G90HostInfo
 from .host_status import G90HostStatus
 from .config import (G90AlertConfig, G90AlertConfigFlags)
 from .history import G90History
 from .user_data_crc import G90UserDataCRC
-from .callback import G90Callback, TCallback
+from .callback import G90Callback
 from .exceptions import G90Error, G90TimeoutError
 
 _LOGGER = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    AlarmCallback: TypeAlias = Union[
+        Callable[[int, str, Any], None],
+        Callable[[int, str, Any], Coroutine[None, None, None]]
+    ]
+    DoorOpenCloseCallback = Union[
+        Callable[[int, str, bool], None],
+        Callable[[int, str, bool], Coroutine[None, None, None]]
+    ]
+    SensorCallback = Union[
+        Callable[[int, str, bool], None],
+        Callable[[int, str, bool], Coroutine[None, None, None]]
+    ]
+    SensorStateCallback = Union[
+        Callable[[bool], None],
+        Callable[[bool], Coroutine[None, None, None]]
+    ]
+    LowBatteryCallback = Union[
+        Callable[[int, str], None],
+        Callable[[int, str], Coroutine[None, None, None]]
+    ]
+    SensorLowBatteryCallback = Union[
+        Callable[[bool], None],
+        Callable[[bool], Coroutine[None, None, None]]
+    ]
+    ArmDisarmCallback = Union[
+        Callable[[G90ArmDisarmTypes], None],
+        Callable[[G90ArmDisarmTypes], Coroutine[None, None, None]]
+    ]
 
 
 # pylint: disable=too-many-public-methods
@@ -107,11 +145,11 @@ class G90Alarm(G90DeviceNotifications):
         self._sensors: List[G90Sensor] = []
         self._devices: List[G90Device] = []
         self._notifications: Optional[G90DeviceNotifications] = None
-        self._sensor_cb: TCallback = None
-        self._armdisarm_cb: TCallback = None
-        self._door_open_close_cb: TCallback = None
-        self._alarm_cb: TCallback = None
-        self._low_battery_cb: TCallback = None
+        self._sensor_cb: Optional[SensorCallback] = None
+        self._armdisarm_cb: Optional[ArmDisarmCallback] = None
+        self._door_open_close_cb: Optional[DoorOpenCloseCallback] = None
+        self._alarm_cb: Optional[AlarmCallback] = None
+        self._low_battery_cb: Optional[LowBatteryCallback] = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config: Optional[G90AlertConfigFlags] = None
         self._sms_alert_when_armed = False
@@ -119,7 +157,7 @@ class G90Alarm(G90DeviceNotifications):
         self._alert_simulation_start_listener_back = False
 
     async def command(
-        self, code: G90Commands, data: Optional[List[Any]] = None
+        self, code: G90Commands, data: Optional[G90BaseCommandData] = None
     ) -> G90BaseCommandData:
         """
         Invokes a command against the alarm panel.
@@ -149,7 +187,7 @@ class G90Alarm(G90DeviceNotifications):
         ).process()
 
     @classmethod
-    async def discover(cls) -> List[Dict[str, Any]]:
+    async def discover(cls) -> List[G90DiscoveredDevice]:
         """
         Initiates discovering devices available in the same network segment, by
         using global broadcast address as the destination.
@@ -163,7 +201,9 @@ class G90Alarm(G90DeviceNotifications):
         return cmd.devices
 
     @classmethod
-    async def targeted_discover(cls, device_id: str) -> List[Dict[str, Any]]:
+    async def targeted_discover(
+        cls, device_id: str
+    ) -> List[G90DiscoveredDeviceTargeted]:
         """
         Initiates discovering devices available in the same network segment
         using targeted protocol, that is - specifying target device GUID in the
@@ -470,7 +510,7 @@ class G90Alarm(G90DeviceNotifications):
         G90Callback.invoke(self._sensor_cb, idx, name, occupancy)
 
     @property
-    def sensor_callback(self) -> Optional[TCallback]:
+    def sensor_callback(self) -> Optional[SensorCallback]:
         """
         Get or set sensor activity callback, the callback is invoked when
         sensor activates.
@@ -478,7 +518,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._sensor_cb
 
     @sensor_callback.setter
-    def sensor_callback(self, value: TCallback) -> None:
+    def sensor_callback(self, value: SensorCallback) -> None:
         self._sensor_cb = value
 
     async def on_door_open_close(
@@ -500,7 +540,7 @@ class G90Alarm(G90DeviceNotifications):
         )
 
     @property
-    def door_open_close_callback(self) -> Optional[TCallback]:
+    def door_open_close_callback(self) -> Optional[DoorOpenCloseCallback]:
         """
         Get or set door open/close callback, the callback is invoked when door
         is opened or closed (if corresponding alert is configured on the
@@ -509,7 +549,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._door_open_close_cb
 
     @door_open_close_callback.setter
-    def door_open_close_callback(self, value: TCallback) -> None:
+    def door_open_close_callback(self, value: DoorOpenCloseCallback) -> None:
         """
         Sets callback for door open/close events.
         """
@@ -537,7 +577,7 @@ class G90Alarm(G90DeviceNotifications):
         G90Callback.invoke(self._armdisarm_cb, state)
 
     @property
-    def armdisarm_callback(self) -> Optional[TCallback]:
+    def armdisarm_callback(self) -> Optional[ArmDisarmCallback]:
         """
         Get or set device arm/disarm callback, the callback is invoked when
         device state changes.
@@ -545,7 +585,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._armdisarm_cb
 
     @armdisarm_callback.setter
-    def armdisarm_callback(self, value: TCallback) -> None:
+    def armdisarm_callback(self, value: ArmDisarmCallback) -> None:
         self._armdisarm_cb = value
 
     async def on_alarm(self, event_id: int, zone_name: str) -> None:
@@ -574,7 +614,7 @@ class G90Alarm(G90DeviceNotifications):
         )
 
     @property
-    def alarm_callback(self) -> Optional[TCallback]:
+    def alarm_callback(self) -> Optional[AlarmCallback]:
         """
         Get or set device alarm callback, the callback is invoked when
         device alarm triggers.
@@ -582,7 +622,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._alarm_cb
 
     @alarm_callback.setter
-    def alarm_callback(self, value: TCallback) -> None:
+    def alarm_callback(self, value: AlarmCallback) -> None:
         self._alarm_cb = value
 
     async def on_low_battery(self, event_id: int, zone_name: str) -> None:
@@ -603,7 +643,7 @@ class G90Alarm(G90DeviceNotifications):
         G90Callback.invoke(self._low_battery_cb, event_id, zone_name)
 
     @property
-    def low_battery_callback(self) -> Optional[TCallback]:
+    def low_battery_callback(self) -> Optional[LowBatteryCallback]:
         """
         Get or set low battery callback, the callback is invoked when sensor
         the condition is reported by a sensor.
@@ -611,7 +651,7 @@ class G90Alarm(G90DeviceNotifications):
         return self._low_battery_cb
 
     @low_battery_callback.setter
-    def low_battery_callback(self, value: TCallback) -> None:
+    def low_battery_callback(self, value: LowBatteryCallback) -> None:
         self._low_battery_cb = value
 
     async def listen_device_notifications(self) -> None:

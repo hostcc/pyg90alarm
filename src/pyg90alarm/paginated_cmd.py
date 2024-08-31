@@ -24,7 +24,7 @@ Implements paginated command for G90 alarm panel protocol.
 from __future__ import annotations
 import logging
 from typing import Any, cast
-from typing import NamedTuple
+from dataclasses import dataclass
 from .base_cmd import G90BaseCommand, G90BaseCommandData
 from .exceptions import G90Error
 from .const import G90Commands
@@ -32,9 +32,10 @@ from .const import G90Commands
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90PaginationFields(NamedTuple):
+@dataclass
+class G90PaginationFields:
     """
-    tbd
+    Represents structure of the pagination fields used by alarm panel.
 
     :meta private:
     """
@@ -45,15 +46,12 @@ class G90PaginationFields(NamedTuple):
 
 class G90PaginatedCommand(G90BaseCommand):
     """
-    tbd
+    Implements paginated command for alarm panel protocol.
     """
     def __init__(
         self, host: str, port: int, code: G90Commands, start: int, end: int,
         **kwargs: Any
     ) -> None:
-        """
-        tbd
-        """
         # pylint: disable=too-many-arguments
         self._start = start
         self._end = end
@@ -66,27 +64,27 @@ class G90PaginatedCommand(G90BaseCommand):
     @property
     def total(self) -> int:
         """
-        tbd
+        Returns total number of records available.
         """
         return self._total
 
     @property
     def start(self) -> int:
         """
-        tbd
+        Returns index of the first record in the response.
         """
         return self._start
 
     @property
     def count(self) -> int:
         """
-        tbd
+        Returns number of records in the response.
         """
         return self._nelems
 
     def _parse(self, data: str) -> None:
         """
-        tbd
+        Parses the response from the alarm panel.
         """
         super()._parse(data)
         resp_data: G90BaseCommandData = self._resp.data or []
@@ -129,6 +127,6 @@ class G90PaginatedCommand(G90BaseCommand):
 
     async def process(self) -> G90PaginatedCommand:
         """
-        tbd
+        Initiates the command processing.
         """
         return cast(G90PaginatedCommand, await super().process())

@@ -21,7 +21,7 @@
 """
 Provides interface to devices (switches) of G90 alarm panel.
 """
-
+from __future__ import annotations
 import logging
 from .sensor import G90Sensor
 from ..const import G90Commands
@@ -55,7 +55,6 @@ class G90Device(G90Sensor):
         Indicates if disabling/enabling the device (relay) is supported.
 
         :return: Support for enabling/disabling the device
-        :rtype: bool
         """
         # No support for manipulating of disable/enabled for the device, since
         # single protocol entity read from the G90 alarm panel results in
@@ -69,7 +68,7 @@ class G90Device(G90Sensor):
         """
         Changes the disabled/enabled state of the device (relay).
 
-        :param bool value: Whether to enable or disable the device
+        :param value: Whether to enable or disable the device
         """
         _LOGGER.warning(
             'Manipulating with enable/disable for device is unsupported'

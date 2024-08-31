@@ -21,7 +21,8 @@
 """
 History protocol entity.
 """
-from typing import Any, NamedTuple, Optional
+from typing import Any, Optional, Dict
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from .const import (
     G90AlertTypes,
@@ -65,7 +66,8 @@ states_mapping = {
 }
 
 
-class ProtocolData(NamedTuple):
+@dataclass
+class ProtocolData:
     """
     Class representing the data incoming from the device
     """
@@ -80,7 +82,7 @@ class ProtocolData(NamedTuple):
 
 class G90History:
     """
-    tbd
+    Represents a history entry from the alarm panel.
     """
     def __init__(self, *args: Any, **kwargs: Any):
         self._protocol_data = ProtocolData(*args, **kwargs)
@@ -189,6 +191,19 @@ class G90History:
             resv4=0,
             other=self._protocol_data.other
         )
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the history entry as dictionary.
+        """
+        return {
+            'type': self.type,
+            'source': self.source,
+            'state': self.state,
+            'sensor_name': self.sensor_name,
+            'sensor_idx': self.sensor_idx,
+            'datetime': self.datetime,
+        }
 
     def __repr__(self) -> str:
         """

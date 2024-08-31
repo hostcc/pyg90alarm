@@ -24,13 +24,15 @@ Provides interface to sensors of G90 alarm panel.
 from __future__ import annotations
 import logging
 from dataclasses import dataclass, asdict, astuple
-from typing import Any, Optional, TYPE_CHECKING
+from typing import (
+    Any, Optional, TYPE_CHECKING
+)
+
 from enum import IntEnum, IntFlag
 from ..definitions.sensors import SENSOR_DEFINITIONS, SensorDefinition
-from ..callback import TCallback
 from ..const import G90Commands
 if TYPE_CHECKING:
-    from ..alarm import G90Alarm
+    from ..alarm import G90Alarm, SensorStateCallback, SensorLowBatteryCallback
 
 
 @dataclass
@@ -183,8 +185,8 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._parent = parent
         self._subindex = subindex
         self._occupancy = False
-        self._state_callback: Optional[TCallback] = None
-        self._low_battery_callback: Optional[TCallback] = None
+        self._state_callback: Optional[SensorStateCallback] = None
+        self._low_battery_callback: Optional[SensorLowBatteryCallback] = None
         self._proto_idx = proto_idx
         self._extra_data: Any = None
 
@@ -205,24 +207,22 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         protocol entity results in multiple :class:`.G90Sensor` instances).
 
         :return: Sensor name
-        :rtype: str
         """
         if self._protocol_data.node_count == 1:
             return self._protocol_data.parent_name
         return f'{self._protocol_data.parent_name}#{self._subindex + 1}'
 
     @property
-    def state_callback(self) -> Optional[TCallback]:
+    def state_callback(self) -> Optional[SensorStateCallback]:
         """
         Returns state callback the sensor might have set.
 
         :return: Sensor state callback
-        :rtype: object
         """
         return self._state_callback
 
     @state_callback.setter
-    def state_callback(self, value: TCallback) -> None:
+    def state_callback(self, value: SensorStateCallback) -> None:
         """
         Sets callback for the state changes of the sensor.
 
@@ -231,17 +231,16 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._state_callback = value
 
     @property
-    def low_battery_callback(self) -> Optional[TCallback]:
+    def low_battery_callback(self) -> Optional[SensorLowBatteryCallback]:
         """
         Returns callback the sensor might have set for low battery condition.
 
         :return: Sensor's low battery callback
-        :rtype: object
         """
         return self._low_battery_callback
 
     @low_battery_callback.setter
-    def low_battery_callback(self, value: TCallback) -> None:
+    def low_battery_callback(self, value: SensorLowBatteryCallback) -> None:
         """
         Sets callback for the low battery condition reported by the sensor.
 
@@ -256,7 +255,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         for the sensor.
 
         :return: Sensor occupancy
-        :rtype: bool
         """
         return self._occupancy
 
@@ -265,7 +263,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         Sets occupancy state for the sensor.
 
-        :param bool value: Sensor occupancy
+        :param value: Sensor occupancy
         """
         self._occupancy = value
 
@@ -275,7 +273,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns protocol type of the sensor.
 
         :return: Protocol type
-        :rtype: int
         """
         return G90SensorProtocols(self._protocol_data.protocol_id)
 
@@ -285,7 +282,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns type of the sensor.
 
         :return: Sensor type
-        :rtype: int
         """
         return G90SensorTypes(self._protocol_data.type_id)
 
@@ -295,7 +291,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns type of the sensor.
 
         :return: Sensor type
-        :rtype: int
         """
         return self._protocol_data.subtype
 
@@ -305,7 +300,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns reserved flags (read/write mode) for the sensor.
 
         :return: Reserved flags
-        :rtype: int
         """
         return G90SensorReservedFlags(self._protocol_data.reserved_data)
 
@@ -315,7 +309,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns user flags for the sensor (disabled/enabled, arming type etc).
 
         :return: User flags
-        :rtype: int
         """
         return G90SensorUserFlags(self._protocol_data.user_flag_data)
 
@@ -325,18 +318,16 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns number of nodes (channels) for the sensor.
 
         :return: Number of nodes
-        :rtype: int
         """
         return self._protocol_data.node_count
 
     @property
     def parent(self) -> G90Alarm:
         """
-        Returns parent :class:`.G90Alarm` instance the sensor is associated
+        Returns parent instance of alarm panel the sensor is associated
         with.
 
-        :return: Parent :class:`.G90Alarm` instance
-        :rtype: :class:`.G90Alarm`
+        :return: Parent instance
         """
         return self._parent
 
@@ -346,7 +337,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns index (internal position) of the sensor in the G90 alarm panel.
 
         :return: Internal sensor position
-        :rtype: int
         """
         return self._protocol_data.index
 
@@ -356,7 +346,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns index of the sensor within multi-node device.
 
         :return: Index of sensor in multi-node device.
-        :rtype: int
         """
         return self._subindex
 
@@ -366,7 +355,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Indicates if disabling/enabling the sensor is supported.
 
         :return: Support for enabling/disabling the sensor
-        :rtype: bool
         """
         return self._definition is not None
 
@@ -376,7 +364,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Indicates if the sensor is enabled.
 
         :return: If sensor is enabled
-        :rtype: bool
         """
         return self.user_flag & G90SensorUserFlags.ENABLED != 0
 
@@ -384,7 +371,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         Sets disabled/enabled state of the sensor.
 
-        :param bool value: Whether to enable or disable the sensor
+        :param value: Whether to enable or disable the sensor
         """
         # Checking private attribute directly, since `mypy` doesn't recognize
         # the check for sensor definition to be defined if done over
@@ -413,7 +400,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             G90Commands.GETSENSORLIST,
             start=self._proto_idx, end=self._proto_idx
         )
-        sensors = [x async for x in sensors_result]
+        sensors = [x.data async for x in sensors_result]
 
         # Abort if sensor is not found
         if not sensors:
@@ -426,7 +413,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
 
         # Compare actual sensor data from what the sensor has been instantiated
         # from, and abort the operation if out-of-band changes are detected.
-        _sensor_pos, sensor_data = sensors[0]
+        sensor_data = sensors[0]
         if self._protocol_incoming_data_kls(
             *sensor_data
         ) != self._protocol_data:
@@ -499,7 +486,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         Returns string representation of the sensor.
 
         :return: String representation
-        :rtype: str
         """
         return super().__repr__() + f"(name='{str(self.name)}'" \
             f' type={str(self.type)}' \

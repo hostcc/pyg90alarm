@@ -21,8 +21,9 @@
 """
 Protocol entity for G90 alarm panel information.
 """
-
-from typing import NamedTuple
+from __future__ import annotations
+from typing import Any, Dict
+from dataclasses import dataclass, asdict
 from enum import IntEnum
 
 
@@ -46,7 +47,8 @@ class G90HostInfoWifiStatus(IntEnum):
     OPERATIONAL = 3
 
 
-class G90HostInfo(NamedTuple):
+@dataclass
+class G90HostInfo:  # pylint: disable=too-many-instance-attributes
     """
     Interprets data fields of GETHOSTINFO command.
     """
@@ -79,3 +81,9 @@ class G90HostInfo(NamedTuple):
         corresponding enum.
         """
         return G90HostInfoWifiStatus(self.wifi_status_data)
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the host information as dictionary.
+        """
+        return asdict(self)

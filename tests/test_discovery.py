@@ -29,9 +29,9 @@ async def test_discovery(mock_device: DeviceMock) -> None:
                        timeout=0.1)
     cmd = await g90.process()
     discovered = cmd.devices
-    assert discovered[0]['guid'] == 'DUMMYGUID1'
-    assert discovered[0]['host'] == mock_device.host
-    assert discovered[0]['port'] == mock_device.port
+    assert discovered[0].guid == 'DUMMYGUID1'
+    assert discovered[0].host == mock_device.host
+    assert discovered[0].port == mock_device.port
     assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
@@ -51,9 +51,9 @@ async def test_targeted_discovery(mock_device: DeviceMock) -> None:
         timeout=0.1)
     cmd = await g90.process()
     discovered = cmd.devices
-    assert discovered[0]['guid'] == 'DUMMYGUID'
-    assert discovered[0]['host'] == mock_device.host
-    assert discovered[0]['port'] == mock_device.port
+    assert discovered[0].guid == 'DUMMYGUID'
+    assert discovered[0].host == mock_device.host
+    assert discovered[0].port == mock_device.port
     assert mock_device.recv_data == [b'IWTAC_PROBE_DEVICE,DUMMYGUID\0']
 
 

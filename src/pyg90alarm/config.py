@@ -21,12 +21,15 @@
 """
 Represents various configuration aspects of the alarm panel.
 """
+from __future__ import annotations
 from enum import IntFlag
-from typing import NamedTuple
+from dataclasses import dataclass
 
 
 class G90AlertConfigFlags(IntFlag):
-    """ Alert configuration flags, used bitwise """
+    """
+    Alert configuration flags, used bitwise
+    """
     AC_POWER_FAILURE = 1
     AC_POWER_RECOVER = 2
     ARM_DISARM = 4
@@ -41,7 +44,8 @@ class G90AlertConfigFlags(IntFlag):
     UNKNOWN2 = 8192
 
 
-class G90AlertConfig(NamedTuple):
+@dataclass
+class G90AlertConfig:
     """
     Represents alert configuration as received from the alarm panel.
     """

@@ -24,8 +24,9 @@ Implements support for notifications/alerts sent by G90 alarm panel.
 import json
 import logging
 from typing import (
-    Optional, Tuple, NamedTuple, List, Any
+    Optional, Tuple, List, Any
 )
+from dataclasses import dataclass
 import asyncio
 from asyncio.transports import BaseTransport
 from asyncio.protocols import DatagramProtocol
@@ -44,7 +45,8 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class G90Message(NamedTuple):
+@dataclass
+class G90Message:
     """
     Represents the message received from the device.
 
@@ -54,7 +56,8 @@ class G90Message(NamedTuple):
     data: List[Any]
 
 
-class G90Notification(NamedTuple):
+@dataclass
+class G90Notification:
     """
     Represents the notification received from the device.
 
@@ -64,7 +67,8 @@ class G90Notification(NamedTuple):
     data: List[Any]
 
 
-class G90ZoneInfo(NamedTuple):
+@dataclass
+class G90ZoneInfo:
     """
     Represents zone details received from the device.
 
@@ -74,7 +78,8 @@ class G90ZoneInfo(NamedTuple):
     name: str
 
 
-class G90ArmDisarmInfo(NamedTuple):
+@dataclass
+class G90ArmDisarmInfo:
     """
     Represents the arm/disarm state received from the device.
 
@@ -83,7 +88,8 @@ class G90ArmDisarmInfo(NamedTuple):
     state: int
 
 
-class G90DeviceAlert(NamedTuple):
+@dataclass
+class G90DeviceAlert:  # pylint: disable=too-many-instance-attributes
     """
     Represents alert received from the device.
 
@@ -102,7 +108,7 @@ class G90DeviceAlert(NamedTuple):
 
 class G90DeviceNotifications(DatagramProtocol):
     """
-    tbd
+    Implements support for notifications/alerts sent by alarm panel.
     """
     def __init__(self, port: int, host: str):
         # pylint: disable=too-many-arguments

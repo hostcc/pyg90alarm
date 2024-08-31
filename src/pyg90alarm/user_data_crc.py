@@ -22,13 +22,15 @@
 Protocol entity for G90 alarm panel that provides checksums of different
 on-device databases.
 """
+from __future__ import annotations
+from typing import Any, Dict
+from dataclasses import dataclass, asdict
 
-from typing import NamedTuple
 
-
-class G90UserDataCRC(NamedTuple):
+@dataclass
+class G90UserDataCRC:
     """
-    tbd
+    Represents structure of GETUSERDATACRC command response.
     """
     sensor_list: str
     device_list: str
@@ -36,3 +38,9 @@ class G90UserDataCRC(NamedTuple):
     scene_list: str
     ifttt_list: str
     fingerprint_list: str
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the host information as dictionary.
+        """
+        return asdict(self)
