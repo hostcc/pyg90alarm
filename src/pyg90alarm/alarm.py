@@ -446,9 +446,12 @@ class G90Alarm(G90DeviceNotifications):
         self, idx: int, name: str, occupancy: bool = True
     ) -> None:
         """
-        Callback that invoked both for sensor notifications and door open/close
-        alerts, since the logic for both is same and could be reused. Please
-        note the callback is for internal use by the class.
+        Invoked both for sensor notifications and door open/close
+        alerts, since the logic for both is same and could be reused.
+        Fires corresponding callback if set by the user with
+        :attr:`.sensor_callback`.
+
+        Please note the method is for internal use by the class.
 
         :param idx: The index of the sensor the callback is invoked for.
          Please note the index is a property of sensor, not the direct index of
@@ -508,8 +511,7 @@ class G90Alarm(G90DeviceNotifications):
     @property
     def sensor_callback(self) -> Optional[SensorCallback]:
         """
-        Sensor activity callback, the callback is invoked when
-        sensor activates.
+        Sensor activity callback, which is invoked when sensor activates.
         """
         return self._sensor_cb
 
@@ -521,8 +523,11 @@ class G90Alarm(G90DeviceNotifications):
         self, event_id: int, zone_name: str, is_open: bool
     ) -> None:
         """
-        Callback that invoked when door open/close alert comes from the alarm
-        panel. Please note the callback is for internal use by the class.
+        Invoked when door open/close alert comes from the alarm
+        panel. Fires corresponding callback if set by the user with
+        :attr:`.door_open_close_callback`.
+
+        Please note the method is for internal use by the class.
 
         .. seealso:: :meth:`.on_sensor_activity` method for arguments
         """
@@ -550,8 +555,10 @@ class G90Alarm(G90DeviceNotifications):
 
     async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
         """
-        Callback that invoked when the device is armed or disarmed. Please note
-        the callback is for internal use by the class.
+        Invoked when the device is armed or disarmed.  Fires corresponding
+        callback if set by the user with :attr:`.armdisarm_callback`.
+
+        Please note the method is for internal use by the class.
 
         :param state: Device state (armed, disarmed, armed home)
         """
@@ -572,8 +579,8 @@ class G90Alarm(G90DeviceNotifications):
     @property
     def armdisarm_callback(self) -> Optional[ArmDisarmCallback]:
         """
-        Get or set device arm/disarm callback, the callback is invoked when
-        device state changes.
+        The device arm/disarm callback, which is invoked when device state
+        changes.
         """
         return self._armdisarm_cb
 
@@ -583,9 +590,10 @@ class G90Alarm(G90DeviceNotifications):
 
     async def on_alarm(self, event_id: int, zone_name: str) -> None:
         """
-        Callback that invoked when alarm is triggered. Fires alarm callback if
-        set by the user with :attr:`.alarm_callback`.
-        Please note the callback is for internal use by the class.
+        Invoked when alarm is triggered. Fires corresponding callback if set by
+        the user with :attr:`.alarm_callback`.
+
+        Please note the method is for internal use by the class.
 
         :param event_id: Index of the sensor triggered alarm
         :param zone_name: Sensor name
@@ -609,8 +617,7 @@ class G90Alarm(G90DeviceNotifications):
     @property
     def alarm_callback(self) -> Optional[AlarmCallback]:
         """
-        Get or set device alarm callback, the callback is invoked when
-        device alarm triggers.
+        The device alarm callback, which is invoked when device alarm triggers.
         """
         return self._alarm_cb
 
@@ -620,10 +627,11 @@ class G90Alarm(G90DeviceNotifications):
 
     async def on_low_battery(self, event_id: int, zone_name: str) -> None:
         """
-        Callback that invoked when the sensor reports on low battery. Fires
+        Invoked when the sensor reports on low battery. Fires
         corresponding callback if set by the user with
         :attr:`.on_low_battery_callback`.
-        Please note the callback is for internal use by the class.
+
+        Please note the method is for internal use by the class.
 
         :param event_id: Index of the sensor triggered alarm
         :param zone_name: Sensor name
@@ -638,8 +646,8 @@ class G90Alarm(G90DeviceNotifications):
     @property
     def low_battery_callback(self) -> Optional[LowBatteryCallback]:
         """
-        Get or set low battery callback, the callback is invoked when sensor
-        the condition is reported by a sensor.
+        Low battery callback, which is invoked when sensor reports the
+        condition.
         """
         return self._low_battery_cb
 
