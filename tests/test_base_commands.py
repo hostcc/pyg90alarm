@@ -245,3 +245,17 @@ async def test_no_end_marker(mock_device: DeviceMock) -> None:
     with pytest.raises(G90Error, match='Missing end marker in data'):
         await g90.process()
     assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+
+
+async def test_command_code_none_error(mock_device: DeviceMock) -> None:
+    """
+    Verifies that using `NONE` command code is disallowed by `G90BaseCommand`
+    class.
+    """
+    g90 = G90BaseCommand(
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.NONE
+    )
+
+    with pytest.raises(G90Error, match="'NONE' command code is disallowed"):
+        await g90.process()

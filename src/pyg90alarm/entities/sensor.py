@@ -75,8 +75,6 @@ class G90SensorOutgoingData(G90SensorCommonData):
 class G90SensorReservedFlags(IntFlag):
     """
     Reserved flags of the sensor.
-
-    :meta private:
     """
     NONE = 0
     CAN_READ = 16
@@ -87,8 +85,6 @@ class G90SensorReservedFlags(IntFlag):
 class G90SensorUserFlags(IntFlag):
     """
     User flags of the sensor.
-
-    :meta private:
     """
     NONE = 0
     ENABLED = 1
@@ -104,8 +100,6 @@ class G90SensorUserFlags(IntFlag):
 class G90SensorProtocols(IntEnum):
     """
     Protocol types for the sensors.
-
-    :meta private:
     """
     RF_1527 = 0
     RF_2262 = 1
@@ -119,8 +113,6 @@ class G90SensorProtocols(IntEnum):
 class G90SensorTypes(IntEnum):
     """
     Sensor types.
-
-    :meta private:
     """
     DOOR = 1
     GLASS = 2

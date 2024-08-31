@@ -42,8 +42,6 @@ G90BaseCommandData = List[Any]
 class G90Header:
     """
     Represents JSON structure of the header used in alarm panel commands.
-
-    :meta private:
     """
     code: Optional[int] = None
     data: Optional[G90BaseCommandData] = None
@@ -220,6 +218,11 @@ class G90BaseCommand(DatagramProtocol):
         """
         Processes the command.
         """
+        # Disallow using `NONE` command, which is intended to use by inheriting
+        # classes overriding `process()` method
+        if self._code == G90Commands.NONE:
+            raise G90Error("'NONE' command code is disallowed")
+
         transport, _ = await self._create_connection()
         attempts = self._retries
         while True:

@@ -36,8 +36,6 @@ _LOGGER = logging.getLogger(__name__)
 class G90PaginationFields:
     """
     Represents structure of the pagination fields used by alarm panel.
-
-    :meta private:
     """
     total: int
     start: int

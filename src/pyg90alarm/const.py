@@ -50,8 +50,12 @@ class G90Commands(IntEnum):
         obj.__doc__ = doc
         return obj
 
-    #
-    NONE = 0
+    NONE = (0, """
+        Pseudo command, to be used for proper typing with subclasses of
+        `G90BaseCommand` invoking its constructor but implementing special
+        processing
+    """)
+
     # Host status
     GETHOSTSTATUS = (100, 'Get host status')
     SETHOSTSTATUS = (101, 'Set host status')

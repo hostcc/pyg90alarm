@@ -39,8 +39,6 @@ _LOGGER = logging.getLogger(__name__)
 class G90TargetedDiscoveryInfo:
     """
     Wire representation of the information about discovered device.
-
-    :meta private:
     """
     message: str
     product_name: str
@@ -79,7 +77,11 @@ class G90TargetedDiscovery(G90BaseCommand):
     """
     # pylint: disable=too-few-public-methods
     def __init__(self, device_id: str, **kwargs: Any):
-        super().__init__(code=G90Commands.NONE, **kwargs)
+        super().__init__(
+            # No actual command will be processed by base class, `NONE` is used
+            # for proper typing only
+            code=G90Commands.NONE, **kwargs
+        )
         self._device_id = device_id
         self._discovered_devices: List[G90DiscoveredDeviceTargeted] = []
 
