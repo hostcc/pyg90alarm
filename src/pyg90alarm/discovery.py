@@ -92,7 +92,7 @@ class G90Discovery(G90BaseCommand):
     @property
     def devices(self) -> List[G90DiscoveredDevice]:
         """
-        Returns the list of discovered devices.
+        The list of discovered devices.
         """
         return self._discovered_devices
 

@@ -42,6 +42,8 @@ G90BaseCommandData = List[Any]
 class G90Header:
     """
     Represents JSON structure of the header used in alarm panel commands.
+
+    :meta private:
     """
     code: Optional[int] = None
     data: Optional[G90BaseCommandData] = None
@@ -196,21 +198,21 @@ class G90BaseCommand(DatagramProtocol):
     @property
     def result(self) -> G90BaseCommandData:
         """
-        Returns the result of the command.
+        The result of the command.
         """
         return self._result
 
     @property
     def host(self) -> str:
         """
-        Returns the host of the alarm panel.
+        The hostname/IP address of the alarm panel.
         """
         return self._remote_host
 
     @property
     def port(self) -> int:
         """
-        Returns the port of the alarm panel.
+        The port of the alarm panel.
         """
         return self._remote_port
 

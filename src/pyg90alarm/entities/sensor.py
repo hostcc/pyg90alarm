@@ -38,7 +38,9 @@ if TYPE_CHECKING:
 @dataclass
 class G90SensorCommonData:  # pylint:disable=too-many-instance-attributes
     """
-    Common protocol fields across read and write operations
+    Common protocol fields across read and write operations.
+
+    :meta private:
     """
     parent_name: str
     index: int
@@ -56,7 +58,9 @@ class G90SensorCommonData:  # pylint:disable=too-many-instance-attributes
 @dataclass
 class G90SensorIncomingData(G90SensorCommonData):
     """
-    Incoming (read operation) protocol fields
+    Incoming (read operation) protocol fields.
+
+    :meta private:
     """
     mask: int
     private_data: str
@@ -65,7 +69,9 @@ class G90SensorIncomingData(G90SensorCommonData):
 @dataclass
 class G90SensorOutgoingData(G90SensorCommonData):
     """
-    Outgoing (write operation) protocol fields
+    Outgoing (write operation) protocol fields.
+
+    :meta private:
     """
     rx: int  # pylint:disable=invalid-name
     tx: int  # pylint:disable=invalid-name
@@ -195,7 +201,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def name(self) -> str:
         """
-        Returns sensor name, accounting for multi-channel entities (single
+        Sensor name, accounting for multi-channel entities (single
         protocol entity results in multiple :class:`.G90Sensor` instances).
 
         :return: Sensor name
@@ -207,7 +213,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def state_callback(self) -> Optional[SensorStateCallback]:
         """
-        Returns state callback the sensor might have set.
+        Callback that is invoked when the sensor changes its state.
 
         :return: Sensor state callback
         """
@@ -215,17 +221,13 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
 
     @state_callback.setter
     def state_callback(self, value: SensorStateCallback) -> None:
-        """
-        Sets callback for the state changes of the sensor.
-
-        :param object value: Sensor state callback
-        """
         self._state_callback = value
 
     @property
     def low_battery_callback(self) -> Optional[SensorLowBatteryCallback]:
         """
-        Returns callback the sensor might have set for low battery condition.
+        Callback that is invoked when the sensor reports on low battery
+        condition.
 
         :return: Sensor's low battery callback
         """
@@ -233,11 +235,6 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
 
     @low_battery_callback.setter
     def low_battery_callback(self, value: SensorLowBatteryCallback) -> None:
-        """
-        Sets callback for the low battery condition reported by the sensor.
-
-        :param object value: Sensor's low battery callback
-        """
         self._low_battery_callback = value
 
     @property
@@ -252,17 +249,12 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
 
     @occupancy.setter
     def occupancy(self, value: bool) -> None:
-        """
-        Sets occupancy state for the sensor.
-
-        :param value: Sensor occupancy
-        """
         self._occupancy = value
 
     @property
     def protocol(self) -> G90SensorProtocols:
         """
-        Returns protocol type of the sensor.
+        Protocol type of the sensor.
 
         :return: Protocol type
         """
@@ -271,7 +263,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def type(self) -> G90SensorTypes:
         """
-        Returns type of the sensor.
+        Type of the sensor.
 
         :return: Sensor type
         """
@@ -280,16 +272,16 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def subtype(self) -> int:
         """
-        Returns type of the sensor.
+        Sub-type of the sensor.
 
-        :return: Sensor type
+        :return: Sensor sub-type
         """
         return self._protocol_data.subtype
 
     @property
     def reserved(self) -> G90SensorReservedFlags:
         """
-        Returns reserved flags (read/write mode) for the sensor.
+        Reserved flags (read/write mode) for the sensor.
 
         :return: Reserved flags
         """
@@ -298,7 +290,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def user_flag(self) -> G90SensorUserFlags:
         """
-        Returns user flags for the sensor (disabled/enabled, arming type etc).
+        User flags for the sensor (disabled/enabled, arming type etc).
 
         :return: User flags
         """
@@ -307,7 +299,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def node_count(self) -> int:
         """
-        Returns number of nodes (channels) for the sensor.
+        Number of nodes (channels) for the sensor.
 
         :return: Number of nodes
         """
@@ -316,7 +308,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def parent(self) -> G90Alarm:
         """
-        Returns parent instance of alarm panel the sensor is associated
+        Parent instance of alarm panel class the sensor is associated
         with.
 
         :return: Parent instance
@@ -326,7 +318,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def index(self) -> int:
         """
-        Returns index (internal position) of the sensor in the G90 alarm panel.
+        Index (internal position) of the sensor in the alarm panel.
 
         :return: Internal sensor position
         """
@@ -335,7 +327,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def subindex(self) -> int:
         """
-        Returns index of the sensor within multi-node device.
+        Index of the sensor within multi-node device.
 
         :return: Index of sensor in multi-node device.
         """
@@ -464,7 +456,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @property
     def extra_data(self) -> Any:
         """
-        Sets extra data for the sensor, that can be used to store
+        Extra data for the sensor, that can be used to store
         caller-specific information and will be carried by the sensor instance.
         """
         return self._extra_data

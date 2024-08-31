@@ -385,11 +385,7 @@ class G90Alarm(G90DeviceNotifications):
 
     async def set_alert_config(self, flags: G90AlertConfigFlags) -> None:
         """
-        It might be possible to implement the async property setter with
-        `async_as_sync` decorator, although it might have implications with the
-        setter not executed if the program terminates earlier. Hence, for the
-        sake of better predictability this is implemented as regular
-        (non-property) method
+        Sets the alert configuration flags on the device.
         """
         # Use uncached method retrieving the alert configuration, to ensure the
         # actual value retrieved from the device
@@ -418,7 +414,7 @@ class G90Alarm(G90DeviceNotifications):
         sensors etc.). Might be used to detect if there is a change in a
         particular database.
 
-        .. note:: Note that due to a bug in the firmware CRC for sensos and
+        .. note:: Note that due to a bug in the firmware CRC for sensors and
           device databases change on each call even if there were no changes
 
         :return: Checksums for different databases
@@ -512,7 +508,7 @@ class G90Alarm(G90DeviceNotifications):
     @property
     def sensor_callback(self) -> Optional[SensorCallback]:
         """
-        Get or set sensor activity callback, the callback is invoked when
+        Sensor activity callback, the callback is invoked when
         sensor activates.
         """
         return self._sensor_cb
@@ -528,7 +524,7 @@ class G90Alarm(G90DeviceNotifications):
         Callback that invoked when door open/close alert comes from the alarm
         panel. Please note the callback is for internal use by the class.
 
-        .. seealso:: `meth`:on_sensor_activity for arguments
+        .. seealso:: :meth:`.on_sensor_activity` method for arguments
         """
         # Same internal callback is reused both for door open/close alerts and
         # sensor notifications. The former adds reporting when a door is
@@ -542,7 +538,7 @@ class G90Alarm(G90DeviceNotifications):
     @property
     def door_open_close_callback(self) -> Optional[DoorOpenCloseCallback]:
         """
-        Get or set door open/close callback, the callback is invoked when door
+        The door open/close callback, which is invoked when door
         is opened or closed (if corresponding alert is configured on the
         device).
         """
@@ -550,9 +546,6 @@ class G90Alarm(G90DeviceNotifications):
 
     @door_open_close_callback.setter
     def door_open_close_callback(self, value: DoorOpenCloseCallback) -> None:
-        """
-        Sets callback for door open/close events.
-        """
         self._door_open_close_cb = value
 
     async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
@@ -591,7 +584,7 @@ class G90Alarm(G90DeviceNotifications):
     async def on_alarm(self, event_id: int, zone_name: str) -> None:
         """
         Callback that invoked when alarm is triggered. Fires alarm callback if
-        set by the user with `:property:G90Alarm.alarm_callback`.
+        set by the user with :attr:`.alarm_callback`.
         Please note the callback is for internal use by the class.
 
         :param event_id: Index of the sensor triggered alarm
@@ -629,7 +622,7 @@ class G90Alarm(G90DeviceNotifications):
         """
         Callback that invoked when the sensor reports on low battery. Fires
         corresponding callback if set by the user with
-        `:property:G90Alarm.on_low_battery_callback`.
+        :attr:`.on_low_battery_callback`.
         Please note the callback is for internal use by the class.
 
         :param event_id: Index of the sensor triggered alarm
@@ -657,7 +650,6 @@ class G90Alarm(G90DeviceNotifications):
     async def listen_device_notifications(self) -> None:
         """
         Starts internal listener for device notifications/alerts.
-
         """
         await self.listen()
 
@@ -757,7 +749,7 @@ class G90Alarm(G90DeviceNotifications):
         Only the history entries occur after the process is started are
         handled, to avoid triggering callbacks retrospectively.
 
-        See :meth:`start_simulating_alerts_from_history` for the parameters.
+        See :meth:`.start_simulating_alerts_from_history` for the parameters.
         """
         last_history_ts = None
 

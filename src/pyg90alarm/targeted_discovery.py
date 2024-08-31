@@ -146,7 +146,7 @@ class G90TargetedDiscovery(G90BaseCommand):
     @property
     def devices(self) -> List[G90DiscoveredDeviceTargeted]:
         """
-        Returns the list of discovered devices.
+        The list of discovered devices.
         """
         return self._discovered_devices
 

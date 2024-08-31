@@ -36,6 +36,8 @@ _LOGGER = logging.getLogger(__name__)
 class G90PaginationFields:
     """
     Represents structure of the pagination fields used by alarm panel.
+
+    :meta private:
     """
     total: int
     start: int
@@ -62,21 +64,21 @@ class G90PaginatedCommand(G90BaseCommand):
     @property
     def total(self) -> int:
         """
-        Returns total number of records available.
+        Total number of records available.
         """
         return self._total
 
     @property
     def start(self) -> int:
         """
-        Returns index of the first record in the response.
+        Index of the first record in the response.
         """
         return self._start
 
     @property
     def count(self) -> int:
         """
-        Returns number of records in the response.
+        Number of records in the response.
         """
         return self._nelems
 

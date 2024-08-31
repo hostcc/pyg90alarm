@@ -59,7 +59,7 @@ class SensorDefinition(NamedTuple):
     @property
     def reserved_data(self) -> int:
         """
-        Returns sensor 'reserved_data' field to be written, combined of match
+        Sensor's 'reserved_data' field to be written, combined of match
         and RW mode values bitwise.
         """
         return self.matchMode.value << 4 | self.rwMode.value

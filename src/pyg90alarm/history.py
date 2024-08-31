@@ -70,6 +70,8 @@ states_mapping = {
 class ProtocolData:
     """
     Class representing the data incoming from the device
+
+    :meta private:
     """
     type: G90AlertTypes
     event_id: G90AlertStateChangeTypes

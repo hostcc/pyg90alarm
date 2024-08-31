@@ -49,6 +49,8 @@ _LOGGER = logging.getLogger(__name__)
 class G90Message:
     """
     Represents the message received from the device.
+
+    :meta private:
     """
     code: G90MessageTypes
     data: List[Any]
@@ -58,6 +60,8 @@ class G90Message:
 class G90Notification:
     """
     Represents the notification received from the device.
+
+    :meta private:
     """
     kind: G90NotificationTypes
     data: List[Any]
@@ -67,6 +71,8 @@ class G90Notification:
 class G90ZoneInfo:
     """
     Represents zone details received from the device.
+
+    :meta private:
     """
     idx: int
     name: str
@@ -76,6 +82,8 @@ class G90ZoneInfo:
 class G90ArmDisarmInfo:
     """
     Represents the arm/disarm state received from the device.
+
+    :meta private:
     """
     state: int
 
