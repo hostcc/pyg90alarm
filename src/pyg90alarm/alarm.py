@@ -100,21 +100,24 @@ if TYPE_CHECKING:
         Callable[[int, str, bool], None],
         Callable[[int, str, bool], Coroutine[None, None, None]]
     ]
-    SensorStateCallback = Union[
-        Callable[[bool], None],
-        Callable[[bool], Coroutine[None, None, None]]
-    ]
     LowBatteryCallback = Union[
         Callable[[int, str], None],
         Callable[[int, str], Coroutine[None, None, None]]
     ]
-    SensorLowBatteryCallback = Union[
-        Callable[[bool], None],
-        Callable[[bool], Coroutine[None, None, None]]
-    ]
     ArmDisarmCallback = Union[
         Callable[[G90ArmDisarmTypes], None],
         Callable[[G90ArmDisarmTypes], Coroutine[None, None, None]]
+    ]
+    # Sensor-related callbacks for `G90Sensor` class - despite that class
+    # stores them, the invication is done by the `G90Alarm` class hence these
+    # are defined here
+    SensorStateCallback = Union[
+        Callable[[bool], None],
+        Callable[[bool], Coroutine[None, None, None]]
+    ]
+    SensorLowBatteryCallback = Union[
+        Callable[[], None],
+        Callable[[], Coroutine[None, None, None]]
     ]
 
 
