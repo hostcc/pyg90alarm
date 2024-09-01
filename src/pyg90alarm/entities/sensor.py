@@ -185,6 +185,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._occupancy = False
         self._state_callback: Optional[SensorStateCallback] = None
         self._low_battery_callback: Optional[SensorLowBatteryCallback] = None
+        self._low_battery = False
         self._proto_idx = proto_idx
         self._extra_data: Any = None
 
@@ -247,8 +248,19 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         return self._occupancy
 
-    @occupancy.setter
-    def occupancy(self, value: bool) -> None:
+    def _set_occupancy(self, value: bool) -> None:
+        """
+        Sets occupancy state of the sensor.
+        Intentionally private, as occupancy state is derived from
+        notifications/alerts.
+
+        :param value: Occupancy state
+        """
+        _LOGGER.debug(
+            "Setting occupancy for sensor index=%s: '%s' %s"
+            " (previous value: %s)",
+            self.index, self.name, value, self._occupancy
+        )
         self._occupancy = value
 
     @property
@@ -341,6 +353,35 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         :return: Support for enabling/disabling the sensor
         """
         return self._definition is not None
+
+    @property
+    def is_wireless(self) -> bool:
+        """
+        Indicates if the sensor is wireless.
+        """
+        return self.protocol not in (G90SensorProtocols.CORD,)
+
+    @property
+    def is_low_battery(self) -> bool:
+        """
+        Indicates if the sensor is reporting low battery.
+        """
+        return self._low_battery
+
+    def _set_low_battery(self, value: bool) -> None:
+        """
+        Sets low battery state of the sensor.
+        Intentionally private, as low battery state is derived from
+        notifications/alerts.
+
+        :param value: Low battery state
+        """
+        _LOGGER.debug(
+            "Setting low battery for sensor index=%s '%s': %s"
+            " (previous value: %s)",
+            self.index, self.name, value, self._low_battery
+        )
+        self._low_battery = value
 
     @property
     def enabled(self) -> bool:
@@ -485,6 +526,8 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             'extra_data': self.extra_data,
             'enabled': self.enabled,
             'supports_enable_disable': self.supports_enable_disable,
+            'is_wireless': self.is_wireless,
+            'is_low_battery': self.is_low_battery,
         }
 
     def __repr__(self) -> str:
@@ -493,11 +536,4 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
 
         :return: String representation
         """
-        return super().__repr__() + f"(name='{str(self.name)}'" \
-            f' type={str(self.type)}' \
-            f' subtype={str(self.subtype)}' \
-            f' protocol={str(self.protocol)}' \
-            f' occupancy={self.occupancy}' \
-            f' user flag={str(self.user_flag)}' \
-            f' reserved={str(self.reserved)}' \
-            f" extra_data={str(self.extra_data)})"
+        return super().__repr__() + f'({repr(self._asdict())})'
