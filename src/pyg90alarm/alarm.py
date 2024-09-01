@@ -56,9 +56,6 @@ from typing import (
     TYPE_CHECKING, Any, List, Optional, AsyncGenerator,
     Callable, Coroutine, Union
 )
-from typing_extensions import (
-    TypeAlias
-)
 from .const import (
     G90Commands, REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
@@ -91,7 +88,7 @@ if TYPE_CHECKING:
     # Type alias for the callback functions available to the user, should be
     # compatible with `G90Callback.Callback` type, since `G90Callback.invoke`
     # is used to invoke them
-    AlarmCallback: TypeAlias = Union[
+    AlarmCallback = Union[
         Callable[[int, str, Any], None],
         Callable[[int, str, Any], Coroutine[None, None, None]]
     ]
@@ -470,16 +467,19 @@ class G90Alarm(G90DeviceNotifications):
         _LOGGER.debug('on_sensor_activity: %s %s %s', idx, name, occupancy)
         sensor = await self.find_sensor(idx, name)
         if sensor:
-            _LOGGER.debug('Setting occupancy to %s (previously %s)',
-                          occupancy, sensor.occupancy)
-            sensor.occupancy = occupancy
+            # Reset the low battery flag since the sensor reports activity,
+            # implying it has sufficient battery power
+            # pylint: disable=protected-access
+            sensor._set_low_battery(False)
+            # Set the sensor occupancy
+            # pylint: disable=protected-access
+            sensor._set_occupancy(occupancy)
 
             # Emulate turning off the occupancy - most of sensors will not
             # notify the device of that, nor the device would emit such
             # notification itself
             def reset_sensor_occupancy(sensor: G90Sensor) -> None:
-                _LOGGER.debug('Resetting occupancy for sensor %s', sensor)
-                sensor.occupancy = False
+                sensor._set_occupancy(False)
                 G90Callback.invoke(sensor.state_callback, sensor.occupancy)
 
             # Determine if door close notifications are available for the given
@@ -639,8 +639,12 @@ class G90Alarm(G90DeviceNotifications):
         :param event_id: Index of the sensor triggered alarm
         :param zone_name: Sensor name
         """
+        _LOGGER.debug('on_low_battery: %s %s', event_id, zone_name)
         sensor = await self.find_sensor(event_id, zone_name)
         if sensor:
+            # Set the low battery flag on the sensor
+            # pylint: disable=protected-access
+            sensor._set_low_battery(True)
             # Invoke per-sensor callback if provided
             G90Callback.invoke(sensor.low_battery_callback)
 

@@ -211,9 +211,4 @@ class G90History:
         """
         Textural representation of the history entry.
         """
-        return f'type={repr(self.type)}' \
-            + f' source={repr(self.source)}' \
-            + f' state={repr(self.state)}' \
-            + f' sensor_name={self.sensor_name}' \
-            + f' sensor_idx={self.sensor_idx}' \
-            + f' datetime={repr(self.datetime)}'
+        return super().__repr__() + f'({repr(self._asdict())})'
