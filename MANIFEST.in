@@ -10,3 +10,5 @@ include LICENSE
 include setup.py
 
 recursive-include src py.typed
+
+exclude requirements_dev.txt
