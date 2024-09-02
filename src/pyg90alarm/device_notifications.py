@@ -106,21 +106,28 @@ class G90DeviceAlert:  # pylint: disable=too-many-instance-attributes
 class G90DeviceNotifications(DatagramProtocol):
     """
     Implements support for notifications/alerts sent by alarm panel.
+
+    There is a basic check to ensure only notifications/alerts from the correct
+    device are processed - the check uses the host and port of the device, and
+    the device ID (GUID) that is set by the ancestor class that implements the
+    commands (e.g. :class:`G90Alarm`). The latter to work correctly needs a
+    command to be performed first, one that fetches device GUID and then stores
+    it using :attr:`.device_id` (e.g. :meth:`G90Alarm.get_host_info`).
     """
     def __init__(self, local_port: int, local_host: str):
         # pylint: disable=too-many-arguments
         self._notification_transport: Optional[BaseTransport] = None
         self._notifications_local_host = local_host
         self._notifications_local_port = local_port
-        # Host/port of the device we are communicating with - please note it is
-        # for commands to be sent to device, and intended for use by ancestor
-        # classes that implement the commands (e.g. `G90Alarm`). Inteded to
-        # validate if notifications/alert are received from the correct device.
+        # Host/port of the device is configured to communicating via commands.
+        # Inteded to validate if notifications/alert are received from the
+        # correct device.
         self._host: Optional[str] = None
         self._port: Optional[int] = None
         # Same but for device ID (GUID) - the notifications logic uses it to
         # perform validation, but doesn't set it from messages received (it
-        # will diminish the purpose of the validation).
+        # will diminish the purpose of the validation, should be done by an
+        # ancestor class).
         self._device_id: Optional[str] = None
 
     def _handle_notification(
