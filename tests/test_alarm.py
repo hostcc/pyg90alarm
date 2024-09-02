@@ -308,8 +308,8 @@ async def test_sensor_event(mock_device: DeviceMock) -> None:
     reset_interval = 0.5
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
                    reset_occupancy_interval=reset_interval,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
 
     sensors = await g90.get_sensors()
     prop_sensors = await g90.sensors
@@ -352,8 +352,8 @@ async def test_sensor_low_battery_event(mock_device: DeviceMock) -> None:
     Tests for sensor low battery callback.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
 
     sensors = await g90.get_sensors()
     prop_sensors = await g90.sensors
@@ -401,8 +401,8 @@ async def test_armdisarm_callback(mock_device: DeviceMock) -> None:
     armdisarm_cb = MagicMock()
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
     g90.armdisarm_callback = armdisarm_cb
     await g90.listen_device_notifications()
     await mock_device.send_next_notification()
@@ -434,8 +434,8 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
     door_open_close_cb.side_effect = lambda *args: future.set_result(True)
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
     g90.door_open_close_callback = door_open_close_cb
 
     # Simulate two device alerts - for opening (this one) and then closing the
@@ -492,8 +492,8 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     alarm_cb.side_effect = lambda *args: future.set_result(True)
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
     sensors = await g90.get_sensors()
     # Set extra data for the 1st sensor
     sensors[0].extra_data = 'Dummy extra data'
@@ -753,8 +753,8 @@ async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
     armdisarm_cb = MagicMock()
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
     g90.armdisarm_callback = armdisarm_cb
     g90.sms_alert_when_armed = True
     await g90.listen_device_notifications()
@@ -787,8 +787,8 @@ async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
     armdisarm_cb = MagicMock()
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
-                   notifications_host=mock_device.notification_host,
-                   notifications_port=mock_device.notification_port)
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
     g90.armdisarm_callback = armdisarm_cb
     g90.sms_alert_when_armed = True
     await g90.listen_device_notifications()

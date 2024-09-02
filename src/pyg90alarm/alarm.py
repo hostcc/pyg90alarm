@@ -60,7 +60,8 @@ from .const import (
     G90Commands, REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
     LOCAL_TARGETED_DISCOVERY_PORT,
-    NOTIFICATIONS_PORT,
+    LOCAL_NOTIFICATIONS_HOST,
+    LOCAL_NOTIFICATIONS_PORT,
     G90ArmDisarmTypes,
 )
 from .base_cmd import (G90BaseCommand, G90BaseCommandData)
@@ -140,11 +141,14 @@ class G90Alarm(G90DeviceNotifications):
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(self, host: str, port: int = REMOTE_PORT,
                  reset_occupancy_interval: float = 3.0,
-                 notifications_host: str = '0.0.0.0',
-                 notifications_port: int = NOTIFICATIONS_PORT):
-        super().__init__(host=notifications_host, port=notifications_port)
-        self._host = host
-        self._port = port
+                 notifications_local_host: str = LOCAL_NOTIFICATIONS_HOST,
+                 notifications_local_port: int = LOCAL_NOTIFICATIONS_PORT):
+        super().__init__(
+            local_host=notifications_local_host,
+            local_port=notifications_local_port
+        )
+        self._host: str = host
+        self._port: int = port
         self._sensors: List[G90Sensor] = []
         self._devices: List[G90Device] = []
         self._notifications: Optional[G90DeviceNotifications] = None
@@ -336,7 +340,9 @@ class G90Alarm(G90DeviceNotifications):
         :return: Device information
         """
         res = await self.command(G90Commands.GETHOSTINFO)
-        return G90HostInfo(*res)
+        info = G90HostInfo(*res)
+        self.device_id = info.host_guid
+        return info
 
     @property
     async def host_status(self) -> G90HostStatus:
@@ -813,7 +819,7 @@ class G90Alarm(G90DeviceNotifications):
                         # code as alert, as if it came from the device and its
                         # notifications port
                         self._handle_alert(
-                            (self._host, self._notifications_port),
+                            (self._host, self._notifications_local_port),
                             item.as_device_alert()
                         )
 

@@ -41,7 +41,6 @@ from .const import (
     G90AlertStates,
 )
 
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -108,11 +107,21 @@ class G90DeviceNotifications(DatagramProtocol):
     """
     Implements support for notifications/alerts sent by alarm panel.
     """
-    def __init__(self, port: int, host: str):
+    def __init__(self, local_port: int, local_host: str):
         # pylint: disable=too-many-arguments
         self._notification_transport: Optional[BaseTransport] = None
-        self._notifications_host = host
-        self._notifications_port = port
+        self._notifications_local_host = local_host
+        self._notifications_local_port = local_port
+        # Host/port of the device we are communicating with - please note it is
+        # for commands to be sent to device, and intended for use by ancestor
+        # classes that implement the commands (e.g. `G90Alarm`). Inteded to
+        # validate if notifications/alert are received from the correct device.
+        self._host: Optional[str] = None
+        self._port: Optional[int] = None
+        # Same but for device ID (GUID) - the notifications logic uses it to
+        # perform validation, but doesn't set it from messages received (it
+        # will diminish the purpose of the validation).
+        self._device_id: Optional[str] = None
 
     def _handle_notification(
         self, addr: Tuple[str, int], notification: G90Notification
@@ -145,6 +154,15 @@ class G90DeviceNotifications(DatagramProtocol):
     def _handle_alert(
         self, addr: Tuple[str, int], alert: G90DeviceAlert
     ) -> None:
+        # Stop processing when alert is received from the device with different
+        # GUID
+        if self.device_id and alert.device_id != self.device_id:
+            _LOGGER.error(
+                "Received alert from wrong device: expected '%s', got '%s'",
+                self.device_id, alert.device_id
+            )
+            return
+
         if alert.type == G90AlertTypes.DOOR_OPEN_CLOSE:
             if alert.state in (
                 G90AlertStates.DOOR_OPEN, G90AlertStates.DOOR_CLOSE
@@ -219,10 +237,17 @@ class G90DeviceNotifications(DatagramProtocol):
     def datagram_received(  # pylint:disable=R0911
         self, data: bytes, addr: Tuple[str, int]
     ) -> None:
+        """
+        Invoked when datagram is received from the device.
+        """
+        if self._host and self._host != addr[0]:
+            _LOGGER.error(
+                "Received notification/alert from wrong host '%s',"
+                " expected from '%s'",
+                addr[0], self._host
+            )
+            return
 
-        """
-        Invoked from datagram is received from the device.
-        """
         s_data = data.decode('utf-8')
         if not s_data.endswith('\0'):
             _LOGGER.error('Missing end marker in data')
@@ -304,13 +329,13 @@ class G90DeviceNotifications(DatagramProtocol):
             loop = asyncio.get_event_loop()
 
         _LOGGER.debug('Creating UDP endpoint for %s:%s',
-                      self._notifications_host,
-                      self._notifications_port)
+                      self._notifications_local_host,
+                      self._notifications_local_port)
         (self._notification_transport,
          _protocol) = await loop.create_datagram_endpoint(
             lambda: self,
             local_addr=(
-                self._notifications_host, self._notifications_port
+                self._notifications_local_host, self._notifications_local_port
             ))
 
     @property
@@ -328,3 +353,17 @@ class G90DeviceNotifications(DatagramProtocol):
             _LOGGER.debug('No longer listening for device notifications')
             self._notification_transport.close()
             self._notification_transport = None
+
+    @property
+    def device_id(self) -> Optional[str]:
+        """
+        The ID (GUID) of the panel being communicated with thru commands.
+
+        Available when any panel command receives it from the device
+        (:meth:`G90Alarm.get_host_info` currently).
+        """
+        return self._device_id
+
+    @device_id.setter
+    def device_id(self, device_id: str) -> None:
+        self._device_id = device_id

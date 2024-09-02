@@ -10,6 +10,7 @@ from pytest import LogCaptureFixture
 from pyg90alarm.device_notifications import (
     G90DeviceNotifications,
 )
+from pyg90alarm.alarm import G90Alarm
 
 from .device_mock import DeviceMock
 
@@ -24,7 +25,8 @@ async def test_device_notification_missing_header(
     Verifies that missing header in device notification is handled correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('ERROR')
     await notifications.listen()
@@ -49,7 +51,8 @@ async def test_device_notification_malformed_message(
     correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('ERROR')
     await notifications.listen()
@@ -72,7 +75,8 @@ async def test_device_notification_missing_end_marker(
     correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('ERROR')
     await notifications.listen()
@@ -91,7 +95,8 @@ async def test_wrong_device_notification_format(
     Verifies that wrong device notification format is handled correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('ERROR')
     await notifications.listen()
@@ -114,7 +119,8 @@ async def test_wrong_device_alert_format(
     Verifies that wrong device alert format is handled correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
 
     caplog.set_level('ERROR')
@@ -140,7 +146,8 @@ async def test_unknown_device_notification(
     Verifies that unknown device notification is handled correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('WARNING')
     await notifications.listen()
@@ -164,7 +171,8 @@ async def test_unknown_device_alert(
     Verifies that unknown device alert is handled correctly.
     """
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('WARNING')
     await notifications.listen()
@@ -180,6 +188,79 @@ async def test_unknown_device_alert(
 
 
 @pytest.mark.g90device(notification_data=[
+    b'[208,[999,100,1,1,"Hall","DUMMYGUID",'
+    b'1631545189,0,[""]]]\0',
+])
+async def test_wrong_host(
+    mock_device: DeviceMock, caplog: LogCaptureFixture
+) -> None:
+    """
+    Verifies that unknown device alert is handled correctly.
+    """
+    g90 = G90Alarm(
+        host='1.2.3.4',
+        notifications_local_host=mock_device.notification_host,
+        notifications_local_port=mock_device.notification_port
+    )
+    # pylint: disable=protected-access
+    g90._handle_alert = (  # type: ignore[method-assign]
+        MagicMock()
+    )
+    # pylint: disable=protected-access
+    g90._handle_notification = (  # type: ignore[method-assign]
+        MagicMock()
+    )
+    caplog.set_level('WARNING')
+    await g90.listen()
+    await mock_device.send_next_notification()
+    assert ''.join(caplog.messages) == (
+        "Received notification/alert from wrong host '127.0.0.1'"
+        ", expected from '1.2.3.4'"
+    )
+    g90.close()
+    # pylint: disable=protected-access
+    g90._handle_alert.assert_not_called()
+    # pylint: disable=protected-access
+    g90._handle_notification.assert_not_called()
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[206,'
+        b'["DUMMYGUID","DUMMYPRODUCT",'
+        b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0',
+    ],
+    notification_data=[
+        b'[208,[2,4,0,0,"","DIFFERENTGUID",1630876128,0,[""]]]\0'
+    ],
+)
+async def test_wrong_device_guid(
+    mock_device: DeviceMock, caplog: LogCaptureFixture
+) -> None:
+    """
+    Verifies that alert from device with different GUID is ignored.
+    """
+    g90 = G90Alarm(
+        host=mock_device.host, port=mock_device.port,
+        notifications_local_host=mock_device.notification_host,
+        notifications_local_port=mock_device.notification_port
+    )
+    caplog.set_level('WARNING')
+    # The command will fetch the host info and store the GIUD
+    await g90.get_host_info()
+    g90.on_armdisarm = MagicMock()  # type: ignore[method-assign]
+    await g90.listen()
+    await mock_device.send_next_notification()
+    assert ''.join(caplog.messages) == (
+        "Received alert from wrong device: expected 'DUMMYGUID'"
+        ", got 'DIFFERENTGUID'"
+    )
+    g90.close()
+    # Verify the associated callback was not called
+    g90.on_armdisarm.assert_not_called()
+
+
+@pytest.mark.g90device(notification_data=[
     b'[170,[5,[100,"Hall"]]]\0',
 ])
 async def test_sensor_callback(mock_device: DeviceMock) -> None:
@@ -188,8 +269,8 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host,
-        port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port,
     )
 
     notifications.on_sensor_activity = (  # type: ignore[method-assign]
@@ -216,7 +297,8 @@ async def test_armdisarm_notification_callback(
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     notifications.on_armdisarm = MagicMock()  # type: ignore[method-assign]
     notifications.on_armdisarm.side_effect = (
@@ -238,7 +320,8 @@ async def test_armdisarm_alert_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     notifications.on_armdisarm = MagicMock()  # type: ignore[method-assign]
     notifications.on_armdisarm.side_effect = (
@@ -260,7 +343,8 @@ async def test_door_open_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
 
     notifications.on_door_open_close = (  # type: ignore[method-assign]
@@ -285,7 +369,8 @@ async def test_door_close_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
 
     notifications.on_door_open_close = (  # type: ignore[method-assign]
@@ -312,7 +397,8 @@ async def test_doorbell_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
 
     notifications.on_door_open_close = (  # type: ignore[method-assign]
@@ -339,7 +425,8 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     notifications.on_alarm = MagicMock()  # type: ignore[method-assign]
     notifications.on_alarm.side_effect = (
@@ -361,7 +448,8 @@ async def test_low_battery_callback(mock_device: DeviceMock) -> None:
     """
     future = asyncio.get_running_loop().create_future()
     notifications = G90DeviceNotifications(
-        host=mock_device.notification_host, port=mock_device.notification_port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     notifications.on_low_battery = MagicMock()  # type: ignore[method-assign]
     notifications.on_low_battery.side_effect = (
