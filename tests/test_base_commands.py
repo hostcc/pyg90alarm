@@ -122,7 +122,7 @@ async def test_timeout(mock_device: DeviceMock) -> None:
 ])
 async def test_invalid_utf8_encoding(mock_device: DeviceMock) -> None:
     """
-    Verifies that invalid UTF-8 encodingof response is handled properly.
+    Verifies that invalid UTF-8 encoding of response is handled properly.
     """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,

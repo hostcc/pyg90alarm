@@ -16,6 +16,29 @@ from .device_mock import DeviceMock
 
 
 @pytest.mark.g90device(notification_data=[
+    b'\xdeadbeef\0',
+])
+async def test_device_notification_invalid_utf_data(
+    mock_device: DeviceMock, caplog: LogCaptureFixture
+) -> None:
+    """
+    Verifies that wrong UTF encoded data in device notification is handled
+    correctly.
+    """
+    notifications = G90DeviceNotifications(
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
+    )
+    caplog.set_level('ERROR')
+    await notifications.listen()
+    await mock_device.send_next_notification()
+    assert ''.join(caplog.messages) == (
+        "Unable to decode device message from UTF-8"
+    )
+    notifications.close()
+
+
+@pytest.mark.g90device(notification_data=[
     b'[170]\0',
 ])
 async def test_device_notification_missing_header(
