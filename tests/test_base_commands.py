@@ -118,6 +118,26 @@ async def test_timeout(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
+    b'\xdeadbeef\0',
+])
+async def test_invalid_utf8_encoding(mock_device: DeviceMock) -> None:
+    """
+    Verifies that invalid UTF-8 encodingof response is handled properly.
+    """
+    g90 = G90BaseCommand(
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
+
+    with pytest.raises(
+        G90Error,
+        match=re.escape("Unable to decode response from UTF-8")
+    ):
+        await g90.process()
+    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+
+
+@pytest.mark.g90device(sent_data=[
     b'ISTART[IEND\0',
 ])
 async def test_wrong_format(mock_device: DeviceMock) -> None:

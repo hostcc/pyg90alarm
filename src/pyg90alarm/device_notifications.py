@@ -255,7 +255,12 @@ class G90DeviceNotifications(DatagramProtocol):
             )
             return
 
-        s_data = data.decode('utf-8')
+        try:
+            s_data = data.decode('utf-8')
+        except UnicodeDecodeError:
+            _LOGGER.error('Unable to decode device message from UTF-8')
+            return
+
         if not s_data.endswith('\0'):
             _LOGGER.error('Missing end marker in data')
             return

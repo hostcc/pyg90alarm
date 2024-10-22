@@ -154,7 +154,12 @@ class G90BaseCommand(DatagramProtocol):
         Parses the response from the alarm panel.
         """
         _LOGGER.debug('To be decoded from wire format %s', data)
-        self._parse(data.decode('utf-8', errors='ignore'))
+        try:
+            self._parse(data.decode('utf-8'))
+        except UnicodeDecodeError as exc:
+            raise G90Error(
+                'Unable to decode response from UTF-8'
+            ) from exc
         return self._resp.data or []
 
     def _parse(self, data: str) -> None:

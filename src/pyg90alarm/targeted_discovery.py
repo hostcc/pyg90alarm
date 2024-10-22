@@ -103,7 +103,12 @@ class G90TargetedDiscovery(G90BaseCommand):
         """
         try:
             _LOGGER.debug('Received from %s:%s: %s', addr[0], addr[1], data)
-            decoded = data.decode('utf-8', errors='ignore')
+            try:
+                decoded = data.decode('utf-8')
+            except UnicodeDecodeError as exc:
+                raise G90Error(
+                    'Unable to decode discovery response from UTF-8'
+                ) from exc
             if not decoded.endswith('\0'):
                 raise G90Error('Invalid discovery response')
             host_info = G90TargetedDiscoveryInfo(*decoded[:-1].split(','))
