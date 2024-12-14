@@ -21,6 +21,8 @@
 """
 History protocol entity.
 """
+import logging
+
 from typing import Any, Optional, Dict
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -33,12 +35,13 @@ from .const import (
 )
 from .device_notifications import G90DeviceAlert
 
+_LOGGER = logging.getLogger(__name__)
+
 
 # The state of the incoming history entries are mixed of `G90AlertStates` and
-# `G90AlertStateChangeTypes`, depending on entry type - the mapping
-# consilidates them into unified `G90HistoryStates`. The latter enum can't be
-# just an union of former two, since those have conflicting values
-states_mapping = {
+# `G90AlertStateChangeTypes`, depending on entry type - hence two separate
+# dictionaries, since enums used for keys have conflicting values
+states_mapping_alerts = {
     G90AlertStates.DOOR_CLOSE:
         G90HistoryStates.DOOR_CLOSE,
     G90AlertStates.DOOR_OPEN:
@@ -47,6 +50,9 @@ states_mapping = {
         G90HistoryStates.TAMPER,
     G90AlertStates.LOW_BATTERY:
         G90HistoryStates.LOW_BATTERY,
+}
+
+states_mapping_state_changes = {
     G90AlertStateChangeTypes.AC_POWER_FAILURE:
         G90HistoryStates.AC_POWER_FAILURE,
     G90AlertStateChangeTypes.AC_POWER_RECOVER:
@@ -87,6 +93,7 @@ class G90History:
     Represents a history entry from the alarm panel.
     """
     def __init__(self, *args: Any, **kwargs: Any):
+        self._raw_data = args
         self._protocol_data = ProtocolData(*args, **kwargs)
 
     @property
@@ -99,55 +106,70 @@ class G90History:
         )
 
     @property
-    def type(self) -> G90AlertTypes:
+    def type(self) -> Optional[G90AlertTypes]:
         """
         Type of the history entry.
         """
-        return G90AlertTypes(self._protocol_data.type)
+        try:
+            return G90AlertTypes(self._protocol_data.type)
+        except ValueError:
+            _LOGGER.warning(
+                "Can't interpret '%s' as alert type (decoded protocol"
+                " data '%s', raw data '%s')",
+                self._protocol_data.type, self._protocol_data, self._raw_data
+            )
+            return None
 
     @property
-    def state(self) -> G90HistoryStates:
+    def state(self) -> Optional[G90HistoryStates]:
         """
         State for the history entry.
         """
-        # Door open/close type, mapped against `G90AlertStates` using `state`
-        # incoming field
-        if self.type == G90AlertTypes.DOOR_OPEN_CLOSE:
-            return G90HistoryStates(
-                states_mapping[G90AlertStates(self._protocol_data.state)]
-            )
+        try:
+            # Door open/close or alert types, mapped against `G90AlertStates`
+            # using `state` incoming field
+            if self.type in [
+                G90AlertTypes.DOOR_OPEN_CLOSE, G90AlertTypes.ALARM
+            ]:
+                return G90HistoryStates(
+                    states_mapping_alerts[
+                        G90AlertStates(self._protocol_data.state)
+                    ]
+                )
 
-        # Device state change, mapped against `G90AlertStateChangeTypes` using
-        # `event_id` incoming field
-        if self.type == G90AlertTypes.STATE_CHANGE:
+            # Other types are mapped against `G90AlertStateChangeTypes`
             return G90HistoryStates(
-                states_mapping[
+                states_mapping_state_changes[
                     G90AlertStateChangeTypes(self._protocol_data.event_id)
                 ]
             )
-
-        # Alarm gets mapped to its counterpart in `G90HistoryStates`
-        if self.type == G90AlertTypes.ALARM:
-            return G90HistoryStates.ALARM
-
-        # Other types are mapped against `G90AlertStateChangeTypes`
-        return G90HistoryStates(
-            states_mapping[
-                G90AlertStateChangeTypes(self._protocol_data.event_id)
-            ]
-        )
+        except ValueError:
+            _LOGGER.warning(
+                "Can't interpret '%s' as alert state (decoded protocol"
+                " data '%s', raw data '%s')",
+                self._protocol_data.type, self._protocol_data, self._raw_data
+            )
+            return None
 
     @property
-    def source(self) -> G90AlertSources:
+    def source(self) -> Optional[G90AlertSources]:
         """
         Source of the history entry.
         """
-        # Device state changes or open/close events are mapped against
-        # `G90AlertSources` using `source` incoming field
-        if self.type in [
-            G90AlertTypes.STATE_CHANGE, G90AlertTypes.DOOR_OPEN_CLOSE
-        ]:
-            return G90AlertSources(self._protocol_data.source)
+        try:
+            # Device state changes or open/close events are mapped against
+            # `G90AlertSources` using `source` incoming field
+            if self.type in [
+                G90AlertTypes.STATE_CHANGE, G90AlertTypes.DOOR_OPEN_CLOSE
+            ]:
+                return G90AlertSources(self._protocol_data.source)
+        except ValueError:
+            _LOGGER.warning(
+                "Can't interpret '%s' as alert source (decoded protocol"
+                " data '%s', raw data '%s')",
+                self._protocol_data.type, self._protocol_data, self._raw_data
+            )
+            return None
 
         # Alarm will have `SENSOR` as the source, since that is likely what
         # triggered it
@@ -182,6 +204,7 @@ class G90History:
         Returns the history entry represented as device alert structure,
         suitable for :meth:`G90DeviceNotifications._handle_alert`.
         """
+
         return G90DeviceAlert(
             type=self._protocol_data.type,
             event_id=self._protocol_data.event_id,

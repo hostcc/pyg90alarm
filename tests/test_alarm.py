@@ -575,7 +575,7 @@ async def test_disarm(mock_device: DeviceMock) -> None:
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[200,[[50,1,5],'
-    b'[3,33,7,254,"Sensor 1",1630147285,""],'
+    b'[3,33,7,1,"Sensor 1",1630147285,""],'
     b'[2,3,0,0,"",1630142877,""],'
     b'[2,5,0,0,"",1630142871,""],'
     b'[2,4,0,0,"",1630142757,""],'
@@ -596,6 +596,29 @@ async def test_history(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
+    b'ISTART[200,[[50,1,5],'
+    b'[3,33,7,254,"Sensor 1",1630147285,""],'
+    b'[2,3,0,0,"",1630142877,""],'
+    b'[2,5,0,0,"",1630142871,""],'
+    b'[2,4,0,0,"",1630142757,""],'
+    b'[3,100,126,1,"Sensor 2",1630142297,""]]]IEND\0',
+])
+async def test_history_parsing_error(mock_device: DeviceMock) -> None:
+    """
+    Tests for processing history from the device, when the parsing error
+    occurs.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    history = await g90.history(count=5)
+    assert len(history) == 5
+    assert isinstance(history[0], G90History)
+    assert isinstance(history[0]._asdict(), dict)
+    # Wrong entry element should result in corresponding key having 'None'
+    # value
+    assert history[0]._asdict()['state'] is None
+
+
+@pytest.mark.g90device(sent_data=[
     # Simulate empty history initially
     b'ISTART[200,[[0,0,0]]]IEND\0',
     # The history records will be used to remember the timestamp of most recent
@@ -606,7 +629,7 @@ async def test_history(mock_device: DeviceMock) -> None:
     # The records will be used to simulate the device alerts, but only for
     # those newer that one above
     b'ISTART[200,[[3,1,3],'
-    b'[3,33,7,254,"Sensor 1",1630147285,""],'
+    b'[3,33,7,1,"Sensor 1",1630147285,""],'
     b'[2,3,0,0,"",1630142877,""],'
     b'[2,5,0,0,"",1630142871,""]'
     b']]IEND\0',
