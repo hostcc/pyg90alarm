@@ -596,12 +596,14 @@ async def test_history(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[200,[[50,1,5],'
+    b'ISTART[200,[[3,1,3],'
+    # Wrong state
     b'[3,33,7,254,"Sensor 1",1630147285,""],'
-    b'[2,3,0,0,"",1630142877,""],'
-    b'[2,5,0,0,"",1630142871,""],'
-    b'[2,4,0,0,"",1630142757,""],'
-    b'[3,100,126,1,"Sensor 2",1630142297,""]]]IEND\0',
+    # Wrong source
+    b'[2,33,254,1,"Sensor 1",1630147285,""],'
+    # Wrong type
+    b'[254,33,1,1,"Sensor 1",1630147285,""]'
+    b']]IEND\0',
 ])
 async def test_history_parsing_error(mock_device: DeviceMock) -> None:
     """
@@ -610,12 +612,14 @@ async def test_history_parsing_error(mock_device: DeviceMock) -> None:
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     history = await g90.history(count=5)
-    assert len(history) == 5
+    assert len(history) == 3
     assert isinstance(history[0], G90History)
     assert isinstance(history[0]._asdict(), dict)
     # Wrong entry element should result in corresponding key having 'None'
     # value
     assert history[0]._asdict()['state'] is None
+    assert history[1]._asdict()['source'] is None
+    assert history[2]._asdict()['type'] is None
 
 
 @pytest.mark.g90device(sent_data=[

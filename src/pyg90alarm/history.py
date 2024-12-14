@@ -136,7 +136,15 @@ class G90History:
                         G90AlertStates(self._protocol_data.state)
                     ]
                 )
+        except ValueError:
+            _LOGGER.warning(
+                "Can't interpret '%s' as alert state (decoded protocol"
+                " data '%s', raw data '%s')",
+                self._protocol_data.state, self._protocol_data, self._raw_data
+            )
+            return None
 
+        try:
             # Other types are mapped against `G90AlertStateChangeTypes`
             return G90HistoryStates(
                 states_mapping_state_changes[
@@ -145,9 +153,10 @@ class G90History:
             )
         except ValueError:
             _LOGGER.warning(
-                "Can't interpret '%s' as alert state (decoded protocol"
+                "Can't interpret '%s' as state change (decoded protocol"
                 " data '%s', raw data '%s')",
-                self._protocol_data.type, self._protocol_data, self._raw_data
+                self._protocol_data.event_id, self._protocol_data,
+                self._raw_data
             )
             return None
 
@@ -167,7 +176,7 @@ class G90History:
             _LOGGER.warning(
                 "Can't interpret '%s' as alert source (decoded protocol"
                 " data '%s', raw data '%s')",
-                self._protocol_data.type, self._protocol_data, self._raw_data
+                self._protocol_data.source, self._protocol_data, self._raw_data
             )
             return None
 
