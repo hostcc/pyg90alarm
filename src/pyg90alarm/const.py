@@ -166,7 +166,10 @@ class G90NotificationTypes(IntEnum):
     Defines types of notifications sent by the alarm panel.
     """
     ARM_DISARM = 1
+    SENSOR_ADDED = 4
     SENSOR_ACTIVITY = 5
+    DOOR_OPEN_WHEN_ARMING = 6
+    FIRMWARE_UPDATING = 8
 
 
 class G90ArmDisarmTypes(IntEnum):
@@ -195,7 +198,10 @@ class G90AlertSources(IntEnum):
     """
     DEVICE = 0
     SENSOR = 1
+    REMOTE = 10
+    RFID = 11
     DOORBELL = 12
+    FINGERPRINT = 15
 
 
 class G90AlertStates(IntEnum):
@@ -204,6 +210,7 @@ class G90AlertStates(IntEnum):
     """
     DOOR_CLOSE = 0
     DOOR_OPEN = 1
+    SOS = 2
     TAMPER = 3
     LOW_BATTERY = 4
 
