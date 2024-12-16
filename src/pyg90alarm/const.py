@@ -187,8 +187,11 @@ class G90AlertTypes(IntEnum):
     """
     Defines types of alerts sent by the alarm panel.
     """
+    HOST_SOS = 1
     STATE_CHANGE = 2
     ALARM = 3
+    SENSOR_ACTIVITY = 4
+    # Retained for compatibility, deprecated
     DOOR_OPEN_CLOSE = 4
 
 
@@ -245,3 +248,17 @@ class G90HistoryStates(IntEnum):
     LOW_BATTERY = 10
     WIFI_CONNECTED = 11
     WIFI_DISCONNECTED = 12
+    REMOTE_BUTTON_ARM_AWAY = 13
+    REMOTE_BUTTON_ARM_HOME = 14
+    REMOTE_BUTTON_DISARM = 15
+    REMOTE_BUTTON_SOS = 16
+
+
+class G90RemoteButtonStates(IntEnum):
+    """
+    Defines possible states for remote control buttons.
+    """
+    ARM_AWAY = 0
+    ARM_HOME = 1
+    DISARM = 2
+    SOS = 3

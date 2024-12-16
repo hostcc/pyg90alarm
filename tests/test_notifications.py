@@ -463,6 +463,42 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(notification_data=[
+    # Host SOS
+    b'[208,[1,1,0,0,"","DUMMYGUID",1734175050,0,[""]]]\0',
+    # Remote SOS
+    b'[208,[3,1,10,3,"Remote","DUMMYGUID",1734177048,0,[""]]]\0',
+])
+async def test_sos_callback(mock_device: DeviceMock) -> None:
+    """
+    Verifies that remote SOS callback is handled correctly.
+    """
+    future = asyncio.get_running_loop().create_future()
+    notifications = G90DeviceNotifications(
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
+    )
+    notifications.on_sos = MagicMock()  # type: ignore[method-assign]
+    notifications.on_sos.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+    await notifications.listen()
+
+    # Host SOS
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+    notifications.on_sos.assert_called_with(1, 'Host SOS', True)
+
+    # Remote SOS
+    notifications.on_sos.reset_mock()
+    future = asyncio.get_running_loop().create_future()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+    notifications.on_sos.assert_called_with(1, 'Remote', False)
+
+    notifications.close()
+
+
+@pytest.mark.g90device(notification_data=[
     b'[208,[4,26,1,4,"Hall","DUMMYGUID",1719223959,0,[""]]]\0'
 ])
 async def test_low_battery_callback(mock_device: DeviceMock) -> None:
