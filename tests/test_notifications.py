@@ -265,6 +265,7 @@ async def test_empty_device_guid(mock_device: DeviceMock) -> None:
     )
     # The command will fetch the host info and store the GIUD
     await g90.get_host_info()
+    g90.close()
     assert g90.device_id is None
 
 
