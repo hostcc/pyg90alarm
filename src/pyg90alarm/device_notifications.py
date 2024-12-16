@@ -39,6 +39,7 @@ from .const import (
     G90ArmDisarmTypes,
     G90AlertSources,
     G90AlertStates,
+    G90RemoteButtonStates,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -136,11 +137,13 @@ class G90DeviceNotifications(DatagramProtocol):
         # Sensor activity notification
         if notification.kind == G90NotificationTypes.SENSOR_ACTIVITY:
             g90_zone_info = G90ZoneInfo(*notification.data)
+
             _LOGGER.debug('Sensor notification: %s', g90_zone_info)
             G90Callback.invoke(
                 self.on_sensor_activity,
                 g90_zone_info.idx, g90_zone_info.name
             )
+
             return
 
         # Arm/disarm notification
@@ -149,18 +152,66 @@ class G90DeviceNotifications(DatagramProtocol):
                 *notification.data)
             # Map the state received from the device to corresponding enum
             state = G90ArmDisarmTypes(g90_armdisarm_info.state)
+
             _LOGGER.debug('Arm/disarm notification: %s',
                           state)
             G90Callback.invoke(self.on_armdisarm, state)
+
             return
 
         _LOGGER.warning('Unknown notification received from %s:%s:'
                         ' kind %s, data %s',
                         addr[0], addr[1], notification.kind, notification.data)
 
+    def _handle_alert_sensor_activity(self, alert: G90DeviceAlert) -> bool:
+        """
+        Handles sensor activity alert.
+        """
+        if alert.source == G90AlertSources.REMOTE:
+            _LOGGER.debug('Remote button press alert: %s', alert)
+            G90Callback.invoke(
+                self.on_remote_button_press,
+                alert.event_id, alert.zone_name,
+                G90RemoteButtonStates(alert.state)
+            )
+
+            return True
+
+        if alert.state in (
+            G90AlertStates.DOOR_OPEN, G90AlertStates.DOOR_CLOSE
+        ):
+            is_open = (
+                alert.source == G90AlertSources.SENSOR
+                and alert.state == G90AlertStates.DOOR_OPEN  # noqa: W503
+            ) or alert.source == G90AlertSources.DOORBELL
+
+            _LOGGER.debug('Door open_close alert: %s', alert)
+            G90Callback.invoke(
+                self.on_door_open_close,
+                alert.event_id, alert.zone_name, is_open
+            )
+
+            return True
+
+        if (
+            alert.source == G90AlertSources.SENSOR
+            and alert.state == G90AlertStates.LOW_BATTERY  # noqa: W503
+        ):
+            _LOGGER.debug('Low battery alert: %s', alert)
+            G90Callback.invoke(
+                self.on_low_battery,
+                alert.event_id, alert.zone_name
+            )
+
+            return True
+
+        return False
+
     def _handle_alert(
         self, addr: Tuple[str, int], alert: G90DeviceAlert
     ) -> None:
+        handled = False
+
         # Stop processing when alert is received from the device with different
         # GUID
         if self.device_id and alert.device_id != self.device_id:
@@ -170,31 +221,8 @@ class G90DeviceNotifications(DatagramProtocol):
             )
             return
 
-        if alert.type == G90AlertTypes.DOOR_OPEN_CLOSE:
-            if alert.state in (
-                G90AlertStates.DOOR_OPEN, G90AlertStates.DOOR_CLOSE
-            ):
-                is_open = (
-                    alert.source == G90AlertSources.SENSOR
-                    and alert.state == G90AlertStates.DOOR_OPEN  # noqa: W503
-                ) or alert.source == G90AlertSources.DOORBELL
-                _LOGGER.debug('Door open_close alert: %s', alert)
-                G90Callback.invoke(
-                    self.on_door_open_close,
-                    alert.event_id, alert.zone_name, is_open
-                )
-                return
-
-            if (
-                alert.source == G90AlertSources.SENSOR
-                and alert.state == G90AlertStates.LOW_BATTERY  # noqa: W503
-            ):
-                _LOGGER.debug('Low battery alert: %s', alert)
-                G90Callback.invoke(
-                    self.on_low_battery,
-                    alert.event_id, alert.zone_name
-                )
-                return
+        if alert.type == G90AlertTypes.SENSOR_ACTIVITY:
+            handled = self._handle_alert_sensor_activity(alert)
 
         if alert.type == G90AlertTypes.STATE_CHANGE:
             # Define the mapping between device state received in the alert, to
@@ -209,25 +237,46 @@ class G90DeviceNotifications(DatagramProtocol):
                 G90AlertStateChangeTypes.DISARM: G90ArmDisarmTypes.DISARM
             }
 
-            state = alarm_arm_disarm_state_map.get(alert.event_id)
+            state = alarm_arm_disarm_state_map.get(alert.event_id, None)
             if state:
                 # We received the device state change related to arm/disarm,
                 # invoke the corresponding callback
                 _LOGGER.debug('Arm/disarm state change: %s', state)
                 G90Callback.invoke(self.on_armdisarm, state)
-                return
+
+            handled = True
 
         if alert.type == G90AlertTypes.ALARM:
-            _LOGGER.debug('Alarm: %s', alert.zone_name)
-            G90Callback.invoke(
-                self.on_alarm,
-                alert.event_id, alert.zone_name
-            )
-            return
+            # Remote SOS
+            if alert.source == G90AlertSources.REMOTE:
+                _LOGGER.debug('SOS: %s', alert.zone_name)
+                G90Callback.invoke(
+                    self.on_sos, alert.event_id, alert.zone_name, False
+                )
+            # Regular alarm
+            else:
+                _LOGGER.debug('Alarm: %s', alert.zone_name)
+                G90Callback.invoke(
+                    self.on_alarm,
+                    alert.event_id, alert.zone_name
+                )
+            handled = True
 
-        _LOGGER.warning('Unknown alert received from %s:%s:'
-                        ' type %s, data %s',
-                        addr[0], addr[1], alert.type, alert)
+        # Host SOS
+        if alert.type == G90AlertTypes.HOST_SOS:
+            zone_name = 'Host SOS'
+
+            _LOGGER.debug('SOS: Host')
+            G90Callback.invoke(
+                self.on_sos, alert.event_id, zone_name, True
+            )
+
+            handled = True
+
+        if not handled:
+            _LOGGER.warning('Unknown alert received from %s:%s:'
+                            ' type %s, data %s',
+                            addr[0], addr[1], alert.type, alert)
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
@@ -307,11 +356,16 @@ class G90DeviceNotifications(DatagramProtocol):
     async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
         """
         Invoked when device is armed or disarmed.
+
+        :param state: State of the device
         """
 
     async def on_sensor_activity(self, idx: int, name: str) -> None:
         """
         Invoked on sensor activity.
+
+        :param idx: Index of the sensor.
+        :param name: Name of the sensor.
         """
 
     async def on_door_open_close(
@@ -319,16 +373,55 @@ class G90DeviceNotifications(DatagramProtocol):
     ) -> None:
         """
         Invoked when door sensor reports it opened or closed.
+
+        :param event_id: Index of the sensor reporting the event.
+        :param zone_name: Name of the sensor that reports door open/close.
+        :param is_open: Indicates if the door is open.
         """
 
     async def on_low_battery(self, event_id: int, zone_name: str) -> None:
         """
         Invoked when a sensor reports it is low on battery.
+
+        :param event_id: Index of the sensor.
+        :param zone_name: Name of the sensor that reports low battery.
         """
 
     async def on_alarm(self, event_id: int, zone_name: str) -> None:
         """
         Invoked when device triggers the alarm.
+
+        :param event_id: Index of the sensor.
+        :param zone_name: Name of the zone that triggered the alarm.
+        """
+
+    async def on_remote_button_press(
+        self, event_id: int, zone_name: str, button: G90RemoteButtonStates
+    ) -> None:
+        """
+        Invoked when a remote button is pressed.
+
+        Please note there will only be call to the method w/o invoking
+        :meth:`G90DeviceNotifications.on_sensor_activity`.
+
+        :param event_id: Index of the sensor associated with the remote.
+        :param zone_name: Name of the sensor that reports remote button press.
+        :param button: The button pressed on the remote
+        """
+
+    async def on_sos(
+        self, event_id: int, zone_name: str, is_host_sos: bool
+    ) -> None:
+        """
+        Invoked when SOS is triggered.
+
+        Please note that the panel might not set its status to alarm
+        internally, so that :meth:`G90DeviceNotifications` might need an
+        explicit call in the derived class to simulate that.
+
+        :param event_id: Index of the sensor.
+        :param zone_name: Name of the sensor that reports SOS.
+        :param is_host_sos: Indicates if the SOS is host-initiated.
         """
 
     async def listen(self) -> None:

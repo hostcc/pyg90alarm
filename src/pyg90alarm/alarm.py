@@ -63,6 +63,7 @@ from .const import (
     LOCAL_NOTIFICATIONS_HOST,
     LOCAL_NOTIFICATIONS_PORT,
     G90ArmDisarmTypes,
+    G90RemoteButtonStates,
 )
 from .base_cmd import (G90BaseCommand, G90BaseCommandData)
 from .paginated_result import G90PaginatedResult, G90PaginatedResponse
@@ -109,8 +110,18 @@ if TYPE_CHECKING:
         Callable[[G90ArmDisarmTypes], None],
         Callable[[G90ArmDisarmTypes], Coroutine[None, None, None]]
     ]
+    SosCallback = Union[
+        Callable[[int, str, bool], None],
+        Callable[[int, str, bool], Coroutine[None, None, None]]
+    ]
+    RemoteButtonPressCallback = Union[
+        Callable[[int, str, G90RemoteButtonStates], None],
+        Callable[
+            [int, str, G90RemoteButtonStates], Coroutine[None, None, None]
+        ]
+    ]
     # Sensor-related callbacks for `G90Sensor` class - despite that class
-    # stores them, the invication is done by the `G90Alarm` class hence these
+    # stores them, the invocation is done by the `G90Alarm` class hence these
     # are defined here
     SensorStateCallback = Union[
         Callable[[bool], None],
@@ -157,6 +168,10 @@ class G90Alarm(G90DeviceNotifications):
         self._door_open_close_cb: Optional[DoorOpenCloseCallback] = None
         self._alarm_cb: Optional[AlarmCallback] = None
         self._low_battery_cb: Optional[LowBatteryCallback] = None
+        self._sos_cb: Optional[SosCallback] = None
+        self._remote_button_press_cb: Optional[
+            RemoteButtonPressCallback
+        ] = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config: Optional[G90AlertConfigFlags] = None
         self._sms_alert_when_armed = False
@@ -670,6 +685,86 @@ class G90Alarm(G90DeviceNotifications):
     @low_battery_callback.setter
     def low_battery_callback(self, value: LowBatteryCallback) -> None:
         self._low_battery_cb = value
+
+    async def on_sos(
+        self, event_id: int, zone_name: str, is_host_sos: bool
+    ) -> None:
+        """
+        Invoked when SOS alert is triggered. Fires corresponding callback if
+        set by the user with :attr:`.sos_callback`.
+
+        Please note the method is for internal use by the class.
+
+        :param event_id: Index of the sensor triggered alarm
+        :param zone_name: Sensor name
+        :param is_host_sos:
+          Flag indicating if the SOS alert is triggered by the panel itself
+          (host)
+        """
+        _LOGGER.debug('on_sos: %s %s %s', event_id, zone_name, is_host_sos)
+        G90Callback.invoke(self._sos_cb, event_id, zone_name, is_host_sos)
+
+        # Also report the event as alarm for unification, hard-coding the
+        # sensor name in case of host SOS
+        await self.on_alarm(event_id, 'Host SOS' if is_host_sos else zone_name)
+
+        if not is_host_sos:
+            # Also report the remote button press for SOS - the panel will not
+            # send corresponding alert
+            await self.on_remote_button_press(
+                event_id, zone_name, G90RemoteButtonStates.SOS
+            )
+
+    @property
+    def sos_callback(self) -> Optional[SosCallback]:
+        """
+        SOS callback, which is invoked when SOS alert is triggered.
+        """
+        return self._sos_cb
+
+    @sos_callback.setter
+    def sos_callback(self, value: SosCallback) -> None:
+        self._sos_cb = value
+
+    async def on_remote_button_press(
+        self, event_id: int, zone_name: str, button: G90RemoteButtonStates
+    ) -> None:
+        """
+        Invoked when remote button is pressed. Fires corresponding callback if
+        set by the user with :attr:`.remote_button_press_callback`.
+
+        Please note the method is for internal use by the class.
+
+        :param event_id: Index of the sensor triggered alarm
+        :param zone_name: Sensor name
+        :param button: The button pressed
+        """
+        _LOGGER.debug(
+            'on_remote_button_press: %s %s %s', event_id, zone_name, button
+        )
+        G90Callback.invoke(
+            self._remote_button_press_cb, event_id, zone_name, button
+        )
+
+        # Also report the event as sensor activity for unification (remote is
+        # just a special type of the sensor)
+        await self.on_sensor_activity(event_id, zone_name, True)
+
+    @property
+    def remote_button_press_callback(
+        self
+    ) -> Optional[RemoteButtonPressCallback]:
+        """
+        Remote button press callback, which is invoked when remote button is
+        pressed.
+        """
+        return self._remote_button_press_cb
+
+    @remote_button_press_callback.setter
+    def remote_button_press_callback(
+        self, value: RemoteButtonPressCallback
+    ) -> None:
+        self._remote_button_press_cb = value
 
     async def listen_device_notifications(self) -> None:
         """

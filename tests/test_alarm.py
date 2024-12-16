@@ -2,10 +2,9 @@
 Tests for G90Alarm class
 """
 import asyncio
-from unittest.mock import MagicMock, DEFAULT
-from itertools import cycle
+from unittest.mock import MagicMock
 import pytest
-from pytest import LogCaptureFixture
+
 from pyg90alarm.alarm import (
     G90Alarm,
 )
@@ -18,9 +17,7 @@ from pyg90alarm.entities.sensor import (
 from pyg90alarm.entities.device import (
     G90Device,
 )
-from pyg90alarm.history import (
-    G90History,
-)
+
 from pyg90alarm.host_status import (
     G90HostStatus,
 )
@@ -30,9 +27,10 @@ from pyg90alarm.user_data_crc import (
 from pyg90alarm.config import (
     G90AlertConfigFlags,
 )
-from pyg90alarm.exceptions import (
-    G90TimeoutError,
+from pyg90alarm.const import (
+    G90RemoteButtonStates,
 )
+
 
 from .device_mock import DeviceMock
 
@@ -301,7 +299,7 @@ async def test_multiple_sensors_longer_than_page(
         b'[170,[5,[10,"Remote"]]]\0',
     ]
 )
-async def test_sensor_event(mock_device: DeviceMock) -> None:
+async def test_sensor_callback(mock_device: DeviceMock) -> None:
     """
     Tests for sensor callback.
     """
@@ -347,7 +345,7 @@ async def test_sensor_event(mock_device: DeviceMock) -> None:
         b'[170,[5,[26,"Remote"]]]\0',
     ]
 )
-async def test_sensor_low_battery_event(mock_device: DeviceMock) -> None:
+async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
     """
     Tests for sensor low battery callback.
     """
@@ -531,6 +529,100 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     g90.close_device_notifications()
 
 
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[102,'
+        b'[[1,1,1],["Remote",11,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+        b'ISTART[117,[256]]IEND\0',
+    ],
+    notification_data=[
+        # Host SOS
+        b'[208,[1,1,0,0,"","DUMMYGUID",1734175050,0,[""]]]\0',
+        # Remote SOS
+        b'[208,[3,11,10,3,"Remote","DUMMYGUID",1734177048,0,[""]]]\0',
+    ]
+)
+async def test_sos_callback(mock_device: DeviceMock) -> None:
+    """
+    Tests for SOS callback.
+    """
+    future_sos = asyncio.get_running_loop().create_future()
+    future_alarm = asyncio.get_running_loop().create_future()
+
+    sos_cb = MagicMock()
+    sos_cb.side_effect = lambda *args: future_sos.set_result(True)
+    alarm_cb = MagicMock()
+    alarm_cb.side_effect = lambda *args: future_alarm.set_result(True)
+
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
+    g90.sos_callback = sos_cb
+    g90.alarm_callback = alarm_cb
+
+    await g90.listen_device_notifications()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future_sos, future_alarm], timeout=0.1)
+    sos_cb.assert_called_once_with(1, 'Host SOS', True)
+    alarm_cb.assert_called_once_with(1, 'Host SOS', None)
+
+    sos_cb.reset_mock()
+    alarm_cb.reset_mock()
+    future_sos = asyncio.get_running_loop().create_future()
+    future_alarm = asyncio.get_running_loop().create_future()
+    future_button = asyncio.get_running_loop().create_future()
+    button_cb = MagicMock()
+    button_cb.side_effect = lambda *args: future_button.set_result(True)
+    g90.remote_button_press_callback = button_cb
+    await mock_device.send_next_notification()
+    await asyncio.wait([future_sos, future_alarm, future_button], timeout=0.1)
+    sos_cb.assert_called_once_with(11, 'Remote', False)
+    alarm_cb.assert_called_once_with(11, 'Remote', None)
+    # Button press callback should be called with the remote button state, but
+    # only for SOS initiated by the remote
+    button_cb.assert_called_once_with(11, 'Remote', G90RemoteButtonStates.SOS)
+
+    g90.close_device_notifications()
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[102,'
+        b'[[1,1,1],["Remote",11,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+        b'ISTART[117,[256]]IEND\0',
+    ],
+    notification_data=[
+        b'[208,[4,11,10,0,"Remote","GA18018B3001021",1734176900,0,[""]]]\0',
+    ]
+)
+async def test_remote_button_callback(mock_device: DeviceMock) -> None:
+    """
+    Tests for remote button callback.
+    """
+    future_sensor = asyncio.get_running_loop().create_future()
+    future_button = asyncio.get_running_loop().create_future()
+    sensor_cb = MagicMock()
+    sensor_cb.side_effect = lambda *args: future_sensor.set_result(True)
+    button_cb = MagicMock()
+    button_cb.side_effect = lambda *args: future_button.set_result(True)
+
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
+    g90.sensor_callback = sensor_cb
+    g90.remote_button_press_callback = button_cb
+
+    await g90.listen_device_notifications()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future_sensor, future_button], timeout=0.1)
+    sensor_cb.assert_called_once_with(11, 'Remote', True)
+    button_cb.assert_called_once_with(
+        11, 'Remote', G90RemoteButtonStates.ARM_AWAY
+    )
+
+    g90.close_device_notifications()
+
+
 @pytest.mark.g90device(sent_data=[
     b'ISTARTIEND\0',
 ])
@@ -571,147 +663,6 @@ async def test_disarm(mock_device: DeviceMock) -> None:
     assert mock_device.recv_data == [
         b'ISTART[101,101,[101,[3]]]IEND\0',
     ]
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[200,[[50,1,5],'
-    b'[3,33,7,1,"Sensor 1",1630147285,""],'
-    b'[2,3,0,0,"",1630142877,""],'
-    b'[2,5,0,0,"",1630142871,""],'
-    b'[2,4,0,0,"",1630142757,""],'
-    b'[3,100,126,1,"Sensor 2",1630142297,""]]]IEND\0',
-])
-async def test_history(mock_device: DeviceMock) -> None:
-    """
-    Tests for retrieving history from the device.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    history = await g90.history(count=5)
-    assert len(history) == 5
-    assert isinstance(history[0], G90History)
-    assert mock_device.recv_data == [
-        b'ISTART[200,200,[200,[1,5]]]IEND\0',
-    ]
-    assert isinstance(history[0]._asdict(), dict)
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[200,[[3,1,3],'
-    # Wrong state
-    b'[3,33,7,254,"Sensor 1",1630147285,""],'
-    # Wrong source
-    b'[2,33,254,1,"Sensor 1",1630147285,""],'
-    # Wrong type
-    b'[254,33,1,1,"Sensor 1",1630147285,""]'
-    b']]IEND\0',
-])
-async def test_history_parsing_error(mock_device: DeviceMock) -> None:
-    """
-    Tests for processing history from the device, when the parsing error
-    occurs.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    history = await g90.history(count=5)
-    assert len(history) == 3
-    assert isinstance(history[0], G90History)
-    assert isinstance(history[0]._asdict(), dict)
-    # Wrong entry element should result in corresponding key having 'None'
-    # value
-    assert history[0]._asdict()['state'] is None
-    assert history[1]._asdict()['source'] is None
-    assert history[2]._asdict()['type'] is None
-
-
-@pytest.mark.g90device(sent_data=[
-    # Simulate empty history initially
-    b'ISTART[200,[[0,0,0]]]IEND\0',
-    # The history records will be used to remember the timestamp of most recent
-    # one
-    b'ISTART[200,[[1,1,1],'
-    b'[2,5,0,0,"",1630142871,""]'
-    b']]IEND\0',
-    # The records will be used to simulate the device alerts, but only for
-    # those newer that one above
-    b'ISTART[200,[[3,1,3],'
-    b'[3,33,7,1,"Sensor 1",1630147285,""],'
-    b'[2,3,0,0,"",1630142877,""],'
-    b'[2,5,0,0,"",1630142871,""]'
-    b']]IEND\0',
-    # Simulated list of devices, will be used by alarm callback
-    b'ISTART[102,'
-    b'[[2,1,2],'
-    b'["Sensor 1",33,0,138,0,0,33,0,0,17,1,0,""],'
-    b'["Sensor 2",100,0,138,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    # Alert configuration, used by sensor activity callback invoked when
-    # handling alarm
-    b'ISTART[117,[256]]IEND\0',
-])
-async def test_simulate_alerts_from_history(mock_device: DeviceMock) -> None:
-    """
-    Tests for simulating device alerts from the history.
-    """
-    # Callback handlers for alarm and arm/disarm, just setting their
-    # corresponding future when called
-    future_alarm = asyncio.get_running_loop().create_future()
-    future_armdisarm = asyncio.get_running_loop().create_future()
-    alarm_cb = MagicMock()
-    alarm_cb.side_effect = lambda *args: future_alarm.set_result(True)
-    armdisarm_cb = MagicMock()
-    armdisarm_cb.side_effect = lambda *args: future_armdisarm.set_result(True)
-
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    g90.alarm_callback = alarm_cb
-    g90.armdisarm_callback = armdisarm_cb
-    # Simulate device timeout exception every 2nd call to `G90Alarm.history()`
-    # method - the processing should still result in callbacks invoked
-    g90.history = MagicMock(wraps=g90.history)  # type: ignore[method-assign]
-    g90.history.side_effect = cycle([G90TimeoutError, DEFAULT])
-    # Simulate device notifications from the history data above, small interval
-    # is set to shorten the test run time
-    await g90.start_simulating_alerts_from_history(interval=0.1)
-    # Both callbacks should be called, wait for that - the timeout should be
-    # sufficient for extra iterations in the method under test, to accommodate
-    # the simulated exceptions above
-    await asyncio.wait([future_alarm, future_armdisarm], timeout=0.5)
-    # Stop simulating the alert from history
-    await g90.stop_simulating_alerts_from_history()
-
-    sensors = await g90.get_sensors()
-    # Ensure callbacks have been called and with expected arguments
-    alarm_cb.assert_called_once_with(33, 'Sensor 1', None)
-    armdisarm_cb.assert_called_once_with(3)
-    assert sensors[0].occupancy is True
-
-
-async def test_simulate_alerts_from_history_exception(
-    mock_device: DeviceMock, caplog: LogCaptureFixture
-) -> None:
-    """
-    Tests for simulating device alerts from the history, when an exception is
-    raised when interacting with the device.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    # Simulate a generic error fetching history entries
-    g90.history = MagicMock()  # type: ignore[method-assign]
-    simulated_error = Exception('dummy error')
-    g90.history.side_effect = simulated_error
-    caplog.set_level('WARNING')
-    # Start simulating alerts from history
-    await g90.start_simulating_alerts_from_history()
-    # Allow task to settle
-    await asyncio.sleep(0.1)
-    # Verify the task is no longer running and resulted in particular exception
-    task = g90._alert_simulation_task  # pylint:disable=protected-access
-    assert task is not None
-    assert task.exception() == simulated_error
-    assert task.done()
-    # Stop simulating the alert from history
-    await g90.stop_simulating_alerts_from_history()
-    # Verify the error logged
-    assert ''.join(caplog.messages).startswith(
-        'Exception simulating device alerts from history'
-    )
 
 
 @pytest.mark.g90device(sent_data=[

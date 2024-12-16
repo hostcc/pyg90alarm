@@ -32,15 +32,17 @@ from .const import (
     G90AlertStates,
     G90AlertStateChangeTypes,
     G90HistoryStates,
+    G90RemoteButtonStates,
 )
 from .device_notifications import G90DeviceAlert
 
 _LOGGER = logging.getLogger(__name__)
 
 
-# The state of the incoming history entries are mixed of `G90AlertStates` and
-# `G90AlertStateChangeTypes`, depending on entry type - hence two separate
-# dictionaries, since enums used for keys have conflicting values
+# The state of the incoming history entries are mixed of `G90AlertStates`,
+# `G90AlertStateChangeTypes` and `G90RemoteButtonStates`, depending on entry
+# type - hence separate dictionaries, since enums used for keys have
+# conflicting values
 states_mapping_alerts = {
     G90AlertStates.DOOR_CLOSE:
         G90HistoryStates.DOOR_CLOSE,
@@ -69,6 +71,17 @@ states_mapping_state_changes = {
         G90HistoryStates.WIFI_CONNECTED,
     G90AlertStateChangeTypes.WIFI_DISCONNECTED:
         G90HistoryStates.WIFI_DISCONNECTED,
+}
+
+states_mapping_remote_buttons = {
+    G90RemoteButtonStates.ARM_AWAY:
+        G90HistoryStates.REMOTE_BUTTON_ARM_AWAY,
+    G90RemoteButtonStates.ARM_HOME:
+        G90HistoryStates.REMOTE_BUTTON_ARM_HOME,
+    G90RemoteButtonStates.DISARM:
+        G90HistoryStates.REMOTE_BUTTON_DISARM,
+    G90RemoteButtonStates.SOS:
+        G90HistoryStates.REMOTE_BUTTON_SOS,
 }
 
 
@@ -112,7 +125,7 @@ class G90History:
         """
         try:
             return G90AlertTypes(self._protocol_data.type)
-        except ValueError:
+        except (ValueError, KeyError):
             _LOGGER.warning(
                 "Can't interpret '%s' as alert type (decoded protocol"
                 " data '%s', raw data '%s')",
@@ -125,18 +138,33 @@ class G90History:
         """
         State for the history entry.
         """
+        # No meaningful state for SOS alerts initiated by the panel itself
+        # (host)
+        if self.type == G90AlertTypes.HOST_SOS:
+            return None
+
         try:
+            # State of the remote indicate which button has been pressed
+            if (
+                self.type in [
+                    G90AlertTypes.SENSOR_ACTIVITY, G90AlertTypes.ALARM
+                ] and self.source == G90AlertSources.REMOTE
+            ):
+                return states_mapping_remote_buttons[
+                    G90RemoteButtonStates(self._protocol_data.state)
+                ]
+
             # Door open/close or alert types, mapped against `G90AlertStates`
             # using `state` incoming field
             if self.type in [
-                G90AlertTypes.DOOR_OPEN_CLOSE, G90AlertTypes.ALARM
+                G90AlertTypes.SENSOR_ACTIVITY, G90AlertTypes.ALARM
             ]:
                 return G90HistoryStates(
                     states_mapping_alerts[
                         G90AlertStates(self._protocol_data.state)
                     ]
                 )
-        except ValueError:
+        except (ValueError, KeyError):
             _LOGGER.warning(
                 "Can't interpret '%s' as alert state (decoded protocol"
                 " data '%s', raw data '%s')",
@@ -151,7 +179,7 @@ class G90History:
                     G90AlertStateChangeTypes(self._protocol_data.event_id)
                 ]
             )
-        except ValueError:
+        except (ValueError, KeyError):
             _LOGGER.warning(
                 "Can't interpret '%s' as state change (decoded protocol"
                 " data '%s', raw data '%s')",
@@ -166,24 +194,20 @@ class G90History:
         Source of the history entry.
         """
         try:
-            # Device state changes or open/close events are mapped against
-            # `G90AlertSources` using `source` incoming field
+            # Device state changes, open/close or alarm events are mapped
+            # against `G90AlertSources` using `source` incoming field
             if self.type in [
-                G90AlertTypes.STATE_CHANGE, G90AlertTypes.DOOR_OPEN_CLOSE
+                G90AlertTypes.STATE_CHANGE, G90AlertTypes.SENSOR_ACTIVITY,
+                G90AlertTypes.ALARM
             ]:
                 return G90AlertSources(self._protocol_data.source)
-        except ValueError:
+        except (ValueError, KeyError):
             _LOGGER.warning(
                 "Can't interpret '%s' as alert source (decoded protocol"
                 " data '%s', raw data '%s')",
                 self._protocol_data.source, self._protocol_data, self._raw_data
             )
             return None
-
-        # Alarm will have `SENSOR` as the source, since that is likely what
-        # triggered it
-        if self.type == G90AlertTypes.ALARM:
-            return G90AlertSources.SENSOR
 
         # Other sources are assumed to be initiated by device itself
         return G90AlertSources.DEVICE
