@@ -473,7 +473,7 @@ class G90DeviceNotifications(DatagramProtocol):
     def device_id(self, device_id: str) -> None:
         # Under not yet identified circumstances the device ID might be empty
         # string provided by :meth:`G90Alarm.get_host_info` - disallow that
-        if not device_id or not len(device_id.strip()) == 0:
+        if not device_id or not len(device_id.strip()) != 0:
             _LOGGER.debug(
                 'Device ID is empty or contains whitespace only, not setting'
             )
