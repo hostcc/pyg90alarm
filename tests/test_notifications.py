@@ -250,6 +250,28 @@ async def test_wrong_host(
 @pytest.mark.g90device(
     sent_data=[
         b'ISTART[206,'
+        b'["","DUMMYPRODUCT",'
+        b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0',
+    ],
+)
+async def test_empty_device_guid(mock_device: DeviceMock) -> None:
+    """
+    Verifies that alert from device with empty GUID is ignored.
+    """
+    g90 = G90Alarm(
+        host=mock_device.host, port=mock_device.port,
+        notifications_local_host=mock_device.notification_host,
+        notifications_local_port=mock_device.notification_port
+    )
+    # The command will fetch the host info and store the GIUD
+    await g90.get_host_info()
+    g90.close()
+    assert g90.device_id is None
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[206,'
         b'["DUMMYGUID","DUMMYPRODUCT",'
         b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0',
     ],
