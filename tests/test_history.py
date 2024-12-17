@@ -135,6 +135,10 @@ async def test_history_parsing_error(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
+    # Host info
+    b'ISTART[206,'
+    b'["DUMMYGUID","DUMMYPRODUCT",'
+    b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0',
     # Simulate empty history initially
     b'ISTART[200,[[0,0,0]]]IEND\0',
     # The history records will be used to remember the timestamp of most recent
@@ -173,6 +177,9 @@ async def test_simulate_alerts_from_history(mock_device: DeviceMock) -> None:
     armdisarm_cb.side_effect = lambda *args: future_armdisarm.set_result(True)
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    # Call the method to store device GUID, so that its validation in
+    # `G90DeviceNotifications._handle_alert()` is involved
+    await g90.get_host_info()
     g90.alarm_callback = alarm_cb
     g90.armdisarm_callback = armdisarm_cb
     # Simulate device timeout exception every 2nd call to `G90Alarm.history()`
