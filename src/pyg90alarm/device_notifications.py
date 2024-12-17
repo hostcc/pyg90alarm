@@ -208,13 +208,17 @@ class G90DeviceNotifications(DatagramProtocol):
         return False
 
     def _handle_alert(
-        self, addr: Tuple[str, int], alert: G90DeviceAlert
+        self, addr: Tuple[str, int], alert: G90DeviceAlert,
+        verify_device_id: bool = True
     ) -> None:
         handled = False
 
         # Stop processing when alert is received from the device with different
-        # GUID
-        if self.device_id and alert.device_id != self.device_id:
+        # GUID (if enabled)
+        if (
+            verify_device_id and self.device_id
+            and alert.device_id != self.device_id
+        ):
             _LOGGER.error(
                 "Received alert from wrong device: expected '%s', got '%s'",
                 self.device_id, alert.device_id

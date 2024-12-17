@@ -915,7 +915,10 @@ class G90Alarm(G90DeviceNotifications):
                         # notifications port
                         self._handle_alert(
                             (self._host, self._notifications_local_port),
-                            item.as_device_alert()
+                            item.as_device_alert(),
+                            # Skip verifying device GUID, since history entry
+                            # don't have it
+                            verify_device_id=False
                         )
 
                         # Record the entry as most recent one
