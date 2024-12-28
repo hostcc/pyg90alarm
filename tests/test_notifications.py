@@ -481,7 +481,31 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_alarm.assert_called_once_with(11, 'Hall')
+    notifications.on_alarm.assert_called_once_with(11, 'Hall', False)
+
+
+@pytest.mark.g90device(notification_data=[
+    b'[208,[3,11,1,3,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+])
+async def test_tamper_callback(mock_device: DeviceMock) -> None:
+    """
+    Verifies that alarm callback is handled correctly when a sensor is
+    tampered.
+    """
+    future = asyncio.get_running_loop().create_future()
+    notifications = G90DeviceNotifications(
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
+    )
+    notifications.on_alarm = MagicMock()  # type: ignore[method-assign]
+    notifications.on_alarm.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+    await notifications.listen()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+    notifications.close()
+    notifications.on_alarm.assert_called_once_with(11, 'Hall', True)
 
 
 @pytest.mark.g90device(notification_data=[
@@ -541,3 +565,29 @@ async def test_low_battery_callback(mock_device: DeviceMock) -> None:
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
     notifications.on_low_battery.assert_called_once_with(26, 'Hall')
+
+
+@pytest.mark.g90device(notification_data=[
+    b'[170,[6,[21,"Hall"]]]\0'
+])
+async def test_door_open_when_arming_callback(mock_device: DeviceMock) -> None:
+    """
+    Verifies that door open when arming callback is handled correctly.
+    """
+    future = asyncio.get_running_loop().create_future()
+    notifications = G90DeviceNotifications(
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
+    )
+
+    notifications.on_door_open_when_arming = (  # type: ignore[method-assign]
+        MagicMock()
+    )
+    notifications.on_door_open_when_arming.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+    await notifications.listen()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+    notifications.close()
+    notifications.on_door_open_when_arming.assert_called_once_with(21, 'Hall')
