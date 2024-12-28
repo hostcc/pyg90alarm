@@ -2,6 +2,7 @@
 Tests for G90Alarm class
 """
 import asyncio
+from itertools import cycle
 from unittest.mock import MagicMock
 import pytest
 
@@ -128,6 +129,35 @@ async def test_devices(mock_device: DeviceMock) -> None:
     assert isinstance(devices[0]._asdict(), dict)
 
 
+# Provide an endless sequence of simulated panel responses for the devices
+# list. Each attempt will simulate a single device. This sequence will prevent
+# `G90TimeoutError` if the code under test initiates more exchanges with the
+# panel than the simulated data contains.
+@pytest.mark.g90device(sent_data=cycle([
+    b'ISTART[138,'
+    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+]))
+async def test_get_devices_concurrent(mock_device: DeviceMock) -> None:
+    """
+    Tests for concurrently retrieving list of devices produces consistent
+    results.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    g90.paginated_result = MagicMock(  # type: ignore[method-assign]
+        spec=g90.paginated_result, wraps=g90.paginated_result
+    )
+
+    # Issue two concurrent requests to retrieve devices
+    res = await asyncio.gather(g90.get_devices(), g90.get_devices())
+    # Ensure only single exchange with the panel
+    g90.paginated_result.assert_called_once()
+    # While `pylint` demands use of generator, the comprehension is used
+    # instead for ease of trroubleshooting test failures as it will show the
+    # list elements, not just generator instance
+    # pylint: disable=use-a-generator
+    assert all([len(x) == 1 for x in res])
+
+
 @pytest.mark.g90device(sent_data=[
     b'ISTART[138,'
     b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,2,0,""]]]IEND\0'
@@ -205,6 +235,27 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
     assert sensors[0].name == 'Remote'
     assert sensors[0].index == 10
     assert isinstance(sensors[0]._asdict(), dict)
+
+
+# See `test_get_devices_concurrent` for the explanation of the test
+@pytest.mark.g90device(sent_data=cycle([
+    b'ISTART[102,'
+    b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+]))
+async def test_get_sensors_concurrent(mock_device: DeviceMock) -> None:
+    """
+    Tests for concurrently retrieving list of sensors produces consistent
+    results.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    g90.paginated_result = MagicMock(  # type: ignore[method-assign]
+        spec=g90.paginated_result, wraps=g90.paginated_result
+    )
+
+    res = await asyncio.gather(g90.get_sensors(), g90.get_sensors())
+    g90.paginated_result.assert_called_once()
+    # pylint: disable=use-a-generator
+    assert all([len(x) == 1 for x in res])
 
 
 @pytest.mark.g90device(sent_data=[
