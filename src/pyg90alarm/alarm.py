@@ -161,7 +161,9 @@ class G90Alarm(G90DeviceNotifications):
         self._host: str = host
         self._port: int = port
         self._sensors: List[G90Sensor] = []
+        self._sensors_lock = asyncio.Lock()
         self._devices: List[G90Device] = []
+        self._devices_lock = asyncio.Lock()
         self._notifications: Optional[G90DeviceNotifications] = None
         self._sensor_cb: Optional[SensorCallback] = None
         self._armdisarm_cb: Optional[ArmDisarmCallback] = None
@@ -258,20 +260,26 @@ class G90Alarm(G90DeviceNotifications):
 
         :return: List of sensors
         """
-        if not self._sensors:
-            sensors = self.paginated_result(
-                G90Commands.GETSENSORLIST
-            )
-            async for sensor in sensors:
-                obj = G90Sensor(
-                    *sensor.data, parent=self, subindex=0,
-                    proto_idx=sensor.proto_idx
+        # Use lock around the operation, to ensure no duplicated entries in the
+        # resulting list or redundant exchanges with panel are made when the
+        # method is called concurrently
+        async with self._sensors_lock:
+            if not self._sensors:
+                sensors = self.paginated_result(
+                    G90Commands.GETSENSORLIST
                 )
-                self._sensors.append(obj)
+                async for sensor in sensors:
+                    obj = G90Sensor(
+                        *sensor.data, parent=self, subindex=0,
+                        proto_idx=sensor.proto_idx
+                    )
+                    self._sensors.append(obj)
 
-            _LOGGER.debug('Total number of sensors: %s', len(self._sensors))
+                _LOGGER.debug(
+                    'Total number of sensors: %s', len(self._sensors)
+                )
 
-        return self._sensors
+            return self._sensors
 
     async def find_sensor(self, idx: int, name: str) -> Optional[G90Sensor]:
         """
@@ -316,28 +324,32 @@ class G90Alarm(G90DeviceNotifications):
 
         :return: List of devices
         """
-        if not self._devices:
-            devices = self.paginated_result(
-                G90Commands.GETDEVICELIST
-            )
-            async for device in devices:
-                obj = G90Device(
-                    *device.data, parent=self, subindex=0,
-                    proto_idx=device.proto_idx
+        # See `get_sensors` method for the rationale behind the lock usage
+        async with self._devices_lock:
+            if not self._devices:
+                devices = self.paginated_result(
+                    G90Commands.GETDEVICELIST
                 )
-                self._devices.append(obj)
-                # Multi-node devices (first node has already been added
-                # above
-                for node in range(1, obj.node_count):
+                async for device in devices:
                     obj = G90Device(
-                        *device.data, parent=self,
-                        subindex=node, proto_idx=device.proto_idx
+                        *device.data, parent=self, subindex=0,
+                        proto_idx=device.proto_idx
                     )
                     self._devices.append(obj)
+                    # Multi-node devices (first node has already been added
+                    # above
+                    for node in range(1, obj.node_count):
+                        obj = G90Device(
+                            *device.data, parent=self,
+                            subindex=node, proto_idx=device.proto_idx
+                        )
+                        self._devices.append(obj)
 
-            _LOGGER.debug('Total number of devices: %s', len(self._devices))
+                _LOGGER.debug(
+                    'Total number of devices: %s', len(self._devices)
+                )
 
-        return self._devices
+            return self._devices
 
     @property
     async def host_info(self) -> G90HostInfo:
