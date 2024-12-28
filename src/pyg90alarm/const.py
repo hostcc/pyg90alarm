@@ -201,6 +201,7 @@ class G90AlertSources(IntEnum):
     """
     DEVICE = 0
     SENSOR = 1
+    TAMPER = 3
     REMOTE = 10
     RFID = 11
     DOORBELL = 12

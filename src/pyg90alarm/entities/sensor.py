@@ -32,7 +32,10 @@ from enum import IntEnum, IntFlag
 from ..definitions.sensors import SENSOR_DEFINITIONS, SensorDefinition
 from ..const import G90Commands
 if TYPE_CHECKING:
-    from ..alarm import G90Alarm, SensorStateCallback, SensorLowBatteryCallback
+    from ..alarm import (
+        G90Alarm, SensorStateCallback, SensorLowBatteryCallback,
+        SensorDoorOpenWhenArmingCallback, SensorTamperCallback,
+    )
 
 
 @dataclass
@@ -157,6 +160,7 @@ class G90SensorTypes(IntEnum):
 _LOGGER = logging.getLogger(__name__)
 
 
+# pylint: disable=too-many-public-methods
 class G90Sensor:  # pylint:disable=too-many-instance-attributes
     """
     Interacts with sensor on G90 alarm panel.
@@ -186,6 +190,12 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._state_callback: Optional[SensorStateCallback] = None
         self._low_battery_callback: Optional[SensorLowBatteryCallback] = None
         self._low_battery = False
+        self._tampered = False
+        self._door_open_when_arming_callback: Optional[
+            SensorDoorOpenWhenArmingCallback
+        ] = None
+        self._tamper_callback: Optional[SensorTamperCallback] = None
+        self._door_open_when_arming = False
         self._proto_idx = proto_idx
         self._extra_data: Any = None
 
@@ -237,6 +247,37 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     @low_battery_callback.setter
     def low_battery_callback(self, value: SensorLowBatteryCallback) -> None:
         self._low_battery_callback = value
+
+    @property
+    def door_open_when_arming_callback(
+        self
+    ) -> Optional[SensorDoorOpenWhenArmingCallback]:
+        """
+        Callback that is invoked when the sensor reports on open door
+        condition when arming.
+
+        :return: Sensor's door open when arming callback
+        """
+        return self._door_open_when_arming_callback
+
+    @door_open_when_arming_callback.setter
+    def door_open_when_arming_callback(
+        self, value: SensorDoorOpenWhenArmingCallback
+    ) -> None:
+        self._door_open_when_arming_callback = value
+
+    @property
+    def tamper_callback(self) -> Optional[SensorTamperCallback]:
+        """
+        Callback that is invoked when the sensor reports being tampered.
+
+        :return: Sensor's tamper callback
+        """
+        return self._tamper_callback
+
+    @tamper_callback.setter
+    def tamper_callback(self, value: SensorTamperCallback) -> None:
+        self._tamper_callback = value
 
     @property
     def occupancy(self) -> bool:
@@ -365,12 +406,16 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     def is_low_battery(self) -> bool:
         """
         Indicates if the sensor is reporting low battery.
+
+        The condition is cleared when the sensor reports activity (i.e. is no
+        longer low on battery as it is able to report the activity).
         """
         return self._low_battery
 
     def _set_low_battery(self, value: bool) -> None:
         """
         Sets low battery state of the sensor.
+
         Intentionally private, as low battery state is derived from
         notifications/alerts.
 
@@ -382,6 +427,56 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             self.index, self.name, value, self._low_battery
         )
         self._low_battery = value
+
+    @property
+    def is_tampered(self) -> bool:
+        """
+        Indicates if the sensor has been tampered.
+
+        The condition is cleared when panel is armed/disarmed next time.
+        """
+        return self._tampered
+
+    def _set_tampered(self, value: bool) -> None:
+        """
+        Sets tamper state of the sensor.
+
+        Intentionally private, as tamper state is derived from
+        notifications/alerts.
+
+        :param value: Tamper state
+        """
+        _LOGGER.debug(
+            "Setting tamper for sensor index=%s '%s': %s"
+            " (previous value: %s)",
+            self.index, self.name, value, self._tampered
+        )
+        self._tampered = value
+
+    @property
+    def is_door_open_when_arming(self) -> bool:
+        """
+        Indicates if the sensor reports on open door when arming.
+
+        The condition is cleared when panel is armed/disarmed next time.
+        """
+        return self._door_open_when_arming
+
+    def _set_door_open_when_arming(self, value: bool) -> None:
+        """
+        Sets door open state of the sensor when arming.
+
+        Intentionally private, as door open state is derived from
+        notifications/alerts.
+
+        :param value: Door open state
+        """
+        _LOGGER.debug(
+            "Setting door open when arming for sensor index=%s '%s': %s"
+            " (previous value: %s)",
+            self.index, self.name, value, self._door_open_when_arming
+        )
+        self._door_open_when_arming = value
 
     @property
     def enabled(self) -> bool:

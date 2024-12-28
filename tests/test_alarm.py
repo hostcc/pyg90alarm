@@ -1,6 +1,8 @@
 """
 Tests for G90Alarm class
 """
+# pylint: disable=too-many-lines
+
 import asyncio
 from itertools import cycle
 from unittest.mock import MagicMock
@@ -438,6 +440,69 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[102,'
+        b'[[1,1,1],["Hall",21,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+    ],
+    notification_data=[
+        b'[170,[6,[21,"Hall"]]]\0',
+        b'[170,[1,[3]]]\0',
+    ]
+)
+async def test_sensor_door_open_when_arming_callback(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for sensor door open when arming callback.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
+
+    sensors = await g90.get_sensors()
+    prop_sensors = await g90.sensors
+
+    assert sensors == prop_sensors
+    future = asyncio.get_running_loop().create_future()
+    sensor = [x for x in sensors if x.index == 21 and x.name == 'Hall']
+    door_open_when_arming_sensor_cb = MagicMock()
+    door_open_when_arming_sensor_cb.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+    sensor[0].door_open_when_arming_callback = door_open_when_arming_sensor_cb
+    door_open_when_arming_cb = MagicMock()
+    g90.door_open_when_arming_callback = door_open_when_arming_cb
+
+    await g90.listen_device_notifications()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+
+    door_open_when_arming_sensor_cb.assert_called_once_with()
+    door_open_when_arming_cb.assert_called_once_with(21, 'Hall')
+    # Verify the door open when arming state is set upon receiving the
+    # notification
+    assert sensor[0].is_door_open_when_arming is True
+
+    # Signal the second notification is ready, the future has to be re-created
+    # as the corresponding callback will be fired again
+    future = asyncio.get_running_loop().create_future()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+
+    # Verify the door open when arming state is reset upon disarming
+    assert sensor[0].is_door_open_when_arming is False
+
+    g90.close_device_notifications()
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[102,'
+        b'[[3,1,3],["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
+        b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""],'
+        b'["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]'
+        b']]IEND\0',
+    ],
     notification_data=[
         b'[170,[1,[1]]]\0'
     ]
@@ -576,6 +641,65 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     await asyncio.wait([future], timeout=0.1)
     # Simulate callback is called with no data
     alarm_cb.assert_called_once_with(102, 'No Room', None)
+
+    g90.close_device_notifications()
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[102,'
+        b'[[1,1,1],["Hall",100,0,1,1,0,32,0,0,16,1,0,""]]]IEND\0',
+        # Alert configuration, used by sensor activity callback invoked when
+        # handling alarm
+        b'ISTART[117,[256]]IEND\0',
+    ],
+    notification_data=[
+        b'[208,[3,100,1,3,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+        b'[170,[1,[3]]]\0',
+    ]
+)
+async def test_sensor_tamper_callback(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for sensor tamper callback.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
+                   notifications_local_host=mock_device.notification_host,
+                   notifications_local_port=mock_device.notification_port)
+
+    sensors = await g90.get_sensors()
+    prop_sensors = await g90.sensors
+
+    assert sensors == prop_sensors
+    future = asyncio.get_running_loop().create_future()
+    sensor = [x for x in sensors if x.index == 100 and x.name == 'Hall']
+    tamper_sensor_cb = MagicMock()
+    tamper_sensor_cb.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+    sensor[0].tamper_callback = tamper_sensor_cb
+    tamper_cb = MagicMock()
+    g90.tamper_callback = tamper_cb
+
+    await g90.listen_device_notifications()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+
+    tamper_sensor_cb.assert_called_once_with()
+    tamper_cb.assert_called_once_with(100, 'Hall')
+    # Verify the sensor tampered state is set upon receiving the
+    # notification
+    assert sensor[0].is_tampered is True
+
+    # Signal the second notification is ready, the future has to be re-created
+    # as the corresponding callback will be fired again
+    future = asyncio.get_running_loop().create_future()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+
+    # Verify the sensor tampered state is reset upon disarming
+    assert sensor[0].is_tampered is False
 
     g90.close_device_notifications()
 
@@ -769,6 +893,13 @@ async def test_set_alert_config(mock_device: DeviceMock) -> None:
         # that checks if alert config has been modified externally
         b"ISTART[117,[1]]IEND\0",
         b"ISTARTIEND\0",
+        # Simulated list of sensors, which is used to reset door open when
+        # arming/tamper flags on those had the flags set when arming
+        b'ISTART[102,'
+        b'[[3,1,3],["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
+        b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""],'
+        b'["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]'
+        b']]IEND\0',
     ],
     notification_data=[
         b'[170,[1,[1]]]\0',
@@ -790,11 +921,11 @@ async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     g90.close_device_notifications()
-    assert mock_device.recv_data == [
+    assert set([
         b'ISTART[117,117,""]IEND\0',
         b'ISTART[117,117,""]IEND\0',
         b"ISTART[116,116,[116,[513]]]IEND\0",
-    ]
+    ]).issubset(set(mock_device.recv_data))
 
 
 @pytest.mark.g90device(
@@ -803,6 +934,11 @@ async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
         b"ISTART[117,[513]]IEND\0",
         b"ISTART[117,[513]]IEND\0",
         b"ISTARTIEND\0",
+        b'ISTART[102,'
+        b'[[3,1,3],["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
+        b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""],'
+        b'["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]'
+        b']]IEND\0',
     ],
     notification_data=[
         b'[170,[1,[3]]]\0',
@@ -824,11 +960,11 @@ async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     g90.close_device_notifications()
-    assert mock_device.recv_data == [
+    assert set([
         b'ISTART[117,117,""]IEND\0',
         b'ISTART[117,117,""]IEND\0',
         b"ISTART[116,116,[116,[1]]]IEND\0",
-    ]
+    ]).issubset(set(mock_device.recv_data))
 
 
 @pytest.mark.g90device(sent_data=[

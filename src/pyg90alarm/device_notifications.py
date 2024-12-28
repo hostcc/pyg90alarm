@@ -159,6 +159,16 @@ class G90DeviceNotifications(DatagramProtocol):
 
             return
 
+        # An open door is detected when arming
+        if notification.kind == G90NotificationTypes.DOOR_OPEN_WHEN_ARMING:
+            g90_zone_info = G90ZoneInfo(*notification.data)
+            _LOGGER.debug('Door open detected when arming: %s', g90_zone_info)
+            G90Callback.invoke(
+                self.on_door_open_when_arming,
+                g90_zone_info.idx, g90_zone_info.name
+            )
+            return
+
         _LOGGER.warning('Unknown notification received from %s:%s:'
                         ' kind %s, data %s',
                         addr[0], addr[1], notification.kind, notification.data)
@@ -259,11 +269,15 @@ class G90DeviceNotifications(DatagramProtocol):
                 )
             # Regular alarm
             else:
-                _LOGGER.debug('Alarm: %s', alert.zone_name)
+                is_tampered = alert.state == G90AlertStates.TAMPER
+                _LOGGER.debug(
+                    'Alarm: %s, is tampered: %s', alert.zone_name, is_tampered
+                )
                 G90Callback.invoke(
                     self.on_alarm,
-                    alert.event_id, alert.zone_name
+                    alert.event_id, alert.zone_name, is_tampered
                 )
+
             handled = True
 
         # Host SOS
@@ -372,6 +386,16 @@ class G90DeviceNotifications(DatagramProtocol):
         :param name: Name of the sensor.
         """
 
+    async def on_door_open_when_arming(
+        self, event_id: int, zone_name: str
+    ) -> None:
+        """
+        Invoked when door open is detected when panel is armed.
+
+        :param event_id: Index of the sensor.
+        :param zone_name: Name of the sensor that reports door open.
+        """
+
     async def on_door_open_close(
         self, event_id: int, zone_name: str, is_open: bool
     ) -> None:
@@ -391,7 +415,9 @@ class G90DeviceNotifications(DatagramProtocol):
         :param zone_name: Name of the sensor that reports low battery.
         """
 
-    async def on_alarm(self, event_id: int, zone_name: str) -> None:
+    async def on_alarm(
+        self, event_id: int, zone_name: str, is_tampered: bool
+    ) -> None:
         """
         Invoked when device triggers the alarm.
 

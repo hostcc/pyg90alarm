@@ -17,6 +17,7 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+# pylint: disable=too-many-lines
 
 """
 Provides interface to G90 alarm panel.
@@ -120,6 +121,14 @@ if TYPE_CHECKING:
             [int, str, G90RemoteButtonStates], Coroutine[None, None, None]
         ]
     ]
+    DoorOpenWhenArmingCallback = Union[
+        Callable[[int, str], None],
+        Callable[[int, str], Coroutine[None, None, None]]
+    ]
+    TamperCallback = Union[
+        Callable[[int, str], None],
+        Callable[[int, str], Coroutine[None, None, None]]
+    ]
     # Sensor-related callbacks for `G90Sensor` class - despite that class
     # stores them, the invocation is done by the `G90Alarm` class hence these
     # are defined here
@@ -128,6 +137,14 @@ if TYPE_CHECKING:
         Callable[[bool], Coroutine[None, None, None]]
     ]
     SensorLowBatteryCallback = Union[
+        Callable[[], None],
+        Callable[[], Coroutine[None, None, None]]
+    ]
+    SensorDoorOpenWhenArmingCallback = Union[
+        Callable[[], None],
+        Callable[[], Coroutine[None, None, None]]
+    ]
+    SensorTamperCallback = Union[
         Callable[[], None],
         Callable[[], Coroutine[None, None, None]]
     ]
@@ -174,6 +191,10 @@ class G90Alarm(G90DeviceNotifications):
         self._remote_button_press_cb: Optional[
             RemoteButtonPressCallback
         ] = None
+        self._door_open_when_arming_cb: Optional[
+            DoorOpenWhenArmingCallback
+        ] = None
+        self._tamper_cb: Optional[TamperCallback] = None
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config: Optional[G90AlertConfigFlags] = None
         self._sms_alert_when_armed = False
@@ -613,6 +634,17 @@ class G90Alarm(G90DeviceNotifications):
                 await self.set_alert_config(
                     await self.alert_config | G90AlertConfigFlags.SMS_PUSH
                 )
+
+        # Reset the tampered and door open when arming flags on all sensors
+        # having those set
+        for sensor in await self.get_sensors():
+            if sensor.is_tampered:
+                # pylint: disable=protected-access
+                sensor._set_tampered(False)
+            if sensor.is_door_open_when_arming:
+                # pylint: disable=protected-access
+                sensor._set_door_open_when_arming(False)
+
         G90Callback.invoke(self._armdisarm_cb, state)
 
     @property
@@ -627,7 +659,9 @@ class G90Alarm(G90DeviceNotifications):
     def armdisarm_callback(self, value: ArmDisarmCallback) -> None:
         self._armdisarm_cb = value
 
-    async def on_alarm(self, event_id: int, zone_name: str) -> None:
+    async def on_alarm(
+        self, event_id: int, zone_name: str, is_tampered: bool
+    ) -> None:
         """
         Invoked when alarm is triggered. Fires corresponding callback if set by
         the user with :attr:`.alarm_callback`.
@@ -638,16 +672,31 @@ class G90Alarm(G90DeviceNotifications):
         :param zone_name: Sensor name
         """
         sensor = await self.find_sensor(event_id, zone_name)
-        # The callback is still delivered to the caller even if the sensor
-        # isn't found, only `extra_data` is skipped. That is to ensure the
-        # important callback isn't filtered
-        extra_data = sensor.extra_data if sensor else None
-        # Invoke the sensor activity callback to set the sensor occupancy if
-        # sensor is known, but only if that isn't already set - it helps when
-        # device notifications on triggerring sensor's activity aren't receveid
-        # by a reason
-        if sensor and not sensor.occupancy:
-            await self.on_sensor_activity(event_id, zone_name, True)
+        extra_data = None
+        if sensor:
+            # The callback is still delivered to the caller even if the sensor
+            # isn't found, only `extra_data` is skipped. That is to ensure the
+            # important callback isn't filtered
+            extra_data = sensor.extra_data
+
+            # Invoke the sensor activity callback to set the sensor occupancy
+            # if sensor is known, but only if that isn't already set - it helps
+            # when device notifications on triggerring sensor's activity aren't
+            # receveid by a reason
+            if not sensor.occupancy:
+                await self.on_sensor_activity(event_id, zone_name, True)
+
+            if is_tampered:
+                # Set the tampered flag on the sensor
+                # pylint: disable=protected-access
+                sensor._set_tampered(True)
+
+                # Invoke per-sensor callback if provided
+                G90Callback.invoke(sensor.tamper_callback)
+
+        # Invoke global tamper callback if provided and the sensor is tampered
+        if is_tampered:
+            G90Callback.invoke(self._tamper_cb, event_id, zone_name)
 
         G90Callback.invoke(
             self._alarm_cb, event_id, zone_name, extra_data
@@ -718,7 +767,10 @@ class G90Alarm(G90DeviceNotifications):
 
         # Also report the event as alarm for unification, hard-coding the
         # sensor name in case of host SOS
-        await self.on_alarm(event_id, 'Host SOS' if is_host_sos else zone_name)
+        await self.on_alarm(
+            event_id, zone_name='Host SOS' if is_host_sos else zone_name,
+            is_tampered=False
+        )
 
         if not is_host_sos:
             # Also report the remote button press for SOS - the panel will not
@@ -777,6 +829,58 @@ class G90Alarm(G90DeviceNotifications):
         self, value: RemoteButtonPressCallback
     ) -> None:
         self._remote_button_press_cb = value
+
+    async def on_door_open_when_arming(
+        self, event_id: int, zone_name: str
+    ) -> None:
+        """
+        Invoked when door is open when arming the device. Fires corresponding
+        callback if set by the user with
+        :attr:`.door_open_when_arming_callback`.
+
+        Please note the method is for internal use by the class.
+
+        :param event_id: The index of the sensor being active when the panel
+         is being armed.
+        :param zone_name: The name of the sensor
+        """
+        _LOGGER.debug('on_door_open_when_arming: %s %s', event_id, zone_name)
+        sensor = await self.find_sensor(event_id, zone_name)
+        if sensor:
+            # Set the low battery flag on the sensor
+            # pylint: disable=protected-access
+            sensor._set_door_open_when_arming(True)
+            # Invoke per-sensor callback if provided
+            G90Callback.invoke(sensor.door_open_when_arming_callback)
+
+        G90Callback.invoke(self._door_open_when_arming_cb, event_id, zone_name)
+
+    @property
+    def door_open_when_arming_callback(
+        self
+    ) -> Optional[DoorOpenWhenArmingCallback]:
+        """
+        Door open when arming callback, which is invoked when sensor reports
+        the condition.
+        """
+        return self._door_open_when_arming_cb
+
+    @door_open_when_arming_callback.setter
+    def door_open_when_arming_callback(
+        self, value: DoorOpenWhenArmingCallback
+    ) -> None:
+        self._door_open_when_arming_cb = value
+
+    @property
+    async def tamper_callback(self) -> Optional[TamperCallback]:
+        """
+        Tamper callback, which is invoked when sensor reports the condition.
+        """
+        return self._tamper_cb
+
+    @tamper_callback.setter
+    def tamper_callback(self, value: TamperCallback) -> None:
+        self._tamper_cb = value
 
     async def listen_device_notifications(self) -> None:
         """
