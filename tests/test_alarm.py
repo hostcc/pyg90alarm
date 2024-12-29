@@ -15,7 +15,7 @@ from pyg90alarm.host_info import (
     G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
 )
 from pyg90alarm.entities.sensor import (
-    G90Sensor,
+    G90Sensor, G90SensorUserFlags,
 )
 from pyg90alarm.entities.device import (
     G90Device,
@@ -1098,4 +1098,37 @@ async def test_device_unsupported_disable(mock_device: DeviceMock) -> None:
     await devices[0].set_enabled(False)
     assert mock_device.recv_data == [
         b'ISTART[138,138,[138,[1,10]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,'
+    b'[[1,1,1],'
+    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b']]IEND\0',
+    b'ISTART[102,'
+    b'[[1,1,1],'
+    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b']]IEND\0',
+    b"ISTARTIEND\0",
+])
+async def test_sensor_set_user_flags(mock_device: DeviceMock) -> None:
+    """
+    Tests for setting user flags on a sensor.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    sensors = await g90.get_sensors()
+    await sensors[0].set_user_flag(
+        # Intentionally contains non-user settable flag, which should be
+        # ignored and not configured for the sensor that initial doesn't have
+        # it set
+        G90SensorUserFlags.INDEPENDENT_ZONE | G90SensorUserFlags.ARM_DELAY
+        | G90SensorUserFlags.SUPPORTS_UPDATING_SUBTYPE
+    )
+    assert mock_device.recv_data == [
+        b'ISTART[102,102,[102,[1,10]]]IEND\0',
+        b'ISTART[102,102,[102,[1,1]]]IEND\0',
+        b'ISTART[103,103,[103,'
+        b'["Night Light2",10,0,138,0,0,18,0,0,17,1,0,2,"060A0600"]'
+        b']]IEND\0',
     ]
