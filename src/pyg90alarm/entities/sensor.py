@@ -104,6 +104,7 @@ class G90SensorUserFlags(IntFlag):
     ALERT_WHEN_AWAY_AND_HOME = 32
     ALERT_WHEN_AWAY = 64
     SUPPORTS_UPDATING_SUBTYPE = 512     # Only relevant for cord sensors
+    # Flags that can be set by the user
     USER_SETTABLE = (
         ENABLED
         | ARM_DELAY
