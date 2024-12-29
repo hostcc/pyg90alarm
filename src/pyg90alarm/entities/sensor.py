@@ -104,6 +104,15 @@ class G90SensorUserFlags(IntFlag):
     ALERT_WHEN_AWAY_AND_HOME = 32
     ALERT_WHEN_AWAY = 64
     SUPPORTS_UPDATING_SUBTYPE = 512     # Only relevant for cord sensors
+    USER_SETTABLE = (
+        ENABLED
+        | ARM_DELAY
+        | DETECT_DOOR
+        | DOOR_CHIME
+        | INDEPENDENT_ZONE
+        | ALERT_WHEN_AWAY_AND_HOME
+        | ALERT_WHEN_AWAY
+    )
 
 
 class G90SensorProtocols(IntEnum):
@@ -487,18 +496,26 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         """
         return self.user_flag & G90SensorUserFlags.ENABLED != 0
 
-    async def set_enabled(self, value: bool) -> None:
+    async def set_user_flag(self, value: G90SensorUserFlags) -> None:
         """
-        Sets disabled/enabled state of the sensor.
+        Sets user flags of the sensor.
 
-        :param value: Whether to enable or disable the sensor
+        :param value: User flags to set, values other than
+          :attr:`.G90SensorUserFlags.USER_SETTABLE` will be ignored and
+          preserved from existing sensor flags.
         """
+        if value & ~G90SensorUserFlags.USER_SETTABLE:
+            _LOGGER.warning(
+                'User flags for sensor index=%s contain non-user settable'
+                ' flags, those will be ignored: %s',
+                self.index, repr(value & ~G90SensorUserFlags.USER_SETTABLE)
+            )
         # Checking private attribute directly, since `mypy` doesn't recognize
         # the check for sensor definition to be defined if done over
         # `self.supports_enable_disable` property
         if not self._definition:
             _LOGGER.warning(
-                'Manipulating with enable/disable for sensor index=%s'
+                'Manipulating with user flags for sensor index=%s'
                 ' is unsupported - no sensor definition for'
                 ' type=%s, subtype=%s',
                 self.index,
@@ -526,7 +543,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         if not sensors:
             _LOGGER.error(
                 'Sensor index=%s not found when attempting to set its'
-                ' enable/disable state',
+                ' user flag',
                 self.index,
             )
             return
@@ -539,30 +556,30 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         ) != self._protocol_data:
             _LOGGER.error(
                 "Sensor index=%s '%s' has been changed externally,"
-                " refusing to alter its enable/disable state",
+                " refusing to alter its user flag",
                 self.index,
                 self.name
             )
             return
 
-        # Modify the value of the user flag setting enabled/disabled one
-        # appropriately.
-        user_flag = self.user_flag
-        if value:
-            user_flag |= G90SensorUserFlags.ENABLED
-        else:
-            user_flag &= ~G90SensorUserFlags.ENABLED
+        prev_user_flag = self.user_flag
 
         # Re-instantiate the protocol data with modified user flags
         _data = asdict(self._protocol_data)
-        _data['user_flag_data'] = user_flag
+        _data['user_flag_data'] = (
+            # Preserve flags that are not user-settable
+            self.user_flag & ~G90SensorUserFlags.USER_SETTABLE
+        ) | (
+            # Combine them with the new user-settable flags
+            value & G90SensorUserFlags.USER_SETTABLE
+        )
         self._protocol_data = self._protocol_incoming_data_kls(**_data)
 
         _LOGGER.debug(
-            'Sensor index=%s: %s enabled flag, resulting user_flag %s',
+            'Sensor index=%s: previous user_flag %s, resulting user_flag %s',
             self._protocol_data.index,
-            'Setting' if value else 'Clearing',
-            self.user_flag
+            repr(prev_user_flag),
+            repr(self.user_flag)
         )
 
         # Generate protocol data from write operation, deriving values either
@@ -588,6 +605,20 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         await self._parent.command(
             G90Commands.SETSINGLESENSOR, list(astuple(outgoing_data))
         )
+
+    async def set_enabled(self, value: bool) -> None:
+        """
+        Sets the sensor enabled/disabled.
+        """
+
+        # Modify the value of the user flag setting enabled/disabled one
+        # appropriately.
+        user_flag = self.user_flag
+        if value:
+            user_flag |= G90SensorUserFlags.ENABLED
+        else:
+            user_flag &= ~G90SensorUserFlags.ENABLED
+        await self.set_user_flag(user_flag)
 
     @property
     def extra_data(self) -> Any:
@@ -623,6 +654,8 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             'supports_enable_disable': self.supports_enable_disable,
             'is_wireless': self.is_wireless,
             'is_low_battery': self.is_low_battery,
+            'is_tampered': self.is_tampered,
+            'is_door_open_when_arming': self.is_door_open_when_arming,
         }
 
     def __repr__(self) -> str:
