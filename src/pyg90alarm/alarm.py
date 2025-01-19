@@ -268,7 +268,7 @@ class G90Alarm(G90DeviceNotifications):
     @property
     async def sensors(self) -> List[G90Sensor]:
         """
-        Returns the list of sensors configured in the device. Please note the
+        Returns the list of sensors configured in the device. Please note
         it doesn't update those from the panel except initially when the list
         if empty.
 
@@ -285,21 +285,25 @@ class G90Alarm(G90DeviceNotifications):
         """
         return await self._sensors.update()
 
-    async def find_sensor(self, idx: int, name: str) -> Optional[G90Sensor]:
+    async def find_sensor(
+        self, idx: int, name: str, exclude_unavailable: bool = True
+    ) -> Optional[G90Sensor]:
         """
         Finds sensor by index and name.
 
         :param idx: Sensor index
         :param name: Sensor name
+        :param exclude_unavailable: Flag indicating if unavailable sensors
+         should be excluded from the search
         :return: Sensor instance
         """
-        return await self._sensors.find(idx, name)
+        return await self._sensors.find(idx, name, exclude_unavailable)
 
     @property
     async def devices(self) -> List[G90Device]:
         """
         Returns the list of devices (switches) configured in the device. Please
-        note the it doesn't update those from the panel except initially when
+        note it doesn't update those from the panel except initially when
         the list if empty.
 
         :return: List of devices

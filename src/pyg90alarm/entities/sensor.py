@@ -666,7 +666,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
     @property
     def is_unavailable(self) -> bool:
         """
-        Indicates if the sensor is unavailable (e.g. not responding).
+        Indicates if the sensor is unavailable (e.g. has been removed).
         """
         return self._unavailable
 
@@ -711,6 +711,12 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         return super().__repr__() + f'({repr(self._asdict())})'
 
     def __eq__(self, value: object) -> bool:
+        """
+        Compares the sensor with another object.
+
+        :param value: Object to compare with
+        :return: If the sensor is equal to the object
+        """
         if not isinstance(value, G90Sensor):
             return False
 

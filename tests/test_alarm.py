@@ -303,6 +303,30 @@ async def test_get_sensors_update(mock_device: DeviceMock) -> None:
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
+    b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+    b'ISTART[102,'
+    b'[[1,1,1],["Remote 2",11,0,10,1,0,33,0,0,16,1,0,""]]]IEND\0',
+])
+async def test_find_sensor(mock_device: DeviceMock) -> None:
+    """
+    Verifies updating the sensor list from the panel properly updates entitries
+    exists in the list already, and marks those are not.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    sensor = await g90.find_sensor(10, 'Remote')
+    assert sensor is not None
+    assert sensor.name == 'Remote'
+
+    await g90.get_sensors()
+    sensor = await g90.find_sensor(10, 'Remote')
+    assert sensor is None
+    sensor = await g90.find_sensor(10, 'Remote', exclude_unavailable=False)
+    assert sensor is not None
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,'
     b'[[3,1,3],["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
     b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""],'
     b'["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]'

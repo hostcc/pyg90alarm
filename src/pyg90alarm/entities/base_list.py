@@ -126,27 +126,40 @@ class G90BaseList(Generic[T], ABC):
 
             return self._entities
 
-    async def find(self, idx: int, name: str) -> Optional[T]:
+    async def find(
+        self, idx: int, name: str, exclude_unavailable: bool
+    ) -> Optional[T]:
         """
         Finds entity by index and name.
 
         :param idx: Entity index
         :param name: Entity name
+        :param exclude_unavailable: Exclude unavailable entities
         :return: Entity instance
         """
         entities = await self.entities
 
+        found = None
         # Fast lookup by direct index
         if idx < len(entities) and entities[idx].name == name:
             entity = entities[idx]
             _LOGGER.debug('Found entity via fast lookup: %s', entity)
-            return entity
+            found = entity
 
         # Fast lookup failed, perform slow one over the whole entities list
-        for entity in entities:
-            if entity.index == idx and entity.name == name:
-                _LOGGER.debug('Found entity: %s', entity)
-                return entity
+        if not found:
+            for entity in entities:
+                if entity.index == idx and entity.name == name:
+                    _LOGGER.debug('Found entity: %s', entity)
+                    found = entity
 
-        _LOGGER.error('entity not found: idx=%s, name=%s', idx, name)
+        if found:
+            if not exclude_unavailable or not found.is_unavailable:
+                return found
+
+            _LOGGER.debug(
+                'Entity is found but unavailable, will result in none returned'
+            )
+
+        _LOGGER.error('Entity not found: idx=%s, name=%s', idx, name)
         return None
