@@ -69,7 +69,9 @@ from .const import (
 from .base_cmd import (G90BaseCommand, G90BaseCommandData)
 from .paginated_result import G90PaginatedResult, G90PaginatedResponse
 from .entities.sensor import (G90Sensor, G90SensorTypes)
+from .entities.sensor_list import G90SensorList
 from .entities.device import G90Device
+from .entities.device_list import G90DeviceList
 from .device_notifications import (
     G90DeviceNotifications,
 )
@@ -177,10 +179,8 @@ class G90Alarm(G90DeviceNotifications):
         )
         self._host: str = host
         self._port: int = port
-        self._sensors: List[G90Sensor] = []
-        self._sensors_lock = asyncio.Lock()
-        self._devices: List[G90Device] = []
-        self._devices_lock = asyncio.Lock()
+        self._sensors = G90SensorList(self)
+        self._devices = G90DeviceList(self)
         self._notifications: Optional[G90DeviceNotifications] = None
         self._sensor_cb: Optional[SensorCallback] = None
         self._armdisarm_cb: Optional[ArmDisarmCallback] = None
@@ -268,109 +268,58 @@ class G90Alarm(G90DeviceNotifications):
     @property
     async def sensors(self) -> List[G90Sensor]:
         """
-        Property over new :meth:`.get_sensors` method, retained for
-        compatibility.
-        """
-        return await self.get_sensors()
-
-    async def get_sensors(self) -> List[G90Sensor]:
-        """
-        Provides list of sensors configured in the device. Please note the list
-        is cached upon first call, so you need to re-instantiate the class to
-        reflect any updates there.
+        Returns the list of sensors configured in the device. Please note
+        it doesn't update those from the panel except initially when the list
+        if empty.
 
         :return: List of sensors
         """
-        # Use lock around the operation, to ensure no duplicated entries in the
-        # resulting list or redundant exchanges with panel are made when the
-        # method is called concurrently
-        async with self._sensors_lock:
-            if not self._sensors:
-                sensors = self.paginated_result(
-                    G90Commands.GETSENSORLIST
-                )
-                async for sensor in sensors:
-                    obj = G90Sensor(
-                        *sensor.data, parent=self, subindex=0,
-                        proto_idx=sensor.proto_idx
-                    )
-                    self._sensors.append(obj)
+        return await self._sensors.entities
 
-                _LOGGER.debug(
-                    'Total number of sensors: %s', len(self._sensors)
-                )
+    async def get_sensors(self) -> List[G90Sensor]:
+        """
+        Provides list of sensors configured in the device, updating them from
+        panel on each call.
 
-            return self._sensors
+        :return: List of sensors
+        """
+        return await self._sensors.update()
 
-    async def find_sensor(self, idx: int, name: str) -> Optional[G90Sensor]:
+    async def find_sensor(
+        self, idx: int, name: str, exclude_unavailable: bool = True
+    ) -> Optional[G90Sensor]:
         """
         Finds sensor by index and name.
 
         :param idx: Sensor index
         :param name: Sensor name
+        :param exclude_unavailable: Flag indicating if unavailable sensors
+         should be excluded from the search
         :return: Sensor instance
         """
-        sensors = await self.get_sensors()
-
-        # Fast lookup by direct index
-        if idx < len(sensors) and sensors[idx].name == name:
-            sensor = sensors[idx]
-            _LOGGER.debug('Found sensor via fast lookup: %s', sensor)
-            return sensor
-
-        # Fast lookup failed, perform slow one over the whole sensors list
-        for sensor in sensors:
-            if sensor.index == idx and sensor.name == name:
-                _LOGGER.debug('Found sensor: %s', sensor)
-                return sensor
-
-        _LOGGER.error('Sensor not found: idx=%s, name=%s', idx, name)
-        return None
+        return await self._sensors.find(idx, name, exclude_unavailable)
 
     @property
     async def devices(self) -> List[G90Device]:
         """
-        Property over new :meth:`.get_devices` method, retained for
-        compatibility.
+        Returns the list of devices (switches) configured in the device. Please
+        note it doesn't update those from the panel except initially when
+        the list if empty.
+
+        :return: List of devices
         """
-        return await self.get_devices()
+        return await self._devices.entities
 
     async def get_devices(self) -> List[G90Device]:
         """
-        Provides list of devices (switches) configured in the device. Please
-        note the list is cached upon first call, so you need to re-instantiate
-        the class to reflect any updates there. Multi-node devices, those
+        Provides list of devices (switches) configured in the device, updating
+        them from panel on each call. Multi-node devices, those
         having multiple ports, are expanded into corresponding number of
         resulting entries.
 
         :return: List of devices
         """
-        # See `get_sensors` method for the rationale behind the lock usage
-        async with self._devices_lock:
-            if not self._devices:
-                devices = self.paginated_result(
-                    G90Commands.GETDEVICELIST
-                )
-                async for device in devices:
-                    obj = G90Device(
-                        *device.data, parent=self, subindex=0,
-                        proto_idx=device.proto_idx
-                    )
-                    self._devices.append(obj)
-                    # Multi-node devices (first node has already been added
-                    # above
-                    for node in range(1, obj.node_count):
-                        obj = G90Device(
-                            *device.data, parent=self,
-                            subindex=node, proto_idx=device.proto_idx
-                        )
-                        self._devices.append(obj)
-
-                _LOGGER.debug(
-                    'Total number of devices: %s', len(self._devices)
-                )
-
-            return self._devices
+        return await self._devices.update()
 
     @property
     async def host_info(self) -> G90HostInfo:
@@ -637,7 +586,7 @@ class G90Alarm(G90DeviceNotifications):
 
         # Reset the tampered and door open when arming flags on all sensors
         # having those set
-        for sensor in await self.get_sensors():
+        for sensor in await self.sensors:
             if sensor.is_tampered:
                 # pylint: disable=protected-access
                 sensor._set_tampered(False)

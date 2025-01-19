@@ -31,6 +31,7 @@ from typing import (
 from enum import IntEnum, IntFlag
 from ..definitions.sensors import SENSOR_DEFINITIONS, SensorDefinition
 from ..const import G90Commands
+from .base_entity import G90BaseEntity
 if TYPE_CHECKING:
     from ..alarm import (
         G90Alarm, SensorStateCallback, SensorLowBatteryCallback,
@@ -171,7 +172,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-public-methods
-class G90Sensor:  # pylint:disable=too-many-instance-attributes
+class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
     """
     Interacts with sensor on G90 alarm panel.
 
@@ -208,6 +209,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         self._door_open_when_arming = False
         self._proto_idx = proto_idx
         self._extra_data: Any = None
+        self._unavailable = False
 
         self._definition: Optional[SensorDefinition] = None
         # Get sensor definition corresponds to the sensor type/subtype if any
@@ -218,6 +220,15 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             ):
                 self._definition = s_def
                 break
+
+    def update(self, obj: G90Sensor) -> None:
+        """
+        Updates sensor from another instance.
+
+        :param obj: Sensor instance to update from
+        """
+        self._protocol_data = obj.protocol_data
+        self._proto_idx = obj.proto_idx
 
     @property
     def name(self) -> str:
@@ -397,6 +408,16 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         return self._subindex
 
     @property
+    def proto_idx(self) -> int:
+        """
+        Index of the sensor within list of sensors as retrieved from the alarm
+        panel.
+
+        :return: Index of sensor in list of sensors.
+        """
+        return self._proto_idx
+
+    @property
     def supports_enable_disable(self) -> bool:
         """
         Indicates if disabling/enabling the sensor is supported.
@@ -404,6 +425,15 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         :return: Support for enabling/disabling the sensor
         """
         return self._definition is not None
+
+    @property
+    def protocol_data(self) -> G90SensorIncomingData:
+        """
+        Protocol data of the sensor.
+
+        :return: Protocol data
+        """
+        return self._protocol_data
 
     @property
     def is_wireless(self) -> bool:
@@ -532,11 +562,11 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         # when instantiated.
         _LOGGER.debug(
             'Refreshing sensor at index=%s, position in protocol list=%s',
-            self.index, self._proto_idx
+            self.index, self.proto_idx
         )
         sensors_result = self.parent.paginated_result(
             G90Commands.GETSENSORLIST,
-            start=self._proto_idx, end=self._proto_idx
+            start=self.proto_idx, end=self.proto_idx
         )
         sensors = [x.data async for x in sensors_result]
 
@@ -633,6 +663,17 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
     def extra_data(self, val: Any) -> None:
         self._extra_data = val
 
+    @property
+    def is_unavailable(self) -> bool:
+        """
+        Indicates if the sensor is unavailable (e.g. has been removed).
+        """
+        return self._unavailable
+
+    @is_unavailable.setter
+    def is_unavailable(self, value: bool) -> None:
+        self._unavailable = value
+
     def _asdict(self) -> Dict[str, Any]:
         """
         Returns dictionary representation of the sensor.
@@ -644,6 +685,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             'type': self.type,
             'subtype': self.subtype,
             'index': self.index,
+            'protocol_index': self.proto_idx,
             'subindex': self.subindex,
             'node_count': self.node_count,
             'protocol': self.protocol,
@@ -657,6 +699,7 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
             'is_low_battery': self.is_low_battery,
             'is_tampered': self.is_tampered,
             'is_door_open_when_arming': self.is_door_open_when_arming,
+            'is_unavailable': self.is_unavailable,
         }
 
     def __repr__(self) -> str:
@@ -666,3 +709,20 @@ class G90Sensor:  # pylint:disable=too-many-instance-attributes
         :return: String representation
         """
         return super().__repr__() + f'({repr(self._asdict())})'
+
+    def __eq__(self, value: object) -> bool:
+        """
+        Compares the sensor with another object.
+
+        :param value: Object to compare with
+        :return: If the sensor is equal to the object
+        """
+        if not isinstance(value, G90Sensor):
+            return False
+
+        return (
+            self.type == value.type
+            and self.subtype == value.subtype
+            and self.index == value.index
+            and self.name == value.name
+        )
