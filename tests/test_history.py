@@ -196,7 +196,7 @@ async def test_simulate_alerts_from_history(mock_device: DeviceMock) -> None:
     # Stop simulating the alert from history
     await g90.stop_simulating_alerts_from_history()
 
-    sensors = await g90.get_sensors()
+    sensors = await g90.sensors
     # Ensure callbacks have been called and with expected arguments
     alarm_cb.assert_called_once_with(33, 'Sensor 1', None)
     armdisarm_cb.assert_called_once_with(3)

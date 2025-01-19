@@ -152,9 +152,9 @@ async def test_get_devices_concurrent(mock_device: DeviceMock) -> None:
     # Issue two concurrent requests to retrieve devices
     res = await asyncio.gather(g90.get_devices(), g90.get_devices())
     # Ensure only single exchange with the panel
-    g90.paginated_result.assert_called_once()
+    assert g90.paginated_result.call_count == 2
     # While `pylint` demands use of generator, the comprehension is used
-    # instead for ease of trroubleshooting test failures as it will show the
+    # instead for ease of troubleshooting test failures as it will show the
     # list elements, not just generator instance
     # pylint: disable=use-a-generator
     assert all([len(x) == 1 for x in res])
@@ -224,10 +224,8 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,10]]]IEND\0',
     ]
@@ -255,9 +253,52 @@ async def test_get_sensors_concurrent(mock_device: DeviceMock) -> None:
     )
 
     res = await asyncio.gather(g90.get_sensors(), g90.get_sensors())
-    g90.paginated_result.assert_called_once()
+    assert g90.paginated_result.call_count == 2
     # pylint: disable=use-a-generator
     assert all([len(x) == 1 for x in res])
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,'
+    b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+    b'ISTART[102,'
+    b'[[1,1,1],["Remote",10,0,10,1,0,33,0,0,16,1,0,""]]]IEND\0',
+    b'ISTART[102,'
+    b'[[1,1,1],["Remote 2",11,0,10,1,0,33,0,0,16,1,0,""]]]IEND\0',
+])
+async def test_get_sensors_update(mock_device: DeviceMock) -> None:
+    """
+    Verifies updating the sensor list from the panel properly updates entitries
+    exists in the list already, and marks those are not.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Ensure initial update results in single list entry
+    sensors = await g90.get_sensors()
+    assert len(sensors) == 1
+    assert sensors[0].name == 'Remote'
+    assert sensors[0].enabled is False
+    # Check if existing enty is properly updated
+    sensors = await g90.get_sensors()
+    assert len(sensors) == 1
+    assert sensors[0].name == 'Remote'
+    assert sensors[0].enabled is True
+
+    sensor_1 = sensors[0]
+
+    # Ensure subsequent update results in two list entries, one being added and
+    # another one is marked as unavailable (since it isn't present in the list
+    # fetched from the device)
+    sensors = await g90.get_sensors()
+    assert len(sensors) == 2
+    assert sensors[0].is_unavailable is True
+    assert sensors[0].name == 'Remote'
+
+    assert sensors[1].is_unavailable is False
+    assert sensors[1].name == 'Remote 2'
+
+    # Ensure the first entry is still in the list
+    assert sensors[0] == sensor_1
 
 
 @pytest.mark.g90device(sent_data=[
@@ -276,10 +317,8 @@ async def test_multiple_sensors_shorter_than_page(
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,10]]]IEND\0',
     ]
@@ -327,10 +366,8 @@ async def test_multiple_sensors_longer_than_page(
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     assert mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,10]]]IEND\0',
         b'ISTART[102,102,[102,[11,11]]]IEND\0',
@@ -362,10 +399,8 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
                    notifications_local_host=mock_device.notification_host,
                    notifications_local_port=mock_device.notification_port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 10 and x.name == 'Remote']
     sensor[0].state_callback = lambda *args: future.set_result(True)
@@ -406,10 +441,8 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
                    notifications_local_host=mock_device.notification_host,
                    notifications_local_port=mock_device.notification_port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 26 and x.name == 'Remote']
     low_battery_sensor_cb = MagicMock()
@@ -459,10 +492,8 @@ async def test_sensor_door_open_when_arming_callback(
                    notifications_local_host=mock_device.notification_host,
                    notifications_local_port=mock_device.notification_port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 21 and x.name == 'Hall']
     door_open_when_arming_sensor_cb = MagicMock()
@@ -558,9 +589,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     # Corresponding sensor should turn to occupied (=door opened)
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
-    assert sensors == prop_sensors
+    sensors = await g90.sensors
     assert sensors[0].occupancy
 
     # Simulate second device alert for door close
@@ -571,9 +600,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
 
     await asyncio.wait([future], timeout=0.1)
     # The sensor should become inactive (=door closed)
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
-    assert sensors == prop_sensors
+    sensors = await g90.sensors
     assert not sensors[0].occupancy
 
     g90.close_device_notifications()
@@ -608,7 +635,7 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port,
                    notifications_local_host=mock_device.notification_host,
                    notifications_local_port=mock_device.notification_port)
-    sensors = await g90.get_sensors()
+    sensors = await g90.sensors
     # Set extra data for the 1st sensor
     sensors[0].extra_data = 'Dummy extra data'
 
@@ -668,10 +695,8 @@ async def test_sensor_tamper_callback(
                    notifications_local_host=mock_device.notification_host,
                    notifications_local_port=mock_device.notification_port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
+    sensors = await g90.sensors
 
-    assert sensors == prop_sensors
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 100 and x.name == 'Hall']
     tamper_sensor_cb = MagicMock()
@@ -984,9 +1009,7 @@ async def test_sensor_disable(mock_device: DeviceMock) -> None:
     Tests for disabling a sensor.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
-    assert sensors == prop_sensors
+    sensors = await g90.sensors
     assert sensors[1].enabled
     await sensors[1].set_enabled(False)
     assert not sensors[1].enabled
@@ -1019,9 +1042,7 @@ async def test_sensor_disable_externally_modified(
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
-    assert sensors == prop_sensors
+    sensors = await g90.sensors
     assert sensors[1].enabled
     await sensors[1].set_enabled(False)
     assert sensors[1].enabled
@@ -1043,9 +1064,7 @@ async def test_sensor_unsupported_disable(mock_device: DeviceMock) -> None:
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
-    sensors = await g90.get_sensors()
-    prop_sensors = await g90.sensors
-    assert sensors == prop_sensors
+    sensors = await g90.sensors
     assert sensors[0].enabled
     await sensors[0].set_enabled(False)
     assert mock_device.recv_data == [
@@ -1069,7 +1088,7 @@ async def test_sensor_disable_sensor_not_found_on_refresh(
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
 
-    sensors = await g90.get_sensors()
+    sensors = await g90.sensors
     assert sensors[1].enabled
     await sensors[1].set_enabled(False)
     assert sensors[1].enabled
@@ -1117,7 +1136,7 @@ async def test_sensor_set_user_flags(mock_device: DeviceMock) -> None:
     Tests for setting user flags on a sensor.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    sensors = await g90.get_sensors()
+    sensors = await g90.sensors
     await sensors[0].set_user_flag(
         # Intentionally contains non-user settable flag, which should be
         # ignored and not configured for the sensor that initial doesn't have
