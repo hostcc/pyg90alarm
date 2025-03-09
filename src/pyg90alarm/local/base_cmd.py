@@ -121,10 +121,7 @@ class G90BaseCommand(DatagramProtocol):
         """
         Creates UDP connection to the alarm panel.
         """
-        try:
-            loop = asyncio.get_running_loop()
-        except AttributeError:
-            loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         _LOGGER.debug('Creating UDP endpoint for %s:%s',
                       self.host, self.port)

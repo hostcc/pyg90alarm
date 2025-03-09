@@ -92,10 +92,7 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
         """
         Listens for notifications/alers from the device.
         """
-        try:
-            loop = asyncio.get_running_loop()
-        except AttributeError:
-            loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         _LOGGER.debug('Creating UDP endpoint for %s:%s',
                       self._notifications_local_host,

@@ -236,10 +236,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
                     'Creating upstream connection to %s:%s',
                     self._upstream_host, self._upstream_port
                 )
-                try:
-                    loop = asyncio.get_running_loop()
-                except AttributeError:
-                    loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
 
                 self._upstream_transport, _ = await loop.create_connection(
                     self.get_upstream_protocol,
@@ -262,10 +259,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         """
         tbd
         """
-        try:
-            loop = asyncio.get_running_loop()
-        except AttributeError:
-            loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         _LOGGER.debug('Creating cloud endpoint for %s:%s',
                       self._local_host,
