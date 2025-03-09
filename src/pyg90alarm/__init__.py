@@ -23,17 +23,17 @@ Python package to control G90-based alarm systems.
 """
 
 from .alarm import G90Alarm
-from .base_cmd import G90BaseCommand
-from .paginated_result import G90PaginatedResult
-from .device_notifications import (
+from .local.base_cmd import G90BaseCommand
+from .local.paginated_result import G90PaginatedResult
+from .notifications.base import (
     G90DeviceAlert,
 )
 from .entities.sensor import G90Sensor, G90SensorTypes
 from .entities.device import G90Device
-from .host_info import (
+from .local.host_info import (
     G90HostInfo, G90HostInfoWifiStatus, G90HostInfoGsmStatus
 )
-from .host_status import G90HostStatus
+from .local.host_status import G90HostStatus
 from .const import (
     G90MessageTypes,
     G90NotificationTypes,

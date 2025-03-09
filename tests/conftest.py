@@ -36,7 +36,9 @@ def pytest_configure(config: pytest.Config) -> None:
 
 @pytest.fixture
 async def mock_device(
-    request: pytest.FixtureRequest, unused_udp_port_factory: Callable[..., int]
+    request: pytest.FixtureRequest,
+    unused_udp_port_factory: Callable[..., int],
+    unused_tcp_port_factory: Callable[..., int]
 ) -> AsyncIterator[DeviceMock]:
     """
     Fixture to instantiate a simulated G90 device allocating random unused
@@ -54,6 +56,7 @@ async def mock_device(
     )
     data = marker.get('sent_data', [])
     notification_data = marker.get('notification_data', [])
+    cloud_notification_data = marker.get('cloud_notification_data', [])
 
     # Allocate unused ports to listen for client requests on, and to send
     # notification messages to, respectively
@@ -61,9 +64,12 @@ async def mock_device(
     # Note the `unised_udp_port_factory` comes from `pytest-asyncio` package
     device_port = unused_udp_port_factory()
     notification_port = unused_udp_port_factory()
+    proxy_port = unused_tcp_port_factory()
     device = DeviceMock(
         data, notification_data,
-        device_port=device_port, notification_port=notification_port
+        device_port=device_port, notification_port=notification_port,
+        cloud_port=proxy_port,
+        cloud_notification_data=cloud_notification_data
     )
     await device.start()
     yield device

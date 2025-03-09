@@ -63,29 +63,34 @@ from .const import (
     LOCAL_TARGETED_DISCOVERY_PORT,
     LOCAL_NOTIFICATIONS_HOST,
     LOCAL_NOTIFICATIONS_PORT,
+    CLOUD_NOTIFICATIONS_HOST,
+    CLOUD_NOTIFICATIONS_PORT,
     G90ArmDisarmTypes,
     G90RemoteButtonStates,
 )
-from .base_cmd import (G90BaseCommand, G90BaseCommandData)
-from .paginated_result import G90PaginatedResult, G90PaginatedResponse
+from .local.base_cmd import (G90BaseCommand, G90BaseCommandData)
+from .local.paginated_result import G90PaginatedResult, G90PaginatedResponse
 from .entities.sensor import (G90Sensor, G90SensorTypes)
 from .entities.sensor_list import G90SensorList
 from .entities.device import G90Device
 from .entities.device_list import G90DeviceList
-from .device_notifications import (
-    G90DeviceNotifications,
+from .notifications.protocol import (
+    G90NotificationProtocol
 )
-from .discovery import G90Discovery, G90DiscoveredDevice
-from .targeted_discovery import (
+from .notifications.base import G90NotificationsBase
+from .local.notifications import G90LocalNotifications
+from .local.discovery import G90Discovery, G90DiscoveredDevice
+from .local.targeted_discovery import (
     G90TargetedDiscovery, G90DiscoveredDeviceTargeted,
 )
-from .host_info import G90HostInfo
-from .host_status import G90HostStatus
-from .config import (G90AlertConfig, G90AlertConfigFlags)
-from .history import G90History
-from .user_data_crc import G90UserDataCRC
+from .local.host_info import G90HostInfo
+from .local.host_status import G90HostStatus
+from .local.config import (G90AlertConfig, G90AlertConfigFlags)
+from .local.history import G90History
+from .local.user_data_crc import G90UserDataCRC
 from .callback import G90Callback
 from .exceptions import G90Error, G90TimeoutError
+from .cloud.notifications import G90CloudNotifications
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,7 +158,7 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-public-methods
-class G90Alarm(G90DeviceNotifications):
+class G90Alarm(G90NotificationProtocol):
 
     """
     Allows to interact with G90 alarm panel.
@@ -169,19 +174,27 @@ class G90Alarm(G90DeviceNotifications):
      simulated to go into inactive state.
     """
     # pylint: disable=too-many-instance-attributes,too-many-arguments
-    def __init__(self, host: str, port: int = REMOTE_PORT,
-                 reset_occupancy_interval: float = 3.0,
-                 notifications_local_host: str = LOCAL_NOTIFICATIONS_HOST,
-                 notifications_local_port: int = LOCAL_NOTIFICATIONS_PORT):
-        super().__init__(
-            local_host=notifications_local_host,
-            local_port=notifications_local_port
-        )
+    def __init__(
+        self, host: str, port: int = REMOTE_PORT,
+        reset_occupancy_interval: float = 3.0,
+        notifications_local_host: str = LOCAL_NOTIFICATIONS_HOST,
+        notifications_local_port: int = LOCAL_NOTIFICATIONS_PORT,
+        cloud_local_host: str = CLOUD_NOTIFICATIONS_HOST,
+        cloud_local_port: int = CLOUD_NOTIFICATIONS_PORT,
+        upstream_host: Optional[str] = None,
+        upstream_port: Optional[int] = None,
+    ) -> None:
         self._host: str = host
         self._port: int = port
+        self._cloud_local_host = cloud_local_host
+        self._cloud_local_port = cloud_local_port
+        self._notifications_local_host = notifications_local_host
+        self._notifications_local_port = notifications_local_port
+        self._upstream_host = upstream_host
+        self._upstream_port = upstream_port
+        self._notifications: G90NotificationsBase
         self._sensors = G90SensorList(self)
         self._devices = G90DeviceList(self)
-        self._notifications: Optional[G90DeviceNotifications] = None
         self._sensor_cb: Optional[SensorCallback] = None
         self._armdisarm_cb: Optional[ArmDisarmCallback] = None
         self._door_open_close_cb: Optional[DoorOpenCloseCallback] = None
@@ -200,6 +213,22 @@ class G90Alarm(G90DeviceNotifications):
         self._sms_alert_when_armed = False
         self._alert_simulation_task: Optional[Task[Any]] = None
         self._alert_simulation_start_listener_back = False
+
+        self.use_local_notifications()
+
+    @property
+    def host(self) -> str:
+        """
+        tbd
+        """
+        return self._host
+
+    @property
+    def port(self) -> int:
+        """
+        tbd
+        """
+        return self._port
 
     async def command(
         self, code: G90Commands, data: Optional[G90BaseCommandData] = None
@@ -338,7 +367,7 @@ class G90Alarm(G90DeviceNotifications):
         """
         res = await self.command(G90Commands.GETHOSTINFO)
         info = G90HostInfo(*res)
-        self.device_id = info.host_guid
+        self._notifications.device_id = info.host_guid
         return info
 
     @property
@@ -831,17 +860,18 @@ class G90Alarm(G90DeviceNotifications):
     def tamper_callback(self, value: TamperCallback) -> None:
         self._tamper_cb = value
 
-    async def listen_device_notifications(self) -> None:
+    async def listen_notifications(self) -> None:
         """
         Starts internal listener for device notifications/alerts.
         """
-        await self.listen()
+        await self._notifications.listen()
 
-    def close_device_notifications(self) -> None:
+    def close_notifications(self) -> None:
         """
         Closes the listener for device notifications/alerts.
         """
-        self.close()
+        if hasattr(self, '_notifications'):
+            self._notifications.close()
 
     async def arm_away(self) -> None:
         """
@@ -896,9 +926,11 @@ class G90Alarm(G90DeviceNotifications):
           each polling cycle
         """
         # Remember if device notifications listener has been started already
-        self._alert_simulation_start_listener_back = self.listener_started
+        self._alert_simulation_start_listener_back = (
+            self._notifications.listener_started
+        )
         # And then stop it
-        self.close()
+        self.close_notifications()
 
         # Start the task
         self._alert_simulation_task = asyncio.create_task(
@@ -921,7 +953,7 @@ class G90Alarm(G90DeviceNotifications):
         # Start device notifications listener back if it was running when
         # simulated alerts have been enabled
         if self._alert_simulation_start_listener_back:
-            await self.listen()
+            await self._notifications.listen()
 
     async def _simulate_alerts_from_history(
         self, interval: float, history_depth: int
@@ -978,8 +1010,8 @@ class G90Alarm(G90DeviceNotifications):
                         # Send the history entry down the device notification
                         # code as alert, as if it came from the device and its
                         # notifications port
-                        self._handle_alert(
-                            (self._host, self._notifications_local_port),
+                        # pylint: disable=protected-access
+                        self._notifications._handle_alert(
                             item.as_device_alert(),
                             # Skip verifying device GUID, since history entry
                             # don't have it
@@ -1005,3 +1037,31 @@ class G90Alarm(G90DeviceNotifications):
 
             # Sleep to next iteration
             await asyncio.sleep(interval)
+
+    def use_local_notifications(self) -> None:
+        """
+        Switches to use local notifications for device alerts.
+        """
+        self.close_notifications()
+
+        self._notifications = G90LocalNotifications(
+            protocol_factory=lambda: self,
+            host=self._host,
+            port=self._port,
+            local_host=self._notifications_local_host,
+            local_port=self._notifications_local_port
+        )
+
+    def use_cloud_notifications(self) -> None:
+        """
+        Switches to use cloud notifications for device alerts.
+        """
+        self.close_notifications()
+
+        self._notifications = G90CloudNotifications(
+            protocol_factory=lambda: self,
+            upstream_host=self._upstream_host,
+            upstream_port=self._upstream_port,
+            local_host=self._cloud_local_host,
+            local_port=self._cloud_local_port
+        )

@@ -24,8 +24,8 @@ Simulates a G90 device with real network exhanges for tests.
 from __future__ import annotations
 from typing import Optional, Tuple, List, Any, cast, Iterator
 import asyncio
-from asyncio.protocols import DatagramProtocol
-from asyncio.transports import DatagramTransport, BaseTransport
+from asyncio.protocols import DatagramProtocol, Protocol
+from asyncio.transports import DatagramTransport, BaseTransport, Transport
 from asyncio import Future
 import logging
 
@@ -137,6 +137,72 @@ class MockNotificationProtocol(DatagramProtocol):
         return self._done
 
 
+class MockCloudProtocol(Protocol):
+    """
+    asyncio protocol for simulate G90 device notifications over network.
+
+    :param list(bytes) notification_data: List of datagram payloads to simulate
+     being sent from device to client
+    """
+    def __init__(self, cloud_notification_data: bytes):
+        self._cloud_data = cloud_notification_data
+        self._cloud_recv_data: List[bytes] = []
+        self._transport = None
+        self._done = asyncio.get_running_loop().create_future()
+
+    def connection_made(self, transport: BaseTransport) -> None:
+        """
+        Invoked when connection is made to the client and simulated
+        notification is ready to be sent.
+
+        :param transport: asyncio transport instance
+        """
+
+        remote_addr = transport.get_extra_info('peername') or (None, None)
+        _LOGGER.debug(
+            'Sent cloud data %s to %s:%s',
+            self._cloud_data, *remote_addr
+        )
+        cast(Transport, transport).write(self._cloud_data)
+        # self._done.set_result(True)
+
+    def data_received(self, data: bytes) -> None:
+        _LOGGER.debug('Received cloud data %s', data)
+        self._cloud_recv_data.append(data)
+        if not self._done.done():
+            self._done.set_result(True)
+
+    def connection_lost(self, exc: Optional[Exception]) -> None:
+        """
+        Invoked when connection is lost.
+
+        :param _err: Exception object
+        """
+        if exc:
+            self._done.set_exception(exc)
+
+        if not self._done.done():
+            self._done.set_result(True)
+
+    @property
+    def cloud_recv_data(self) -> List[bytes]:
+        """
+        Returns all data received by the simulated device from the client.
+
+        :return: List of datagram paylods received
+        """
+        return self._cloud_recv_data
+
+    @property
+    def is_done(self) -> Future[bool]:
+        """
+        Indicates if sending the notification payload has been completed.
+
+        :return: Completed future if sending has been completed
+        """
+        return self._done
+
+
 class DeviceMock:  # pylint:disable=too-many-instance-attributes
     """
     Simulates G90 responses and notification messages over a real network
@@ -154,12 +220,21 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
      requests
     :param notification_host: The destination client host the notifications
      will be sent to
+    :param cloud_notification_data: List of TCP payloads to simulate being
+     sent from cloud to the client
+    :param cloud_host: The host the simulated cloud endpoint listens on for
+     client requests
+    :param cloud_port: The port the simulated cloud endpoint listens on for
+     client requests
     """
     def __init__(  # pylint:disable=too-many-arguments
         self, data: List[bytes], notification_data: List[bytes],
         device_port: int, notification_port: int,
+        cloud_notification_data: Optional[List[bytes]] = None,
         device_host: str = '127.0.0.1',
         notification_host: str = '127.0.0.1',
+        cloud_host: str = '127.0.0.1',
+        cloud_port: int = 5678
     ):
         self._host = device_host
         self._port = device_port
@@ -169,6 +244,10 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         self._notification_data = iter(notification_data or [])
         self._notification_port = notification_port
         self._notification_host = notification_host
+        self._cloud_data = iter(cloud_notification_data or [])
+        self._cloud_recv_data: List[bytes] = []
+        self._cloud_host = cloud_host
+        self._cloud_port = cloud_port
         _LOGGER.debug(
             'Ports - device: %s, notification: %s',
             self._port, self._notification_port
@@ -225,6 +304,24 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         return self._notification_port
 
     @property
+    def cloud_host(self) -> str:
+        """
+        Returns the host the simulated cloud endpoint listens on.
+
+        :return: Host name or address
+        """
+        return self._cloud_host
+
+    @property
+    def cloud_port(self) -> int:
+        """
+        Returns the port the simulated cloud endpoint listens on.
+
+        :return: Port number
+        """
+        return self._cloud_port
+
+    @property
     def recv_data(self) -> List[bytes]:
         """
         Returns the data received by the simulated device from the client.
@@ -235,6 +332,15 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
             return []
 
         return self._protocol.device_recv_data
+
+    @property
+    def cloud_recv_data(self) -> List[bytes]:
+        """
+        Returns the data received by the simulated device from the client.
+
+        :return: Data received
+        """
+        return self._cloud_recv_data
 
     def stop(self) -> None:
         """
@@ -274,4 +380,36 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         )
         await asyncio.wait([protocol.is_done])
         _LOGGER.debug('Closing UDP notification client')
+        transport.close()
+
+    async def send_next_cloud_packet(self) -> None:
+        """
+        Sends next simulated cloud packet to the client.
+
+        The code uses `asyncio` intentionally to cooperate with async tests.
+        """
+        data = None
+        try:
+            data = next(self._cloud_data)
+        except StopIteration:
+            _LOGGER.info(
+                'No more cloud data to send, skipping'
+            )
+            return
+
+        _LOGGER.debug(
+            'Creating TCP cloud client to %s:%s',
+            self._cloud_host,
+            self._cloud_port
+        )
+
+        loop = asyncio.get_running_loop()
+        transport, protocol = await loop.create_connection(
+            lambda: MockCloudProtocol(data),
+            host=self._cloud_host, port=self._cloud_port
+        )
+        await asyncio.wait([protocol.is_done], timeout=0.1)
+        # pylint:disable=protected-access
+        self._cloud_recv_data = protocol._cloud_recv_data
+        _LOGGER.debug('Closing TCP cloud client')
         transport.close()

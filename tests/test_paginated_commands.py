@@ -3,7 +3,7 @@ Tests for G90PaginatedCommand class
 '''
 import pytest
 
-from pyg90alarm.paginated_cmd import (
+from pyg90alarm.local.paginated_cmd import (
     G90PaginatedCommand,
 )
 from pyg90alarm.exceptions import G90Error

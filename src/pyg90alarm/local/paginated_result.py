@@ -27,7 +27,7 @@ import logging
 from typing import Any, Optional, AsyncGenerator, Iterable, cast
 from dataclasses import dataclass
 from .paginated_cmd import G90PaginatedCommand
-from .const import (
+from ..const import (
     G90Commands,
     CMD_PAGE_SIZE,
 )

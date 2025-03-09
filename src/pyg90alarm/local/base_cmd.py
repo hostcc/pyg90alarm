@@ -30,8 +30,8 @@ from asyncio.protocols import DatagramProtocol
 from asyncio.transports import DatagramTransport, BaseTransport
 from typing import Optional, Tuple, List, Any
 from dataclasses import dataclass
-from .exceptions import (G90Error, G90TimeoutError)
-from .const import G90Commands
+from ..exceptions import (G90Error, G90TimeoutError)
+from ..const import G90Commands
 
 
 _LOGGER = logging.getLogger(__name__)

@@ -11,7 +11,7 @@ import pytest
 from pyg90alarm.alarm import (
     G90Alarm,
 )
-from pyg90alarm.host_info import (
+from pyg90alarm.local.host_info import (
     G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
 )
 from pyg90alarm.entities.sensor import (
@@ -21,13 +21,13 @@ from pyg90alarm.entities.device import (
     G90Device,
 )
 
-from pyg90alarm.host_status import (
+from pyg90alarm.local.host_status import (
     G90HostStatus,
 )
-from pyg90alarm.user_data_crc import (
+from pyg90alarm.local.user_data_crc import (
     G90UserDataCRC,
 )
-from pyg90alarm.config import (
+from pyg90alarm.local.config import (
     G90AlertConfigFlags,
 )
 from pyg90alarm.const import (
@@ -429,10 +429,10 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
     sensor = [x for x in sensors if x.index == 10 and x.name == 'Remote']
     sensor[0].state_callback = lambda *args: future.set_result(True)
 
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
-    g90.close_device_notifications()
+    g90.close_notifications()
     # Once passed this implies the G90Alarm sensor callback works as
     # expected, as it updates the occupancy states of the sensor
     assert sensor[0].occupancy
@@ -475,7 +475,7 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
     low_battery_cb = MagicMock()
     g90.low_battery_callback = low_battery_cb
 
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
 
@@ -493,7 +493,7 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
     # Verify the low battery state is reset upon sensor activity
     assert sensor[0].is_low_battery is False
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(
@@ -528,7 +528,7 @@ async def test_sensor_door_open_when_arming_callback(
     door_open_when_arming_cb = MagicMock()
     g90.door_open_when_arming_callback = door_open_when_arming_cb
 
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
 
@@ -547,7 +547,7 @@ async def test_sensor_door_open_when_arming_callback(
     # Verify the door open when arming state is reset upon disarming
     assert sensor[0].is_door_open_when_arming is False
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(
@@ -573,10 +573,10 @@ async def test_armdisarm_callback(mock_device: DeviceMock) -> None:
                    notifications_local_host=mock_device.notification_host,
                    notifications_local_port=mock_device.notification_port)
     g90.armdisarm_callback = armdisarm_cb
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
-    g90.close_device_notifications()
+    g90.close_notifications()
     armdisarm_cb.assert_called_once_with(1)
 
 
@@ -609,7 +609,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
 
     # Simulate two device alerts - for opening (this one) and then closing the
     # door (see below)
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     # Corresponding sensor should turn to occupied (=door opened)
@@ -627,7 +627,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
     sensors = await g90.sensors
     assert not sensors[0].occupancy
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(
@@ -664,7 +664,7 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     sensors[0].extra_data = 'Dummy extra data'
 
     g90.alarm_callback = alarm_cb
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     # Simulate three alarm notifications - for sensor with extra data,
     # another for sensor with no extra data, and third for non-existent
     # sensor
@@ -693,7 +693,7 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     # Simulate callback is called with no data
     alarm_cb.assert_called_once_with(102, 'No Room', None)
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(
@@ -731,7 +731,7 @@ async def test_sensor_tamper_callback(
     tamper_cb = MagicMock()
     g90.tamper_callback = tamper_cb
 
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
 
@@ -750,7 +750,7 @@ async def test_sensor_tamper_callback(
     # Verify the sensor tampered state is reset upon disarming
     assert sensor[0].is_tampered is False
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(
@@ -784,7 +784,7 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
     g90.sos_callback = sos_cb
     g90.alarm_callback = alarm_cb
 
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future_sos, future_alarm], timeout=0.1)
     sos_cb.assert_called_once_with(1, 'Host SOS', True)
@@ -806,7 +806,7 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
     # only for SOS initiated by the remote
     button_cb.assert_called_once_with(11, 'Remote', G90RemoteButtonStates.SOS)
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(
@@ -836,7 +836,7 @@ async def test_remote_button_callback(mock_device: DeviceMock) -> None:
     g90.sensor_callback = sensor_cb
     g90.remote_button_press_callback = button_cb
 
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future_sensor, future_button], timeout=0.1)
     sensor_cb.assert_called_once_with(11, 'Remote', True)
@@ -844,7 +844,7 @@ async def test_remote_button_callback(mock_device: DeviceMock) -> None:
         11, 'Remote', G90RemoteButtonStates.ARM_AWAY
     )
 
-    g90.close_device_notifications()
+    g90.close_notifications()
 
 
 @pytest.mark.g90device(sent_data=[
@@ -966,10 +966,10 @@ async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
                    notifications_local_port=mock_device.notification_port)
     g90.armdisarm_callback = armdisarm_cb
     g90.sms_alert_when_armed = True
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
-    g90.close_device_notifications()
+    g90.close_notifications()
     assert set([
         b'ISTART[117,117,""]IEND\0',
         b'ISTART[117,117,""]IEND\0',
@@ -1005,10 +1005,10 @@ async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
                    notifications_local_port=mock_device.notification_port)
     g90.armdisarm_callback = armdisarm_cb
     g90.sms_alert_when_armed = True
-    await g90.listen_device_notifications()
+    await g90.listen_notifications()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
-    g90.close_device_notifications()
+    g90.close_notifications()
     assert set([
         b'ISTART[117,117,""]IEND\0',
         b'ISTART[117,117,""]IEND\0',

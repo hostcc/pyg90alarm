@@ -5,7 +5,7 @@ from unittest.mock import patch, DEFAULT
 import re
 import pytest
 
-from pyg90alarm.base_cmd import (
+from pyg90alarm.local.base_cmd import (
     G90BaseCommand,
 )
 from pyg90alarm.exceptions import (G90Error, G90TimeoutError)

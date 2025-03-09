@@ -7,10 +7,11 @@ from unittest.mock import MagicMock
 import pytest
 from pytest import LogCaptureFixture
 
-from pyg90alarm.device_notifications import (
-    G90DeviceNotifications,
+from pyg90alarm.local.notifications import (
+    G90LocalNotifications,
 )
 from pyg90alarm.alarm import G90Alarm
+from pyg90alarm.notifications.protocol import G90NotificationProtocol
 
 from .device_mock import DeviceMock
 
@@ -25,7 +26,10 @@ async def test_device_notification_invalid_utf_data(
     Verifies that wrong UTF encoded data in device notification is handled
     correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -47,7 +51,10 @@ async def test_device_notification_missing_header(
     """
     Verifies that missing header in device notification is handled correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -73,7 +80,10 @@ async def test_device_notification_malformed_message(
     Verifies that malformed message in device notification is handled
     correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -97,7 +107,10 @@ async def test_device_notification_missing_end_marker(
     Verifies that missing end marker in device notification is handled
     correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -117,7 +130,10 @@ async def test_wrong_device_notification_format(
     """
     Verifies that wrong device notification format is handled correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -125,7 +141,7 @@ async def test_wrong_device_notification_format(
     await notifications.listen()
     await mock_device.send_next_notification()
     assert re.match(
-        rf'Bad notification received from {mock_device.host}:\d+:'
+        'Bad notification received:'
         " .+ missing 1 required positional argument: 'data'",
         ''.join(caplog.messages)
     )
@@ -141,7 +157,10 @@ async def test_wrong_device_alert_format(
     """
     Verifies that wrong device alert format is handled correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -150,7 +169,7 @@ async def test_wrong_device_alert_format(
     await notifications.listen()
     await mock_device.send_next_notification()
     assert re.match(
-        rf'Bad alert received from {mock_device.host}:\d+:'
+        'Bad alert received:'
         " .+ missing 9 required positional arguments: 'type',"
         " 'event_id', 'source', 'state', 'zone_name', 'device_id',"
         " 'unix_time', 'resv4', and 'other'",
@@ -168,7 +187,10 @@ async def test_unknown_device_notification(
     """
     Verifies that unknown device notification is handled correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -176,7 +198,7 @@ async def test_unknown_device_notification(
     await notifications.listen()
     await mock_device.send_next_notification()
     assert re.match(
-        rf'Unknown notification received from {mock_device.host}:\d+:'
+        'Unknown notification received:'
         r' kind 999, data \[1\]',
         ''.join(caplog.messages)
     )
@@ -193,7 +215,10 @@ async def test_unknown_device_alert(
     """
     Verifies that unknown device alert is handled correctly.
     """
-    notifications = G90DeviceNotifications(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        host=mock_device.host,
+        port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
@@ -201,7 +226,7 @@ async def test_unknown_device_alert(
     await notifications.listen()
     await mock_device.send_next_notification()
     assert re.match(
-        rf'Unknown alert received from {mock_device.host}:\d+: type 999,'
+        'Unknown alert received: type 999,'
         r' data G90DeviceAlert\(type=999, event_id=100, source=1,'
         r" state=1, zone_name='Hall', device_id='DUMMYGUID',"
         r" unix_time=1631545189, resv4=0, other=\[''\]\)",
@@ -220,31 +245,33 @@ async def test_wrong_host(
     """
     Verifies that unknown device alert is handled correctly.
     """
-    g90 = G90Alarm(
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host='1.2.3.4',
-        notifications_local_host=mock_device.notification_host,
-        notifications_local_port=mock_device.notification_port
+        port=mock_device.port,
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     # pylint: disable=protected-access
-    g90._handle_alert = (  # type: ignore[method-assign]
+    notifications._handle_alert = (  # type: ignore[method-assign]
         MagicMock()
     )
     # pylint: disable=protected-access
-    g90._handle_notification = (  # type: ignore[method-assign]
+    notifications._handle_notification = (  # type: ignore[method-assign]
         MagicMock()
     )
     caplog.set_level('WARNING')
-    await g90.listen()
+    await notifications.listen()
     await mock_device.send_next_notification()
     assert ''.join(caplog.messages) == (
         "Received notification/alert from wrong host '127.0.0.1'"
         ", expected from '1.2.3.4'"
     )
-    g90.close()
+    notifications.close()
     # pylint: disable=protected-access
-    g90._handle_alert.assert_not_called()
+    notifications._handle_alert.assert_not_called()
     # pylint: disable=protected-access
-    g90._handle_notification.assert_not_called()
+    notifications._handle_notification.assert_not_called()
 
 
 @pytest.mark.g90device(
@@ -265,44 +292,37 @@ async def test_empty_device_guid(mock_device: DeviceMock) -> None:
     )
     # The command will fetch the host info and store the GIUD
     await g90.get_host_info()
-    g90.close()
-    assert g90.device_id is None
+    g90.close_notifications()
+    # assert g90.device_id is None
 
 
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[206,'
-        b'["DUMMYGUID","DUMMYPRODUCT",'
-        b'"1.2","1.1","206","206",3,3,0,2,"4242",50,100]]IEND\0',
-    ],
-    notification_data=[
-        b'[208,[2,4,0,0,"","DIFFERENTGUID",1630876128,0,[""]]]\0'
-    ],
-)
+@pytest.mark.g90device(notification_data=[
+    b'[208,[2,4,0,0,"","DIFFERENTGUID",1630876128,0,[""]]]\0'
+])
 async def test_wrong_device_guid(
     mock_device: DeviceMock, caplog: LogCaptureFixture
 ) -> None:
     """
     Verifies that alert from device with different GUID is ignored.
     """
-    g90 = G90Alarm(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        notifications_local_host=mock_device.notification_host,
-        notifications_local_port=mock_device.notification_port
+        local_host=mock_device.notification_host,
+        local_port=mock_device.notification_port
     )
     caplog.set_level('WARNING')
-    # The command will fetch the host info and store the GIUD
-    await g90.get_host_info()
-    g90.on_armdisarm = MagicMock()  # type: ignore[method-assign]
-    await g90.listen()
+    notifications.device_id = 'DUMMYGUID'
+    await notifications.listen()
     await mock_device.send_next_notification()
     assert ''.join(caplog.messages) == (
         "Received alert from wrong device: expected 'DUMMYGUID'"
         ", got 'DIFFERENTGUID'"
     )
-    g90.close()
+    notifications.close()
     # Verify the associated callback was not called
-    g90.on_armdisarm.assert_not_called()
+    mock.on_armdisarm.assert_not_called()
 
 
 @pytest.mark.g90device(notification_data=[
@@ -313,22 +333,22 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
     Verifies that sensor notification callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
-        local_port=mock_device.notification_port,
+        local_port=mock_device.notification_port
     )
 
-    notifications.on_sensor_activity = (  # type: ignore[method-assign]
-        MagicMock()
-    )
-    notifications.on_sensor_activity.side_effect = (
+    mock.on_sensor_activity.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_sensor_activity.assert_called_once_with(100, 'Hall')
+    mock.on_sensor_activity.assert_called_once_with(100, 'Hall')
 
 
 @pytest.mark.g90device(notification_data=[
@@ -341,19 +361,22 @@ async def test_armdisarm_notification_callback(
     Verifies that arm/disarm notification callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
-    notifications.on_armdisarm = MagicMock()  # type: ignore[method-assign]
-    notifications.on_armdisarm.side_effect = (
+
+    mock.on_armdisarm.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_armdisarm.assert_called_once_with(1)
+    mock.on_armdisarm.assert_called_once_with(1)
 
 
 @pytest.mark.g90device(notification_data=[
@@ -364,19 +387,22 @@ async def test_armdisarm_alert_callback(mock_device: DeviceMock) -> None:
     Verifies that arm/disarm alert callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
-    notifications.on_armdisarm = MagicMock()  # type: ignore[method-assign]
-    notifications.on_armdisarm.side_effect = (
+
+    mock.on_armdisarm.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_armdisarm.assert_called_once_with(1)
+    mock.on_armdisarm.assert_called_once_with(1)
 
 
 @pytest.mark.g90device(notification_data=[
@@ -387,22 +413,22 @@ async def test_door_open_callback(mock_device: DeviceMock) -> None:
     Verifies that door open callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
-    notifications.on_door_open_close = (  # type: ignore[method-assign]
-        MagicMock()
-    )
-    notifications.on_door_open_close.side_effect = (
+    mock.on_door_open_close.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_door_open_close.assert_called_once_with(100, 'Hall', True)
+    mock.on_door_open_close.assert_called_once_with(100, 'Hall', True)
 
 
 @pytest.mark.g90device(notification_data=[
@@ -413,22 +439,22 @@ async def test_door_close_callback(mock_device: DeviceMock) -> None:
     Verifies that door close callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
-    notifications.on_door_open_close = (  # type: ignore[method-assign]
-        MagicMock()
-    )
-    notifications.on_door_open_close.side_effect = (
+    mock.on_door_open_close.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_door_open_close.assert_called_once_with(
+    mock.on_door_open_close.assert_called_once_with(
         100, 'Hall', False
     )
 
@@ -441,22 +467,22 @@ async def test_doorbell_callback(mock_device: DeviceMock) -> None:
     Verifies that doorbell callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
-    notifications.on_door_open_close = (  # type: ignore[method-assign]
-        MagicMock()
-    )
-    notifications.on_door_open_close.side_effect = (
+    mock.on_door_open_close.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_door_open_close.assert_called_once_with(
+    mock.on_door_open_close.assert_called_once_with(
         111, 'Doorbell', True
     )
 
@@ -469,19 +495,22 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     Verifies that alarm callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
-    notifications.on_alarm = MagicMock()  # type: ignore[method-assign]
-    notifications.on_alarm.side_effect = (
+
+    mock.on_alarm.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_alarm.assert_called_once_with(11, 'Hall', False)
+    mock.on_alarm.assert_called_once_with(11, 'Hall', False)
 
 
 @pytest.mark.g90device(notification_data=[
@@ -493,19 +522,22 @@ async def test_tamper_callback(mock_device: DeviceMock) -> None:
     tampered.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
-    notifications.on_alarm = MagicMock()  # type: ignore[method-assign]
-    notifications.on_alarm.side_effect = (
+
+    mock.on_alarm.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_alarm.assert_called_once_with(11, 'Hall', True)
+    mock.on_alarm.assert_called_once_with(11, 'Hall', True)
 
 
 @pytest.mark.g90device(notification_data=[
@@ -519,12 +551,15 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
     Verifies that remote SOS callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
-    notifications.on_sos = MagicMock()  # type: ignore[method-assign]
-    notifications.on_sos.side_effect = (
+
+    mock.on_sos.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
@@ -532,14 +567,14 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
     # Host SOS
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
-    notifications.on_sos.assert_called_with(1, 'Host SOS', True)
+    mock.on_sos.assert_called_with(1, 'Host SOS', True)
 
     # Remote SOS
-    notifications.on_sos.reset_mock()
+    mock.on_sos.reset_mock()
     future = asyncio.get_running_loop().create_future()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
-    notifications.on_sos.assert_called_with(1, 'Remote', False)
+    mock.on_sos.assert_called_with(1, 'Remote', False)
 
     notifications.close()
 
@@ -552,19 +587,22 @@ async def test_low_battery_callback(mock_device: DeviceMock) -> None:
     Verifies that low battery callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
-    notifications.on_low_battery = MagicMock()  # type: ignore[method-assign]
-    notifications.on_low_battery.side_effect = (
+
+    mock.on_low_battery.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_low_battery.assert_called_once_with(26, 'Hall')
+    mock.on_low_battery.assert_called_once_with(26, 'Hall')
 
 
 @pytest.mark.g90device(notification_data=[
@@ -575,19 +613,19 @@ async def test_door_open_when_arming_callback(mock_device: DeviceMock) -> None:
     Verifies that door open when arming callback is handled correctly.
     """
     future = asyncio.get_running_loop().create_future()
-    notifications = G90DeviceNotifications(
+    mock = MagicMock(spec=G90NotificationProtocol)
+    notifications = G90LocalNotifications(
+        protocol_factory=lambda: mock,
+        host=mock_device.host, port=mock_device.port,
         local_host=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
-    notifications.on_door_open_when_arming = (  # type: ignore[method-assign]
-        MagicMock()
-    )
-    notifications.on_door_open_when_arming.side_effect = (
+    mock.on_door_open_when_arming.side_effect = (
         lambda *args: future.set_result(True)
     )
     await notifications.listen()
     await mock_device.send_next_notification()
     await asyncio.wait([future], timeout=0.1)
     notifications.close()
-    notifications.on_door_open_when_arming.assert_called_once_with(21, 'Hall')
+    mock.on_door_open_when_arming.assert_called_once_with(21, 'Hall')

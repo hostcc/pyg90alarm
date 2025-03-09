@@ -3,10 +3,10 @@ Tests for G90Discovery class
 """
 import pytest
 from pytest import LogCaptureFixture
-from pyg90alarm.discovery import (
+from pyg90alarm.local.discovery import (
     G90Discovery,
 )
-from pyg90alarm.targeted_discovery import (
+from pyg90alarm.local.targeted_discovery import (
     G90TargetedDiscovery,
 )
 from pyg90alarm.const import (
