@@ -280,7 +280,8 @@ class MockCloudProtocol(Protocol, MockDeviceProtocolBase):
 
 class MockCloudUpstreamProtocol(Protocol, MockDeviceProtocolBase):
     """
-    asyncio protocol for simulate G90 cloud notifications (as if coming from upstream service).
+    asyncio protocol for simulate G90 cloud notifications (as if coming from
+    upstream service).
 
     :param list(bytes) notification_data: List of datagram payloads to simulate
      being sent from cloud to client
@@ -376,7 +377,8 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
     :param cloud_port: The port the simulated cloud endpoint listens on for
      client requests
     :param cloud_upstream_data: List of TCP payloads to simulate being sent
-     from cloud to the client (currently unused, intended to simulate cloud-initiated interactions)
+     from cloud to the client (currently unused, intended to simulate
+     cloud-initiated interactions)
     :param cloud_upstream_host: The host the simulated cloud upstream
      endpoint listens on for client requests
     :param cloud_upstream_port: The port the simulated cloud upstream
