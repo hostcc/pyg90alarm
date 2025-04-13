@@ -46,7 +46,7 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
     command to be performed first, one that fetches device GUID and then stores
     it using :attr:`.device_id` (e.g. :meth:`G90Alarm.get_host_info`).
     """
-    def __init__(
+    def __init__(  # pylint:disable=too-many-arguments
         self, protocol_factory: Callable[[], G90NotificationProtocol],
         port: int, host: str, local_port: int, local_host: str,
     ):
@@ -82,6 +82,8 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
                 addr[0], self._host
             )
             return
+
+        self.set_last_device_packet_time()
 
         _LOGGER.debug('Received device message from %s:%s: %s',
                       addr[0], addr[1], data)
