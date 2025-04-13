@@ -22,8 +22,11 @@
 Performs runtime configuration and exposes custom fixtures for Pytest.
 """
 from __future__ import annotations
-from typing import AsyncIterator, Callable
+from typing import AsyncIterator, Callable, Any
+import asyncio
+from unittest.mock import MagicMock, DEFAULT
 import pytest
+from pyg90alarm.notifications.base import G90NotificationsBase
 from .device_mock import DeviceMock
 
 
@@ -57,6 +60,7 @@ async def mock_device(
     data = marker.get('sent_data', [])
     notification_data = marker.get('notification_data', [])
     cloud_notification_data = marker.get('cloud_notification_data', [])
+    cloud_upstream_data = marker.get('cloud_upstream_data', [])
 
     # Allocate unused ports to listen for client requests on, and to send
     # notification messages to, respectively
@@ -65,12 +69,58 @@ async def mock_device(
     device_port = unused_udp_port_factory()
     notification_port = unused_udp_port_factory()
     proxy_port = unused_tcp_port_factory()
+    upstream_port = unused_tcp_port_factory()
     device = DeviceMock(
         data, notification_data,
         device_port=device_port, notification_port=notification_port,
         cloud_port=proxy_port,
-        cloud_notification_data=cloud_notification_data
+        cloud_notification_data=cloud_notification_data,
+        cloud_upstream_port=upstream_port,
+        cloud_upstream_data=cloud_upstream_data
     )
     await device.start()
     yield device
-    device.stop()
+    await device.stop()
+
+
+def data_receive_awaitable(obj: G90NotificationsBase) -> asyncio.Future[bool]:
+    """
+    Creates an awaitable future that resolves when data is received by
+    notification handler.
+
+    This function wraps either the data_received or datagram_received method of
+    the provided notification handler object with a mock that will resolve the
+    returned future when called.
+
+    :param obj: The notification handler object whose receive method will be
+      wrapped
+    :return: Future that resolves when data is received
+    :raises ValueError: If no suitable method to wrap is found on the object
+    """
+    method = None
+    method_name = None
+
+    if hasattr(obj, 'data_received'):
+        method = obj.data_received
+        method_name = 'data_received'
+    if hasattr(obj, 'datagram_received'):
+        method = obj.datagram_received
+        method_name = 'datagram_received'
+    if not method or not method_name:
+        raise ValueError('No method found to wrap')
+
+    future = asyncio.get_running_loop().create_future()
+
+    def wrapper(*_args: Any) -> DEFAULT:
+        """
+        Wrapper function that sets the future's result when called.
+
+        :param _args: Arguments passed to the original method (unused)
+        :return: Return value from unittest.mock.DEFAULT
+        """
+        future.set_result(True)
+        # Signal that the original method should be called
+        return DEFAULT
+
+    setattr(obj, method_name, MagicMock(wraps=method, side_effect=wrapper))
+    return future
