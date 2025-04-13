@@ -19,12 +19,18 @@
 # SOFTWARE.
 
 """
-tbd
+Cloud message implementations for G90 alarm systems.
+
+This module provides concrete message classes for cloud communication with G90
+alarm systems, including ping messages, discovery messages, status change
+notifications, and alarm notifications.
 """
 from typing import List, Type, cast, ClassVar, Any, TypeVar
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
+
+from pyg90alarm.cloud.protocol import G90CloudMessageContext
 
 from .protocol import (
     G90CloudMessage, G90CloudStatusChangeReqMessageBase, G90CloudHeader
@@ -45,7 +51,16 @@ CloudMessageT = TypeVar('CloudMessageT', bound='G90CloudMessage')
 
 def cloud_message(obj: Type[CloudMessageT]) -> Type[CloudMessageT]:
     """
-    tbd
+    Register a cloud message class.
+
+    This decorator registers the cloud message class in the global registry
+    and ensures there are no duplicate registrations for the same command/
+    source/destination combination.
+
+    :param obj: The cloud message class to register
+    :return: The registered cloud message class
+    :raises ValueError: If a class with the same command/source/destination is
+     already registered
     """
     for cls in CLOUD_MESSAGE_CLASSES:
         if cls.matches(obj):
@@ -62,7 +77,9 @@ def cloud_message(obj: Type[CloudMessageT]) -> Type[CloudMessageT]:
 @dataclass
 class G90CloudPingRespMessage(G90CloudMessage):
     """
-    tbd
+    Response message for ping requests.
+
+    A message sent in response to a ping request from the device.
     """
     _format = ''
     _command = G90CloudCommand.HELLO
@@ -75,7 +92,11 @@ class G90CloudPingRespMessage(G90CloudMessage):
 @dataclass
 class G90CloudPingReqMessage(G90CloudMessage):
     """
-    Every minute.
+    Ping request message sent by the device to the cloud server.
+
+    This message is sent every minute as a keepalive mechanism.
+
+    :attr _responses: The possible response message classes
     """
     _format = ''
     _command = G90CloudCommand.HELLO
@@ -88,7 +109,10 @@ class G90CloudPingReqMessage(G90CloudMessage):
 @dataclass
 class G90CloudHelloAckMessage(G90CloudMessage):
     """
-    tbd
+    Acknowledgement message sent by the cloud server in response to a hello
+    message.
+
+    This message confirms receipt of the hello request from the device.
     """
     _format = '<B'
     _command = G90CloudCommand.HELLO_ACK
@@ -101,7 +125,7 @@ class G90CloudHelloAckMessage(G90CloudMessage):
 @dataclass
 class G90CloudHelloRespMessage(G90CloudMessage):
     """
-    tbd
+    Response message from the cloud server to a hello request from a device.
     """
     _format = '<B'
     _command = G90CloudCommand.HELLO
@@ -114,14 +138,23 @@ class G90CloudHelloRespMessage(G90CloudMessage):
 @dataclass
 class G90CloudHelloInfoRespMessage(G90CloudMessage):
     """
-    tbd
+    Information response message from the cloud server to a device's hello
+    request.
+
+    This message contains information about the port the device should use for
+    communication.
     """
     _format = '<i'
     _command = G90CloudCommand.HELLO_INFO
     _source = G90CloudDirection.CLOUD
     _destination = G90CloudDirection.DEVICE
 
-    port: int = 0x7202  # 29186, could be 0x6502 = 25858
+    # Actual port is set from context in `__post_init__()` method below
+    port: int = 0
+
+    def __post_init__(self, context: G90CloudMessageContext) -> None:
+        super().__post_init__(context)
+        self.port = context.local_port
 
 
 @cloud_message
@@ -129,7 +162,10 @@ class G90CloudHelloInfoRespMessage(G90CloudMessage):
 # pylint:disable=too-many-instance-attributes
 class G90CloudHelloReqMessage(G90CloudMessage):
     """
-    Every minute.
+    Hello request message sent by the device to the cloud server.
+
+    This message is sent every minute as part of the device's heartbeat
+    mechanism.
     """
     _format = '<15sx4i3sx6i'
     _command = G90CloudCommand.HELLO
@@ -140,7 +176,7 @@ class G90CloudHelloReqMessage(G90CloudMessage):
         G90CloudHelloInfoRespMessage
     ]
 
-    guid: str
+    _guid: bytes
     flag1: int      # Typically is 1
     flag2: int      # Typically is 0
     flag3: int      # Typically is 2
@@ -153,35 +189,57 @@ class G90CloudHelloReqMessage(G90CloudMessage):
     flag9: int      # Typically is 30 (0x1E)
     flag10: int     # Typically is 30 (0x1E)
 
+    @property
+    def guid(self) -> str:
+        """
+        Get the device GUID as a string.
+
+        :return: The device's GUID decoded from bytes to string
+        """
+        return self._guid.decode()
+
 
 @dataclass
 class G90CloudHelloDiscoveryRespMessage(G90CloudMessage):
     """
-    tbd
+    Discovery response message from the cloud to the device.
+
+    This message contains information about the cloud server's IP, port, and
+    timestamp.
     """
     _format = '<16s4i'
     _command = G90CloudCommand.HELLO
     _source = G90CloudDirection.CLOUD_DISCOVERY
     _destination = G90CloudDirection.DEVICE
 
+    # Simulated cloud response always contains known IP address of the vendor's
+    # cloud service - that is, all interactions between alarm panel and
+    # simulated cloud service will use same IP address for unification (i.e.
+    # traffic redicrection will always be used to divert panel's cloud traffic
+    # to the simulated cloud service)
     ip_addr: bytes = REMOTE_CLOUD_HOST.encode()
     flag2: int = 0
     flag3: int = 0
     port: int = REMOTE_CLOUD_PORT
     _timestamp: int = 0  # unix timestamp
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
+    def __post_init__(self, context: G90CloudMessageContext) -> None:
+        super().__post_init__(context)
 
         self._timestamp = int(datetime.now(timezone.utc).timestamp())
         _LOGGER.debug(
             "%s: Timestamp added: %s", type(self).__name__, str(self)
         )
+        self.ip_addr = context.cloud_host.encode()
+        self.port = context.cloud_port
 
     @property
     def timestamp(self) -> datetime:
         """
-        tbd
+        Get the timestamp as a datetime object.
+
+        :return: The message timestamp converted to a datetime object with UTC
+         timezone
         """
         return datetime.fromtimestamp(
             self._timestamp, tz=timezone.utc
@@ -200,7 +258,10 @@ class G90CloudHelloDiscoveryRespMessage(G90CloudMessage):
 # pylint:disable=too-many-instance-attributes
 class G90CloudHelloDiscoveryReqMessage(G90CloudMessage):
     """
-    tbd
+    Hello discovery request message sent by the device.
+
+    This message is used during the device discovery process to locate the
+    cloud server.
     """
     _format = '<15sx4i3sx3i'
     _command = G90CloudCommand.HELLO
@@ -208,7 +269,7 @@ class G90CloudHelloDiscoveryReqMessage(G90CloudMessage):
     _destination = G90CloudDirection.CLOUD
     _responses = [G90CloudHelloDiscoveryRespMessage]
 
-    guid: str
+    _guid: bytes
     flag1: int      # Typically is 0
     flag2: int      # Typically is 0
     flag3: int      # Typically is 1
@@ -218,13 +279,25 @@ class G90CloudHelloDiscoveryReqMessage(G90CloudMessage):
     flag6: int      # Typically is 0x06060030
     flag7: int      # Typically is 0x07070707
 
+    @property
+    def guid(self) -> str:
+        """
+        Get the device GUID as a string.
+
+        :return: The device's GUID decoded from bytes to string
+        """
+        return self._guid.decode()
+
 
 @cloud_message
 @dataclass
 # pylint:disable=too-many-instance-attributes
 class G90CloudStatusChangeReqMessage(G90CloudStatusChangeReqMessageBase):
     """
-    tbd
+    Status change request message from the device to the cloud.
+
+    This message is sent when the device's status changes, such as arming or
+    disarming.
     """
     # 68x are typically zeros, while 34x is some garbage from previous
     # notification message (0x22) with its head overwritten with old/new status
@@ -242,17 +315,22 @@ class G90CloudStatusChangeReqMessage(G90CloudStatusChangeReqMessageBase):
     @property
     def state(self) -> G90AlertStateChangeTypes:
         """
-        tbd
+        Get the state change type.
+
+        :return: The alert state change type
         """
         return G90AlertStateChangeTypes(self._state)
 
     @property
     def as_device_alert(self) -> G90DeviceAlert:
         """
-        tbd
+        Convert the message to a device alert object.
+
+        :return: A G90DeviceAlert object constructed from the message
+         properties
         """
         return G90DeviceAlert(
-            device_id='',
+            device_id=self._context.device_id or '',
             state=self.state,
             event_id=self.state,
             zone_name='',
@@ -278,7 +356,10 @@ class G90CloudStatusChangeReqMessage(G90CloudStatusChangeReqMessageBase):
 # pylint:disable=too-many-instance-attributes
 class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
     """
-    tbd
+    Status change sensor request message from the device to the cloud.
+
+    This message is sent when a sensor's status changes, such as when motion is
+    detected or a door/window is opened.
     """
     _format = '<4B32si68x'
     _command = G90CloudCommand.STATUS_CHANGE
@@ -296,31 +377,41 @@ class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
     @property
     def sensor_type(self) -> G90SensorTypes:
         """
-        tbd
+        Get the sensor type.
+
+        :return: The type of the sensor that triggered the event
         """
         return G90SensorTypes(self._sensor_type)
 
     @property
     def sensor_state(self) -> G90AlertStates:
         """
-        tbd
+        Get the sensor state.
+
+        :return: The state of the sensor that triggered the event
         """
         return G90AlertStates(self._sensor_state)
 
     @property
     def sensor(self) -> str:
         """
-        tbd
+        Get the sensor name as a string.
+
+        :return: The sensor name decoded from bytes with null characters
+         removed
         """
         return self._sensor.decode().rstrip('\x00')
 
     @property
     def as_device_alert(self) -> G90DeviceAlert:
         """
-        tbd
+        Convert the message to a device alert object.
+
+        :return: A G90DeviceAlert object constructed from the message
+         properties
         """
         return G90DeviceAlert(
-            device_id='',
+            device_id=self._context.device_id or '',
             state=self.sensor_state,
             event_id=cast(G90AlertStateChangeTypes, self.sensor_id),
             zone_name=self.sensor,
@@ -349,7 +440,10 @@ class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
 # pylint:disable=too-many-instance-attributes
 class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
     """
-    tbd
+    Status change alarm request message from the device to the cloud.
+
+    This message is sent when an alarm is triggered on the device, such as when
+    an intrusion is detected or when the panic button is pressed.
     """
     _format = '<4B32si68x'
     _command = G90CloudCommand.STATUS_CHANGE
@@ -367,31 +461,41 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
     @property
     def sensor_state(self) -> G90AlertStates:
         """
-        tbd
+        Get the sensor state for the alarm event.
+
+        :return: The state of the sensor that triggered the alarm
         """
         return G90AlertStates(self._sensor_state)
 
     @property
     def sensor(self) -> str:
         """
-        tbd
+        Get the sensor name as a string.
+
+        :return: The sensor name decoded from bytes with null characters
+         removed
         """
         return self._sensor.decode().rstrip('\x00')
 
     @property
     def sensor_type(self) -> G90SensorTypes:
         """
-        tbd
+        Get the sensor type for the alarm event.
+
+        :return: The type of sensor that triggered the alarm
         """
         return G90SensorTypes(self._sensor_type)
 
     @property
     def as_device_alert(self) -> G90DeviceAlert:
         """
-        tbd
+        Convert the message to a device alert object.
+
+        :return: A G90DeviceAlert object constructed from the message
+         properties
         """
         return G90DeviceAlert(
-            device_id='',
+            device_id=self._context.device_id or '',
             state=self.sensor_state,
             event_id=cast(G90AlertStateChangeTypes, self.sensor_id),
             zone_name=self.sensor,
@@ -420,7 +524,10 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
 @dataclass
 class G90CloudNotificationMessage(G90CloudMessage):
     """
-    tbd
+    Notification message from the device to the cloud server.
+
+    This message carries notification data from the device that may include
+    sensor data or other information.
     """
     _format = ''
     _command = G90CloudCommand.NOTIFICATION
@@ -430,15 +537,12 @@ class G90CloudNotificationMessage(G90CloudMessage):
     @property
     def as_notification_message(self) -> bytes:
         """
-        tbd
-        """
-        notification_message = self.header.payload[self.size():]
-        _LOGGER.debug(
-            "%s: Unpacked notification message: %s",
-            type(self).__name__, notification_message.decode()
-        )
+        Extract the notification message payload.
 
-        return notification_message
+        :return: The raw notification message bytes extracted from the header
+         payload
+        """
+        return self.header.payload[self.size():]
 
     def __str__(self) -> str:
         return (
@@ -452,7 +556,9 @@ class G90CloudNotificationMessage(G90CloudMessage):
 @dataclass
 class G90CloudCmdRespMessage(G90CloudMessage):
     """
-    Every minute.
+    Command response message sent by the device.
+
+    This message contains command and sequence information.
     """
     _format = '<HiHi2H'
     _command = G90CloudCommand.HELLO
@@ -470,15 +576,11 @@ class G90CloudCmdRespMessage(G90CloudMessage):
     @property
     def body(self) -> bytes:
         """
-        tbd
-        """
-        body = self.header.payload[self.size():]
-        _LOGGER.debug(
-            "%s: Unpacked response: %s",
-            type(self).__name__, body.decode()
-        )
+        Extract the response body payload.
 
-        return body
+        :return: The raw response body bytes extracted from the header payload
+        """
+        return self.header.payload[self.size():]
 
     def __str__(self) -> str:
         return (
