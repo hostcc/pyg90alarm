@@ -127,14 +127,12 @@ class G90NotificationsBase:
         # ancestor class).
         self._device_id: Optional[str] = None
         self._protocol = protocol_factory()
-        self._last_packet_time: Optional[datetime] = None
+        self._last_device_packet_time: Optional[datetime] = None
+        self._last_upstream_packet_time: Optional[datetime] = None
 
     def _handle_notification(
         self, notification: G90Notification
     ) -> None:
-        self._last_packet_time = datetime.now(tz=timezone.utc)
-        _LOGGER.debug('Last packet time: %s', self.last_packet_time)
-
         # Sensor activity notification
         if notification.kind == G90NotificationTypes.SENSOR_ACTIVITY:
             g90_zone_info = G90ZoneInfo(*notification.data)
@@ -224,9 +222,6 @@ class G90NotificationsBase:
     ) -> None:
         handled = False
 
-        self._last_packet_time = datetime.now(tz=timezone.utc)
-        _LOGGER.debug('Last packet time: %s', self.last_packet_time)
-
         # Stop processing when alert is received from the device with different
         # GUID (if enabled)
         if (
@@ -302,6 +297,7 @@ class G90NotificationsBase:
                 alert.type, alert
             )
 
+    # pylint:disable=too-many-return-statements
     def handle(self, data: bytes) -> None:
         """
         Invoked when message is received from the device.
@@ -364,7 +360,7 @@ class G90NotificationsBase:
         """
         return self._transport is not None
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """
         Closes the listener.
         """
@@ -395,9 +391,52 @@ class G90NotificationsBase:
 
         self._device_id = device_id
 
+    def clear_device_id(self) -> None:
+        """
+        Clears the device ID.
+        """
+        self._device_id = None
+
     @property
-    def last_packet_time(self) -> Optional[datetime]:
+    def last_device_packet_time(self) -> Optional[datetime]:
         """
-        tbd
+        Returns the timestamp of the last packet received from the device.
+
+        This property can be used to monitor the communication health with the
+        device.
         """
-        return self._last_packet_time
+        return self._last_device_packet_time
+
+    def set_last_device_packet_time(self) -> None:
+        """
+        Updates the timestamp of the last packet received from the device.
+
+        This method is called internally when a packet is received from the
+        device.
+        """
+        self._last_device_packet_time = datetime.now(tz=timezone.utc)
+        _LOGGER.debug(
+            'Last device packet time: %s', self._last_device_packet_time
+        )
+
+    @property
+    def last_upstream_packet_time(self) -> Optional[datetime]:
+        """
+        Returns the timestamp of the last packet sent to the upstream server.
+
+        This property can be used to monitor the communication health with the
+        cloud/upstream server.
+        """
+        return self._last_upstream_packet_time
+
+    def set_last_upstream_packet_time(self) -> None:
+        """
+        Updates the timestamp of the last packet sent to the upstream server.
+
+        This method is called internally when a packet is sent to the upstream
+        server.
+        """
+        self._last_upstream_packet_time = datetime.now(tz=timezone.utc)
+        _LOGGER.debug(
+            'Last upstream packet time: %s', self._last_upstream_packet_time
+        )
