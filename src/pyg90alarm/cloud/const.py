@@ -19,14 +19,20 @@
 # SOFTWARE.
 
 """
-tbd
+Constants used in the G90 cloud protocol implementation.
+
+This module defines the main enumerations for direction and command types
+used in the cloud protocol communication with G90 alarm systems.
 """
 from enum import IntEnum
 
 
 class G90CloudDirection(IntEnum):
     """
-    tbd
+    Defines the direction of G90 cloud protocol messages.
+
+    These values indicate whether messages are flowing from the cloud to the
+    device, from the device to the cloud, or are part of discovery processes.
     """
     UNSPECIFIED = 0
     CLOUD = 32  # 0x20
@@ -37,7 +43,10 @@ class G90CloudDirection(IntEnum):
 
 class G90CloudCommand(IntEnum):
     """
-    tbd
+    Defines the command types used in G90 cloud protocol messages.
+
+    These values identify the purpose of each cloud protocol message,
+    such as hello messages, notifications, commands, and status updates.
     """
     HELLO = 0x01
     HELLO_ACK = 0x41

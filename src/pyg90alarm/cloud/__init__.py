@@ -19,7 +19,10 @@
 # SOFTWARE.
 
 """
-tbd
+Cloud communication implementation for G90 alarm systems.
+
+This module provides the necessary components to interact with G90 alarm
+systems through their cloud protocol (referred to as version 1.1).
 """
 from .notifications import G90CloudNotifications  # noqa: F401
 
