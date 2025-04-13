@@ -43,7 +43,7 @@ async def test_history(mock_device: DeviceMock) -> None:
     history = await g90.history(count=7)
     assert len(history) == 7
     assert isinstance(history[0], G90History)
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[200,200,[200,[1,7]]]IEND\0',
     ]
     assert all(isinstance(h._asdict(), dict) for h in history)
