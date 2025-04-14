@@ -32,6 +32,32 @@ import logging
 _LOGGER = logging.getLogger('Mock device')
 
 
+class MockDeviceError(Exception):
+    """
+    Base class for all mock device exceptions.
+    """
+
+
+class MockDeviceTransportNotAvailableError(MockDeviceError):
+    """
+    Exception raised when the transport is not available.
+    """
+    def __init__(self) -> None:
+        self.args = (
+            'Transport is not available, not sending',
+        )
+
+
+class MockDeviceRemoteAddrNotAvailableError(MockDeviceError):
+    """
+    Exception raised when the remote address is not available.
+    """
+    def __init__(self) -> None:
+        self.args = (
+            'Remote address is not available, not sending',
+        )
+
+
 class MockDeviceProtocolBase:
     """
     Base class for the mock device protocol.
@@ -155,8 +181,7 @@ class MockDeviceProtocol(DatagramProtocol, MockDeviceProtocolBase):
         :param addr: Address of the client
         """
         if not self._transport:
-            _LOGGER.error('Transport is not available, not sending')
-            return
+            raise MockDeviceTransportNotAvailableError()
 
         super().send(data, addr)
         self._transport.sendto(data, addr)
@@ -188,8 +213,7 @@ class MockNotificationProtocol(DatagramProtocol, MockDeviceProtocolBase):
         :param addr: Address of the client
         """
         if not self._transport:
-            _LOGGER.error('Transport is not available, not sending')
-            return
+            raise MockDeviceTransportNotAvailableError()
 
         super().send(data, addr)
         self._transport.sendto(data)
@@ -203,8 +227,7 @@ class MockNotificationProtocol(DatagramProtocol, MockDeviceProtocolBase):
         """
         self.remote_addr = transport.get_extra_info('peername')
         if not self.remote_addr:
-            _LOGGER.error('Remote address is not available')
-            return
+            raise MockDeviceRemoteAddrNotAvailableError()
         _LOGGER.debug('Notification connection to %s:%s', *self.remote_addr)
         self._transport = cast(DatagramTransport, transport)
 
@@ -235,8 +258,7 @@ class MockCloudProtocol(Protocol, MockDeviceProtocolBase):
         :param addr: Address of the client
         """
         if not self._transport:
-            _LOGGER.error('Transport is not available, not sending')
-            return
+            raise MockDeviceTransportNotAvailableError()
 
         super().send(data, addr)
         self._transport.write(data)
@@ -250,8 +272,7 @@ class MockCloudProtocol(Protocol, MockDeviceProtocolBase):
         """
         self.remote_addr = transport.get_extra_info('peername')
         if not self.remote_addr:
-            _LOGGER.error('Remote address is not available')
-            return
+            raise MockDeviceRemoteAddrNotAvailableError()
         self._transport = cast(Transport, transport)
 
     def data_received(self, data: bytes) -> None:
@@ -299,9 +320,7 @@ class MockCloudUpstreamProtocol(Protocol, MockDeviceProtocolBase):
         """
         self.remote_addr = transport.get_extra_info('peername')
         if not self.remote_addr:
-            _LOGGER.error('Remote address is not available')
-            return
-
+            raise MockDeviceRemoteAddrNotAvailableError()
         _LOGGER.debug('Upstream connection from %s:%s', *self.remote_addr)
         self._transport = cast(Transport, transport)
 
@@ -313,8 +332,7 @@ class MockCloudUpstreamProtocol(Protocol, MockDeviceProtocolBase):
         :param addr: Address of the client
         """
         if not self._transport:
-            _LOGGER.error('Transport is not available, not sending')
-            return
+            raise MockDeviceTransportNotAvailableError()
 
         super().send(data, addr)
         self._transport.write(data)
