@@ -59,6 +59,15 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
     Implements a server that listens for connections from G90 alarm devices
     and processes cloud protocol messages, with optional forwarding to an
     upstream server.
+
+    :param protocol_factory: Factory function to create notification
+     protocol handlers
+    :param local_host: Local host to bind the server to
+    :param local_port: Local port to bind the server to
+    :param upstream_host: Optional upstream host to forward messages to
+    :param upstream_port: Optional upstream port to forward messages to
+    :param keep_single_connection: Whether to keep only a single device
+     connection
     """
     # pylint:disable=too-many-arguments
     def __init__(
@@ -69,18 +78,6 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         upstream_port: Optional[int] = None,
         keep_single_connection: bool = True,
     ) -> None:
-        """
-        Initialize the cloud notifications service.
-
-        :param protocol_factory: Factory function to create notification
-         protocol handlers
-        :param local_host: Local host to bind the server to
-        :param local_port: Local port to bind the server to
-        :param upstream_host: Optional upstream host to forward messages to
-        :param upstream_port: Optional upstream port to forward messages to
-        :param keep_single_connection: Whether to keep only a single device
-         connection
-        """
         super().__init__(protocol_factory)
         self._transport: Optional[Transport] = None
         self._server: Optional[asyncio.Server] = None

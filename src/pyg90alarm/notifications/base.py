@@ -135,6 +135,7 @@ class G90NotificationsBase:
     ) -> None:
         """
         Handles notification received from the device.
+
         :param notification: The notification to handle.
         """
         # Sensor activity notification
@@ -226,6 +227,7 @@ class G90NotificationsBase:
     ) -> None:
         """
         Handles alert received from the device.
+
         :param alert: The alert to handle.
         :param verify_device_id: Whether to verify the device ID (GUID) in the
          alert. If set to False, the device ID will not be verified.
@@ -385,7 +387,7 @@ class G90NotificationsBase:
         The ID (GUID) of the panel being communicated with thru commands.
 
         Available when any panel command receives it from the device
-        (:meth:`G90Alarm.get_host_info` currently).
+        (`GETHOSTINFO` local command or Hello / HelloDiscovery cloud ones).
         """
         return self._device_id
 

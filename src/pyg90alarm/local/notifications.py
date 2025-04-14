@@ -45,6 +45,15 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
     commands (e.g. :class:`G90Alarm`). The latter to work correctly needs a
     command to be performed first, one that fetches device GUID and then stores
     it using :attr:`.device_id` (e.g. :meth:`G90Alarm.get_host_info`).
+
+    :param protocol_factory: A callable that returns a new instance of the
+     :class:`G90NotificationProtocol` class.
+    :param port: The port on which the device is listening for notifications.
+    :param host: The host on which the device is listening for notifications.
+    :param local_port: The port on which the local host is listening for
+     notifications.
+    :param local_host: The host on which the local host is listening for
+     notifications.
     """
     def __init__(  # pylint:disable=too-many-arguments
         self, protocol_factory: Callable[[], G90NotificationProtocol],
