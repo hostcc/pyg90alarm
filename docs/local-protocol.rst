@@ -1,17 +1,15 @@
-G90 alarm panel protocol
-========================
+G90 Alarm Panel: local notifications protocol
+=============================================
 
 .. contents::
 
-There are two protocols a G90 alarm system uses: one towards its own cloud and
-another for the clients on local network over WiFi connection.
+Version
+-------
 
-By the time of writing the following protocol versions are in use:
+The local protocol version: 1.2 (presumably, as seen in response to ``GETHOSTINFO`` local command).
 
-* Cloud: version 1.1
-* Local: version 1.2
-
-.. note:: The rest of the document describes only the local protocol, version 1.2
+Description
+-----------
 
 The local protocol is UDP based, using destination port (alarm panel side) of
 ``12368``. It has been noticed the vendor provided applications (at least, on iOS)
@@ -159,4 +157,4 @@ All messages are terminated with binary zero (shown below as ``\0``), and text
 uses ``utf-8`` encoding.
 
 Data varies across different notification and alert types, see
-`pyg90alarm/device_notifications.py <../../src/pyg90alarm/device_notifications.py>`_. 
+`src/pyg90alarm/local/notifications.py <../../src/pyg90alarm/local/notifications.py>`_.
