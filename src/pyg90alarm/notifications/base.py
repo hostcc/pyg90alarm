@@ -130,9 +130,13 @@ class G90NotificationsBase:
         self._last_device_packet_time: Optional[datetime] = None
         self._last_upstream_packet_time: Optional[datetime] = None
 
-    def _handle_notification(
+    def handle_notification(
         self, notification: G90Notification
     ) -> None:
+        """
+        Handles notification received from the device.
+        :param notification: The notification to handle.
+        """
         # Sensor activity notification
         if notification.kind == G90NotificationTypes.SENSOR_ACTIVITY:
             g90_zone_info = G90ZoneInfo(*notification.data)
@@ -216,10 +220,16 @@ class G90NotificationsBase:
 
         return False
 
-    def _handle_alert(
+    def handle_alert(
         self, alert: G90DeviceAlert,
         verify_device_id: bool = True
     ) -> None:
+        """
+        Handles alert received from the device.
+        :param alert: The alert to handle.
+        :param verify_device_id: Whether to verify the device ID (GUID) in the
+         alert. If set to False, the device ID will not be verified.
+        """
         handled = False
 
         # Stop processing when alert is received from the device with different
@@ -332,7 +342,7 @@ class G90NotificationsBase:
             except TypeError as exc:
                 _LOGGER.error('Bad notification received: %s', exc)
                 return
-            self._handle_notification(notification_data)
+            self.handle_notification(notification_data)
             return
 
         # Device alerts
@@ -342,7 +352,7 @@ class G90NotificationsBase:
             except TypeError as exc:
                 _LOGGER.error('Bad alert received: %s', exc)
                 return
-            self._handle_alert(alert_data)
+            self.handle_alert(alert_data)
             return
 
         _LOGGER.warning('Unknown message received: %s', message)

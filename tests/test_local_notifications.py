@@ -286,14 +286,13 @@ async def test_wrong_host(
     )
     future = data_receive_awaitable(notifications)
 
-    # pylint: disable=protected-access
-    notifications._handle_alert = (  # type: ignore[method-assign]
+    notifications.handle_alert = (  # type: ignore[method-assign]
         MagicMock()
     )
-    # pylint: disable=protected-access
-    notifications._handle_notification = (  # type: ignore[method-assign]
+    notifications.handle_notification = (  # type: ignore[method-assign]
         MagicMock()
     )
+
     caplog.set_level('WARNING')
     await notifications.listen()
     await mock_device.send_next_notification()
@@ -304,10 +303,8 @@ async def test_wrong_host(
         "Received notification/alert from wrong host '127.0.0.1'"
         ", expected from '1.2.3.4'"
     )
-    # pylint: disable=protected-access
-    notifications._handle_alert.assert_not_called()
-    # pylint: disable=protected-access
-    notifications._handle_notification.assert_not_called()
+    notifications.handle_alert.assert_not_called()
+    notifications.handle_notification.assert_not_called()
 
 
 @pytest.mark.g90device(

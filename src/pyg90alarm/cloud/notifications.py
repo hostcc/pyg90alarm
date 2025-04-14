@@ -202,7 +202,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
                     ]:
                         alert = msg.as_device_alert
                         if alert:
-                            self._handle_alert(
+                            self.handle_alert(
                                 alert,
                                 # Verifying device ID only makes sense when
                                 # connection isn't closed each time a message

@@ -1016,8 +1016,7 @@ class G90Alarm(G90NotificationProtocol):
                         # Send the history entry down the device notification
                         # code as alert, as if it came from the device and its
                         # notifications port
-                        # pylint: disable=protected-access
-                        dummy_notifications._handle_alert(
+                        dummy_notifications.handle_alert(
                             item.as_device_alert(),
                             # Skip verifying device GUID, since history entry
                             # don't have it
