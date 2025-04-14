@@ -3,7 +3,7 @@
    :hidden:
 
    Introduction <self>
-   protocol
+   local-protocol
    api-docs
 
 .. contents::
