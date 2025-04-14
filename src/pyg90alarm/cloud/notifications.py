@@ -358,7 +358,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
                     'Data sent to upstream %s:%s',
                     self._upstream_host, self._upstream_port
                 )
-        except (ConnectionError, OSError, asyncio.TimeoutError) as exc:
+        except (OSError, asyncio.TimeoutError) as exc:
             _LOGGER.debug(
                 'Error sending data to upstream %s:%s: %s',
                 self._upstream_host, self._upstream_port, exc
