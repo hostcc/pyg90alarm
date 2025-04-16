@@ -390,6 +390,11 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
     await asyncio.wait([future], timeout=0.1)
     await notifications.close()
     mock.on_sensor_activity.assert_called_once_with(100, 'Hall')
+    # Verify last packet from device got tracked
+    assert notifications.last_device_packet_time is not None
+    # Contrary, the local notification never send anything upstream - verify
+    # that
+    assert notifications.last_upstream_packet_time is None
 
 
 @pytest.mark.g90device(notification_data=[

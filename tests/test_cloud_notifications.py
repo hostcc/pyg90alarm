@@ -144,6 +144,8 @@ async def test_cloud_hello(
         b'\x63\x20\x00\x10\x10\x00\x00\x00\x01\x00\x03\x00'
         + pack('<i', mock_device.cloud_port)
     ) == bytes().join(await mock_device.cloud_recv_data)
+    # Verify the last packet from the device got tracked
+    assert notifications.last_device_packet_time is not None
 
 
 @pytest.mark.g90device(cloud_notification_data=[
@@ -243,12 +245,14 @@ async def test_cloud_notification(
 
 
 @pytest.mark.g90device(cloud_notification_data=[
+    # Hello message, to verify device ID is stored properly
     b'\x01\x10\x00\x20\x48\x00\x00\x00\x01\x00\x00\x00'
     b'\x47\x41\x30\x30\x30\x30\x30\x41\x30\x30\x30\x30'
     b'\x30\x30\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00'
     b'\x02\x00\x00\x00\x00\x70\x00\x00\x32\x30\x37\x00'
     b'\x58\xba\x00\x20\x30\x00\x00\x00\x00\x00\x00\x00'
     b'\b07\x00\x00\x00\x1e\x00\x00\x00\x1e\x00',
+    # Disarm message
     b'\x21\x10\x00\x20\x78\x00\x00\x00\x01\x00\x00\x00\x02\x03\x37\x30'
     b'\x2c\x5b\x31\x2c\x5b\x33\x5d\x5d\x5d\x00\x00\x00\x00\x00\x00\x00'
     b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -431,6 +435,9 @@ async def test_cloud_command(
     await asyncio.wait([future], timeout=0.1)
     await notifications.close()
 
+    # Cloud command shouldn't send any response
+    assert await mock_device.cloud_recv_data == []
+
 
 @pytest.mark.parametrize("_title", [
     pytest.param("simple", marks=pytest.mark.g90device(
@@ -441,8 +448,8 @@ async def test_cloud_command(
             b'\x02\x00\x00\x00\x00\x70\x00\x00\x32\x30\x37\x00'
             b'\x58\xba\x00\x20\x30\x00\x00\x00\x00\x00\x00\x00'
             b'\b07\x00\x00\x00\x1e\x00\x00\x00\x1e\x00'],
-        # The data isn't used by tests currently, rather serves as a documented
-        # message example for the future changes
+        # The data isn't parsed by the package currently, rather serves as a
+        # documented message example for the future changes
         cloud_upstream_data=[
             b'\x29\x50\x00\x10\x17\x00\x00\x00\x01\x00\x06\x00\x02\x00\x64\x00'
             b'\x64\x00\x05\x00\x00\x00\x00',
@@ -485,11 +492,11 @@ async def test_upstream_cloud_hello(
     await asyncio.wait([future], timeout=0.1)
     await notifications.close()
 
-    assert await mock_device.cloud_upstream_recv_data == [
-        b'\x01\x10\x00\x20\x48\x00\x00\x00\x01\x00\x00\x00'
-        b'\x47\x41\x30\x30\x30\x30\x30\x41\x30\x30\x30\x30'
-        b'\x30\x30\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x02\x00\x00\x00\x00\x70\x00\x00\x32\x30\x37\x00'
-        b'\x58\xba\x00\x20\x30\x00\x00\x00\x00\x00\x00\x00'
-        b'\b07\x00\x00\x00\x1e\x00\x00\x00\x1e\x00'
-    ]
+    # Verify the data from the device is sent to the upstream service umodified
+    assert await mock_device.cloud_upstream_recv_data == mock_device.cloud_data
+    # Verify the data from simulated upstream service is sent back to the
+    # device unmodified
+    assert await mock_device.cloud_recv_data == mock_device.cloud_upstream_data
+    # Verify both device and upstream packet times are set
+    assert notifications.last_device_packet_time is not None
+    assert notifications.last_upstream_packet_time is not None
