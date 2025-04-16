@@ -53,6 +53,7 @@ G90HostInfo(host_guid='<...>',
 from __future__ import annotations
 import asyncio
 from asyncio import Task
+from datetime import datetime
 import logging
 from typing import (
     TYPE_CHECKING, Any, List, Optional, AsyncGenerator,
@@ -1080,3 +1081,23 @@ class G90Alarm(G90NotificationProtocol):
             local_port=cloud_local_port,
             keep_single_connection=keep_single_connection
         )
+
+    @property
+    def last_device_packet_time(self) -> Optional[datetime]:
+        """
+        Returns the time of the last packet received from the device.
+        """
+        if not self._notifications:
+            return None
+
+        return self._notifications.last_device_packet_time
+
+    @property
+    def last_upstream_packet_time(self) -> Optional[datetime]:
+        """
+        Returns the time of the last packet received from the upstream server.
+        """
+        if not self._notifications:
+            return None
+
+        return self._notifications.last_upstream_packet_time
