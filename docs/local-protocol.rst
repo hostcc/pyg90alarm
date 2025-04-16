@@ -1,4 +1,4 @@
-G90 Alarm Panel: local notifications protocol
+G90 Alarm Panel: local protocol
 =============================================
 
 .. contents::
@@ -35,7 +35,7 @@ That translates to:
 You should consider implementing network controls to, at least, limit on what
 clients could interact with the alarm control panel. The implementation might
 consider firewall rules, VLANs and other measures available in the network
-equipment you user
+equipment you use.
 
 Request
 -------

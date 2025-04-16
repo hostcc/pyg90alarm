@@ -4,6 +4,7 @@
 
    Introduction <self>
    local-protocol
+   cloud-protocol
    api-docs
 
 .. contents::
