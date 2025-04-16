@@ -346,7 +346,11 @@ class MockCloudUpstreamProtocol(Protocol, MockDeviceProtocolBase):
 
         :param data: The raw bytes received from the client
         """
+        if not self.remote_addr:
+            raise MockDeviceRemoteAddrNotAvailableError()
+
         self.handle_received_data(data)
+        self.send_data(self.remote_addr)
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
         """
@@ -517,6 +521,13 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         return self._notification_port
 
     @property
+    def notification_data(self) -> Optional[List[bytes]]:
+        """
+        Returns the data to be sent from the simulated device to the client.
+        """
+        return self._notification_data
+
+    @property
     def cloud_host(self) -> str:
         """
         Returns the host the simulated cloud endpoint listens on.
@@ -535,6 +546,14 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         return self._cloud_port
 
     @property
+    def cloud_data(self) -> Optional[List[bytes]]:
+        """
+        Returns the data to be sent from the simulated cloud endpoint
+        to the client.
+        """
+        return self._cloud_data
+
+    @property
     def cloud_upstream_host(self) -> str:
         """
         Returns the host the simulated cloud endpoint listens on.
@@ -551,6 +570,14 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         :return: Port number
         """
         return self._cloud_upstream_port
+
+    @property
+    def cloud_upstream_data(self) -> Optional[List[bytes]]:
+        """
+        Returns the data to be sent from the simulated cloud upstream
+        endpoint to the client.
+        """
+        return self._cloud_upstream_data
 
     @property
     async def recv_data(self) -> List[bytes]:
@@ -671,3 +698,8 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         await asyncio.wait(
             [self._cloud_notification_protocol.is_done]
         )
+
+        if self._cloud_upstream_protocol:
+            await asyncio.wait(
+                [self._cloud_upstream_protocol.is_done]
+            )
