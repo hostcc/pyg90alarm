@@ -99,7 +99,7 @@ There is a hidden device capability to send protocol notifications over the
 WiFi interface, thus called local. The notifications are done using broadcast UDP packets with source/destination ports being ``45000:12901`` (non-configurable), and sent when the device has IP address of its WiFi interface set to ``10.10.10.250``. That is the same IP the device will allocate to the WiFi interface when AP (access point is enabled). Please note enabling the AP *is not* required for the notifications to be sent, only the IP address matters. Likely the firmware does a check internally and enables those when corresponding IP address is found on the WiFi interface.
 
 Please see
-:ref:`local-protocol` for further details on the device notifications protocol.
+:doc:`local-protocol.rst` for further details on the protocol.
 
 Depending on your network setup, ensuring the `10.10.10.250` IP address is
 allocated to the WiFi interface of the device might be as simple as DHCP
@@ -145,19 +145,24 @@ Cloud notifications
 The cloud protocol is native to the panel and is used to interact with mobile application. The package can mimic the cloud server and interpret the messages the panel sends to the cloud, allowing to receive the notifications and alerts.
 While the protocol also allows to send commands to the panel, it is not implemented and local protocol is used for that - i.e. when cloud notifications are in use the local protocol still utilized for sending commands to the panel.
 
-The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port (not cusomizeable at panel side). To process the cloud notifications all the traffic from panel towards the cloud (IP address ``47.88.7.61`` and TCP port ``5678`` as of writing) needs to be diverted to the node where the package is running - depending on your network equipment it could be portf forwarding, DNAT or other means. It is unclear whether the panel utilizes DNS to resolve the cloud service IP address, hence the documentation only mentions IP-based traffic redirection.
+The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port (not customizeable at panel side). To process the cloud notifications all the traffic from panel towards the cloud (IP address ``47.88.7.61`` and TCP port ``5678`` as of writing) needs to be diverted to the node where the package is running - depending on your network equipment it could be port forwarding, DNAT or other means. It is unclear whether the panel utilizes DNS to resolve the cloud service IP address, hence the documentation only mentions IP-based traffic redirection.
+
+Please see
+:doc:`cloud-protocol.rst` for further details on the protocol.
 
 The benefit of the cloud notifications is that the panel no longer required to have ``10.10.10.250`` IP address.
 
 The package could act as:
+
 - Standalone cloud server with no Internet connectivity or cloud service
   required at all - good if you'd like to avoid having a vendor service involved. Please note the mobile application will show panel as offline in this mode
 - Chained cloud server, where in addition to intepreting the notifications it
   will also forward all packets received from the panel to the cloud server, and pass its responses back to the panel. This allows to have notificaitons processed by the package and the mobile application working as well.
 
-  .. note:: Sending packets upstream to the known IP address and port of the cloud server might result in those looped back (since traffic from panel to cloud service has to be redirected to the host where package runs), in case your network equipment can't account for source address in redirection rules (i.e. limiting the port redirection to the panel's IP address). In that case you'll need another redirection, from the host where the package runs to the cloud service using an IP from your network. That way those two redirection rules will coexist correctly. To illustate:
+  .. note:: Sending packets upstream to the known IP address and port of the cloud server might result in those looped back (since traffic from panel to cloud service has to be redirected to the host where package runs), if your network equipment can't account for source address in redirection rules (i.e. limiting the port redirection to the panel's IP address). In that case you'll need another redirection, from the host where the package runs to the cloud service using an IP from your network. That way those two redirection rules will coexist correctly. To illustate:
 
    Port forwarding rule 1:
+
    - Source: panel IP address
    - Destination: 47.88.7.61
    - Port: 5678
@@ -165,6 +170,7 @@ The package could act as:
    - Redirect to port: 5678 (or other port if you want to use it)
 
    Port forwarding rule 2 (optional):
+
    - Source: host where package runs
    - Destination: an IP address from your network
    - Port: 5678 (or other port if you want to use it)
