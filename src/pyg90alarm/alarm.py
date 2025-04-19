@@ -23,7 +23,7 @@
 Provides interface to G90 alarm panel.
 
 .. note:: Both local protocol (referred to as 1.2) and cloud one
-(mentioned as 1.1) is supported.
+(mentioned as 1.1) are supported.
 
 The next example queries the device with IP address `10.10.10.250` for the
 information - the product name, protocol version, HW versions and such.
