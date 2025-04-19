@@ -146,7 +146,7 @@ notifications are send unconditionally, that is you cannot disable them, while
 alerts are only sent if enabled in the device.
 
 To receive the notifications from the device you need to follow the steps
-outlined in :ref:`Enabling device notifications`.
+outlined in :ref:`Local notifications`.
 
 The device uses UDP protocol and ``12901`` target port, each notification is
 sent in separate packets having the following structure:
