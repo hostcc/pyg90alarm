@@ -65,10 +65,10 @@ The protocol uses two types of headers:
 
 Where:
 
-- **Command**: The command type (see `G90CloudCommand <../../src/pyg90alarm/cloud/const.py>`_)
-- **Source**: The source direction of the message (see `G90CloudDirection <../../src/pyg90alarm/cloud/const.py>`_)
+- **Command**: The command type (see :py:class:`.G90CloudCommand`)
+- **Source**: The source direction of the message (see :py:class:`.G90CloudDirection`)
 - **Flag1**: A flag of unknown purpose (typically 0x00)
-- **Destination**: The destination direction of the message (see `G90CloudDirection <../../src/pyg90alarm/cloud/const.py>`_)
+- **Destination**: The destination direction of the message (see :py:class:`.G90CloudDirection`)
 - **Message Length**: Total length of the message including header and payload
 - **Version**: Protocol version (0x01 for protocol version 1.1)
 - **Sequence**: Sequence number, either 0 for single message in the packet or starting from 1 for multiple ones
@@ -82,5 +82,4 @@ The payload format is command-specific and follows the header. The payload lengt
 
     Payload Length = Message Length - Header Size
 
-Most messages use the G90CloudMessage class as base which combines the header with the command-specific payload, see
-`src/pyg90alarm/cloud/messages.py <../../src/pyg90alarm/cloud/messages.py>`_.
+Most messages use the :py:class:`.G90CloudMessage` class as base which combines the header with the command-specific payload.
