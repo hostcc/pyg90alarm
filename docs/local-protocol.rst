@@ -1,4 +1,4 @@
-G90 Alarm Panel: local protocol
+Local protocol
 =============================================
 
 .. contents::

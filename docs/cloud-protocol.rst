@@ -1,4 +1,4 @@
-G90 Alarm Panel: cloud protocol
+Cloud protocol
 =============================================
 
 .. contents::
