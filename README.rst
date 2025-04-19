@@ -123,7 +123,7 @@ set the IP address allocation up.
    alert to be enabled in the mobile application, otherwise it won't be
    recorded in the history.
 
-For the local notifications to be enabled the :py:meth:`G90Alarm.use_local_notifications()` needs to be called upon contstucting an instance of :py:class:`G90Alarm` class, then :py:meth:`G90Alarm.listen_notifications()` to start processing those coming from the panel - the code fragment below demonstrate that though being incomplete since callbacks (e.g. :py:meth:`G90Alarm.on_armdisarm()`) should be set for the actual processing of the notifications.
+For the local notifications to be enabled the ```G90Alarm.use_local_notifications()``` needs to be called upon contstucting an instance of ``G90Alarm`` class, then ```G90Alarm.listen_notifications()`z to start processing those coming from the panel - the code fragment below demonstrate that though being incomplete since callbacks (e.g. ``G90Alarm.on_armdisarm()``) should be set for the actual processing of the notifications.
 
 .. code:: python
 
@@ -174,7 +174,7 @@ The package could act as:
    - Redirect to : 47.88.7.61
    - Redirect to port: 5678
 
-The code fragments below demonstrate how to utilize both modes:
+The code fragments below demonstrate how to utilize both modes - please note those are incomplete, since no callbacks are set to process the notifications.
 
 **Standalone mode**
 
