@@ -24,7 +24,7 @@ Protocol entity for G90 alarm panel status.
 from __future__ import annotations
 from typing import Any, Dict
 from dataclasses import dataclass, asdict
-from .const import G90ArmDisarmTypes
+from ..const import G90ArmDisarmTypes
 
 
 @dataclass

@@ -9,6 +9,6 @@ include LICENSE
 # Include setup.py
 include setup.py
 
-recursive-include src py.typed
+recursive-include src *.py py.typed
 
 exclude requirements_dev.txt

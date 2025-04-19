@@ -26,8 +26,8 @@ import logging
 from typing import Any, cast
 from dataclasses import dataclass
 from .base_cmd import G90BaseCommand, G90BaseCommandData
-from .exceptions import G90Error
-from .const import G90Commands
+from ..exceptions import G90Error
+from ..const import G90Commands
 
 _LOGGER = logging.getLogger(__name__)
 

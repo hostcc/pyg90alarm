@@ -5,7 +5,7 @@ from unittest.mock import patch, DEFAULT
 import re
 import pytest
 
-from pyg90alarm.base_cmd import (
+from pyg90alarm.local.base_cmd import (
     G90BaseCommand,
 )
 from pyg90alarm.exceptions import (G90Error, G90TimeoutError)
@@ -111,7 +111,7 @@ async def test_timeout(mock_device: DeviceMock) -> None:
 
     with pytest.raises(G90TimeoutError):
         await g90.process()
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[206,206,""]IEND\0',
         b'ISTART[206,206,""]IEND\0',
     ]
@@ -134,7 +134,7 @@ async def test_invalid_utf8_encoding(mock_device: DeviceMock) -> None:
         match=re.escape("Unable to decode response from UTF-8")
     ):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -154,7 +154,7 @@ async def test_wrong_format(mock_device: DeviceMock) -> None:
         match=re.escape("Unable to parse response as JSON: '['")
     ):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -170,7 +170,7 @@ async def test_empty_response(mock_device: DeviceMock) -> None:
     )
 
     await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -190,7 +190,7 @@ async def test_no_code_response(mock_device: DeviceMock) -> None:
         match=re.escape("Missing code in response: '[]'")
     ):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -210,7 +210,7 @@ async def test_wrong_code_response(mock_device: DeviceMock) -> None:
         match='Wrong response - received code 106, expected code 206'
     ):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -230,7 +230,7 @@ async def test_no_data_response(mock_device: DeviceMock) -> None:
         match=re.escape("Missing data in response: '[206]'")
     ):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -247,7 +247,7 @@ async def test_no_start_marker(mock_device: DeviceMock) -> None:
 
     with pytest.raises(G90Error, match='Missing start marker in data'):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 @pytest.mark.g90device(sent_data=[
@@ -264,7 +264,7 @@ async def test_no_end_marker(mock_device: DeviceMock) -> None:
 
     with pytest.raises(G90Error, match='Missing end marker in data'):
         await g90.process()
-    assert mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+    assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
 
 
 async def test_command_code_none_error(mock_device: DeviceMock) -> None:

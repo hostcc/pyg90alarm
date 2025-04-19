@@ -29,7 +29,7 @@ import logging
 
 from .base_cmd import G90BaseCommand
 from .host_info import G90HostInfo
-from .const import G90Commands
+from ..const import G90Commands
 
 _LOGGER = logging.getLogger(__name__)
 

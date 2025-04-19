@@ -10,7 +10,7 @@ from pytest import LogCaptureFixture
 from pyg90alarm.alarm import (
     G90Alarm,
 )
-from pyg90alarm.history import (
+from pyg90alarm.local.history import (
     G90History,
 )
 from pyg90alarm.const import (
@@ -43,7 +43,7 @@ async def test_history(mock_device: DeviceMock) -> None:
     history = await g90.history(count=7)
     assert len(history) == 7
     assert isinstance(history[0], G90History)
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[200,200,[200,[1,7]]]IEND\0',
     ]
     assert all(isinstance(h._asdict(), dict) for h in history)
@@ -110,7 +110,7 @@ async def test_history(mock_device: DeviceMock) -> None:
 @pytest.mark.g90device(sent_data=[
     b'ISTART[200,[[3,1,3],'
     # Wrong state
-    b'[3,33,7,254,"Sensor 1",1630147285,""],'
+    b'[3,33,7,200,"Sensor 1",1630147285,""],'
     # Wrong source
     b'[2,33,254,1,"Sensor 1",1630147285,""],'
     # Wrong type

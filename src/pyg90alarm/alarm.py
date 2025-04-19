@@ -22,7 +22,8 @@
 """
 Provides interface to G90 alarm panel.
 
-.. note:: Only protocol 1.2 is supported!
+.. note:: Both local protocol (referred to as 1.2) and cloud one
+(mentioned as 1.1) are supported.
 
 The next example queries the device with IP address `10.10.10.250` for the
 information - the product name, protocol version, HW versions and such.
@@ -52,6 +53,7 @@ G90HostInfo(host_guid='<...>',
 from __future__ import annotations
 import asyncio
 from asyncio import Task
+from datetime import datetime
 import logging
 from typing import (
     TYPE_CHECKING, Any, List, Optional, AsyncGenerator,
@@ -63,29 +65,36 @@ from .const import (
     LOCAL_TARGETED_DISCOVERY_PORT,
     LOCAL_NOTIFICATIONS_HOST,
     LOCAL_NOTIFICATIONS_PORT,
+    CLOUD_NOTIFICATIONS_HOST,
+    CLOUD_NOTIFICATIONS_PORT,
+    REMOTE_CLOUD_HOST,
+    REMOTE_CLOUD_PORT,
     G90ArmDisarmTypes,
     G90RemoteButtonStates,
 )
-from .base_cmd import (G90BaseCommand, G90BaseCommandData)
-from .paginated_result import G90PaginatedResult, G90PaginatedResponse
+from .local.base_cmd import (G90BaseCommand, G90BaseCommandData)
+from .local.paginated_result import G90PaginatedResult, G90PaginatedResponse
 from .entities.sensor import (G90Sensor, G90SensorTypes)
 from .entities.sensor_list import G90SensorList
 from .entities.device import G90Device
 from .entities.device_list import G90DeviceList
-from .device_notifications import (
-    G90DeviceNotifications,
+from .notifications.protocol import (
+    G90NotificationProtocol
 )
-from .discovery import G90Discovery, G90DiscoveredDevice
-from .targeted_discovery import (
+from .notifications.base import G90NotificationsBase
+from .local.notifications import G90LocalNotifications
+from .local.discovery import G90Discovery, G90DiscoveredDevice
+from .local.targeted_discovery import (
     G90TargetedDiscovery, G90DiscoveredDeviceTargeted,
 )
-from .host_info import G90HostInfo
-from .host_status import G90HostStatus
-from .config import (G90AlertConfig, G90AlertConfigFlags)
-from .history import G90History
-from .user_data_crc import G90UserDataCRC
+from .local.host_info import G90HostInfo
+from .local.host_status import G90HostStatus
+from .local.config import (G90AlertConfig, G90AlertConfigFlags)
+from .local.history import G90History
+from .local.user_data_crc import G90UserDataCRC
 from .callback import G90Callback
 from .exceptions import G90Error, G90TimeoutError
+from .cloud.notifications import G90CloudNotifications
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -153,7 +162,7 @@ if TYPE_CHECKING:
 
 
 # pylint: disable=too-many-public-methods
-class G90Alarm(G90DeviceNotifications):
+class G90Alarm(G90NotificationProtocol):
 
     """
     Allows to interact with G90 alarm panel.
@@ -169,19 +178,15 @@ class G90Alarm(G90DeviceNotifications):
      simulated to go into inactive state.
     """
     # pylint: disable=too-many-instance-attributes,too-many-arguments
-    def __init__(self, host: str, port: int = REMOTE_PORT,
-                 reset_occupancy_interval: float = 3.0,
-                 notifications_local_host: str = LOCAL_NOTIFICATIONS_HOST,
-                 notifications_local_port: int = LOCAL_NOTIFICATIONS_PORT):
-        super().__init__(
-            local_host=notifications_local_host,
-            local_port=notifications_local_port
-        )
+    def __init__(
+        self, host: str, port: int = REMOTE_PORT,
+        reset_occupancy_interval: float = 3.0
+    ) -> None:
         self._host: str = host
         self._port: int = port
+        self._notifications: Optional[G90NotificationsBase] = None
         self._sensors = G90SensorList(self)
         self._devices = G90DeviceList(self)
-        self._notifications: Optional[G90DeviceNotifications] = None
         self._sensor_cb: Optional[SensorCallback] = None
         self._armdisarm_cb: Optional[ArmDisarmCallback] = None
         self._door_open_close_cb: Optional[DoorOpenCloseCallback] = None
@@ -200,6 +205,24 @@ class G90Alarm(G90DeviceNotifications):
         self._sms_alert_when_armed = False
         self._alert_simulation_task: Optional[Task[Any]] = None
         self._alert_simulation_start_listener_back = False
+
+    @property
+    def host(self) -> str:
+        """
+        Returns the hostname or IP address of the alarm panel.
+
+        This is the address used for communication with the device.
+        """
+        return self._host
+
+    @property
+    def port(self) -> int:
+        """
+        Returns the UDP port number used to communicate with the alarm panel.
+
+        By default, this is set to the standard G90 protocol port.
+        """
+        return self._port
 
     async def command(
         self, code: G90Commands, data: Optional[G90BaseCommandData] = None
@@ -338,7 +361,8 @@ class G90Alarm(G90DeviceNotifications):
         """
         res = await self.command(G90Commands.GETHOSTINFO)
         info = G90HostInfo(*res)
-        self.device_id = info.host_guid
+        if self._notifications:
+            self._notifications.device_id = info.host_guid
         return info
 
     @property
@@ -493,6 +517,9 @@ class G90Alarm(G90DeviceNotifications):
             alert_config_flags = await self.alert_config
             door_close_alert_enabled = (
                 G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags)
+            # The condition intentionally doesn't account for cord sensors of
+            # subtype door, since those won't send door open/close alerts, only
+            # notifications
             sensor_is_door = sensor.type == G90SensorTypes.DOOR
 
             # Alarm panel could emit door close alerts (if enabled) for sensors
@@ -502,7 +529,7 @@ class G90Alarm(G90DeviceNotifications):
             if not door_close_alert_enabled or not sensor_is_door:
                 _LOGGER.debug("Sensor '%s' is not a door (type %s),"
                               ' or door close alert is disabled'
-                              ' (alert config flags %s),'
+                              ' (alert config flags %s) or is a cord sensor,'
                               ' closing event will be emulated upon'
                               ' %s seconds',
                               name, sensor.type, alert_config_flags,
@@ -831,17 +858,19 @@ class G90Alarm(G90DeviceNotifications):
     def tamper_callback(self, value: TamperCallback) -> None:
         self._tamper_cb = value
 
-    async def listen_device_notifications(self) -> None:
+    async def listen_notifications(self) -> None:
         """
         Starts internal listener for device notifications/alerts.
         """
-        await self.listen()
+        if self._notifications:
+            await self._notifications.listen()
 
-    def close_device_notifications(self) -> None:
+    async def close_notifications(self) -> None:
         """
         Closes the listener for device notifications/alerts.
         """
-        self.close()
+        if self._notifications:
+            await self._notifications.close()
 
     async def arm_away(self) -> None:
         """
@@ -896,9 +925,12 @@ class G90Alarm(G90DeviceNotifications):
           each polling cycle
         """
         # Remember if device notifications listener has been started already
-        self._alert_simulation_start_listener_back = self.listener_started
+        self._alert_simulation_start_listener_back = (
+            self._notifications is not None
+            and self._notifications.listener_started
+        )
         # And then stop it
-        self.close()
+        await self.close_notifications()
 
         # Start the task
         self._alert_simulation_task = asyncio.create_task(
@@ -920,8 +952,11 @@ class G90Alarm(G90DeviceNotifications):
 
         # Start device notifications listener back if it was running when
         # simulated alerts have been enabled
-        if self._alert_simulation_start_listener_back:
-            await self.listen()
+        if (
+            self._notifications
+            and self._alert_simulation_start_listener_back
+        ):
+            await self._notifications.listen()
 
     async def _simulate_alerts_from_history(
         self, interval: float, history_depth: int
@@ -935,6 +970,10 @@ class G90Alarm(G90DeviceNotifications):
 
         See :meth:`.start_simulating_alerts_from_history` for the parameters.
         """
+        dummy_notifications = G90NotificationsBase(
+            protocol_factory=lambda: self
+        )
+
         last_history_ts = None
 
         _LOGGER.debug(
@@ -978,8 +1017,7 @@ class G90Alarm(G90DeviceNotifications):
                         # Send the history entry down the device notification
                         # code as alert, as if it came from the device and its
                         # notifications port
-                        self._handle_alert(
-                            (self._host, self._notifications_local_port),
+                        dummy_notifications.handle_alert(
                             item.as_device_alert(),
                             # Skip verifying device GUID, since history entry
                             # don't have it
@@ -1005,3 +1043,61 @@ class G90Alarm(G90DeviceNotifications):
 
             # Sleep to next iteration
             await asyncio.sleep(interval)
+
+    async def use_local_notifications(
+        self, notifications_local_host: str = LOCAL_NOTIFICATIONS_HOST,
+        notifications_local_port: int = LOCAL_NOTIFICATIONS_PORT
+    ) -> None:
+        """
+        Switches to use local notifications for device alerts.
+        """
+        await self.close_notifications()
+
+        self._notifications = G90LocalNotifications(
+            protocol_factory=lambda: self,
+            host=self._host,
+            port=self._port,
+            local_host=notifications_local_host,
+            local_port=notifications_local_port
+        )
+
+    async def use_cloud_notifications(
+        self, cloud_local_host: str = CLOUD_NOTIFICATIONS_HOST,
+        cloud_local_port: int = CLOUD_NOTIFICATIONS_PORT,
+        upstream_host: str = REMOTE_CLOUD_HOST,
+        upstream_port: int = REMOTE_CLOUD_PORT,
+        keep_single_connection: bool = True
+    ) -> None:
+        """
+        Switches to use cloud notifications for device alerts.
+        """
+        await self.close_notifications()
+
+        self._notifications = G90CloudNotifications(
+            protocol_factory=lambda: self,
+            upstream_host=upstream_host,
+            upstream_port=upstream_port,
+            local_host=cloud_local_host,
+            local_port=cloud_local_port,
+            keep_single_connection=keep_single_connection
+        )
+
+    @property
+    def last_device_packet_time(self) -> Optional[datetime]:
+        """
+        Returns the time of the last packet received from the device.
+        """
+        if not self._notifications:
+            return None
+
+        return self._notifications.last_device_packet_time
+
+    @property
+    def last_upstream_packet_time(self) -> Optional[datetime]:
+        """
+        Returns the time of the last packet received from the upstream server.
+        """
+        if not self._notifications:
+            return None
+
+        return self._notifications.last_upstream_packet_time

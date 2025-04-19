@@ -3,7 +3,7 @@ Tests for G90PaginatedCommand class
 '''
 import pytest
 
-from pyg90alarm.paginated_cmd import (
+from pyg90alarm.local.paginated_cmd import (
     G90PaginatedCommand,
 )
 from pyg90alarm.exceptions import G90Error
@@ -35,7 +35,7 @@ async def test_missing_pagination_header(mock_device: DeviceMock) -> None:
     ):
         await g90.process()
 
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,1]]]IEND\0'
     ]
 
@@ -61,7 +61,7 @@ async def test_no_paginated_data(mock_device: DeviceMock) -> None:
         )
     ):
         await g90.process()
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,1]]]IEND\0'
     ]
 
@@ -80,7 +80,7 @@ async def test_partial_paginated_data(mock_device: DeviceMock) -> None:
     )
 
     await g90.process()
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,2]]]IEND\0'
     ]
 
@@ -106,6 +106,6 @@ async def test_extra_paginated_data(mock_device: DeviceMock) -> None:
         )
     ):
         await g90.process()
-    assert mock_device.recv_data == [
+    assert await mock_device.recv_data == [
         b'ISTART[102,102,[102,[1,1]]]IEND\0'
     ]

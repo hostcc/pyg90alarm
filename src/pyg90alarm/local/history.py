@@ -26,7 +26,7 @@ import logging
 from typing import Any, Optional, Dict
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from .const import (
+from ..const import (
     G90AlertTypes,
     G90AlertSources,
     G90AlertStates,
@@ -34,7 +34,7 @@ from .const import (
     G90HistoryStates,
     G90RemoteButtonStates,
 )
-from .device_notifications import G90DeviceAlert
+from ..notifications.base import G90DeviceAlert
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +52,8 @@ states_mapping_alerts = {
         G90HistoryStates.TAMPER,
     G90AlertStates.LOW_BATTERY:
         G90HistoryStates.LOW_BATTERY,
+    G90AlertStates.ALARM:
+        G90HistoryStates.ALARM,
 }
 
 states_mapping_state_changes = {

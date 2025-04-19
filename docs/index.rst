@@ -3,7 +3,8 @@
    :hidden:
 
    Introduction <self>
-   protocol
+   local-protocol
+   cloud-protocol
    api-docs
 
 .. contents::

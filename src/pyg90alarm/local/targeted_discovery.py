@@ -28,8 +28,8 @@ from dataclasses import dataclass, asdict
 import asyncio
 from asyncio.transports import BaseTransport
 from .base_cmd import G90BaseCommand
-from .const import G90Commands
-from .exceptions import G90Error
+from ..const import G90Commands
+from ..exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
