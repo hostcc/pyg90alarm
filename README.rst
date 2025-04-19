@@ -98,9 +98,6 @@ Local notifications
 There is a hidden device capability to send protocol notifications over the
 WiFi interface, thus called local. The notifications are done using broadcast UDP packets with source/destination ports being ``45000:12901`` (non-configurable), and sent when the device has IP address of its WiFi interface set to ``10.10.10.250``. That is the same IP the device will allocate to the WiFi interface when AP (access point is enabled). Please note enabling the AP *is not* required for the notifications to be sent, only the IP address matters. Likely the firmware does a check internally and enables those when corresponding IP address is found on the WiFi interface.
 
-Please see
-`local-protocol.rst <docs/local-protocol.rst>`_ for further details on the protocol.
-
 Depending on your network setup, ensuring the `10.10.10.250` IP address is
 allocated to the WiFi interface of the device might be as simple as DHCP
 reservation. Please check the documentation of your networking gear on how to
