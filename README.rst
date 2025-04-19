@@ -99,7 +99,7 @@ There is a hidden device capability to send protocol notifications over the
 WiFi interface, thus called local. The notifications are done using broadcast UDP packets with source/destination ports being ``45000:12901`` (non-configurable), and sent when the device has IP address of its WiFi interface set to ``10.10.10.250``. That is the same IP the device will allocate to the WiFi interface when AP (access point is enabled). Please note enabling the AP *is not* required for the notifications to be sent, only the IP address matters. Likely the firmware does a check internally and enables those when corresponding IP address is found on the WiFi interface.
 
 Please see
-`local-protocol.rst <local-protocol.rst>`_ for further details on the protocol.
+`local-protocol.rst <docs/local-protocol.rst>`_ for further details on the protocol.
 
 Depending on your network setup, ensuring the `10.10.10.250` IP address is
 allocated to the WiFi interface of the device might be as simple as DHCP
@@ -148,7 +148,7 @@ While the protocol also allows to send commands to the panel, it is not implemen
 The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port (not customizeable at panel side). To process the cloud notifications all the traffic from panel towards the cloud (IP address ``47.88.7.61`` and TCP port ``5678`` as of writing) needs to be diverted to the node where the package is running - depending on your network equipment it could be port forwarding, DNAT or other means. It is unclear whether the panel utilizes DNS to resolve the cloud service IP address, hence the documentation only mentions IP-based traffic redirection.
 
 Please see
-`cloud-protocol.rst <cloud-protocol.rst>`_ for further details on the protocol.
+`cloud-protocol.rst <docs/cloud-protocol.rst>`_ for further details on the protocol.
 
 The benefit of the cloud notifications is that the panel no longer required to have ``10.10.10.250`` IP address.
 
