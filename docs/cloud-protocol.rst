@@ -82,4 +82,4 @@ The payload format is command-specific and follows the header. The payload lengt
 
     Payload Length = Message Length - Header Size
 
-Most messages use the :py:class:`.G90CloudMessage` class as base which combines the header with the command-specific payload.
+All messages are defined in the :py:mod:`.cloud.messages` module for the headeres and the command-specific payload.
