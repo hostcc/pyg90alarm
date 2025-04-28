@@ -1064,8 +1064,8 @@ class G90Alarm(G90NotificationProtocol):
     async def use_cloud_notifications(
         self, cloud_local_host: str = CLOUD_NOTIFICATIONS_HOST,
         cloud_local_port: int = CLOUD_NOTIFICATIONS_PORT,
-        upstream_host: str = REMOTE_CLOUD_HOST,
-        upstream_port: int = REMOTE_CLOUD_PORT,
+        upstream_host: Optional[str] = REMOTE_CLOUD_HOST,
+        upstream_port: Optional[int] = REMOTE_CLOUD_PORT,
         keep_single_connection: bool = True
     ) -> None:
         """
