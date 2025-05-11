@@ -798,7 +798,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             | G90SensorUserFlags.ALERT_WHEN_AWAY_AND_HOME
         ) | result
         # Set the updated user flags
-        await self.set_user_flag(user_flags)
+        await self.set_user_flags(user_flags)
 
     @property
     def extra_data(self) -> Any:
