@@ -28,7 +28,9 @@ from .local.paginated_result import G90PaginatedResult
 from .notifications.base import (
     G90DeviceAlert,
 )
-from .entities.sensor import G90Sensor, G90SensorTypes
+from .entities.sensor import (
+    G90Sensor, G90SensorTypes, G90SensorAlertModes, G90SensorUserFlags
+)
 from .entities.device import G90Device
 from .local.host_info import (
     G90HostInfo, G90HostInfoWifiStatus, G90HostInfoGsmStatus
@@ -48,8 +50,10 @@ from .exceptions import G90Error, G90TimeoutError
 
 __all__ = [
     'G90Alarm', 'G90BaseCommand', 'G90PaginatedResult', 'G90DeviceAlert',
-    'G90Sensor', 'G90SensorTypes', 'G90Device', 'G90HostInfo',
-    'G90HostInfoWifiStatus', 'G90HostInfoGsmStatus', 'G90HostStatus',
+    'G90Sensor', 'G90SensorTypes', 'G90SensorAlertModes', 'G90SensorUserFlags',
+    'G90Device',
+    'G90HostInfo', 'G90HostInfoWifiStatus', 'G90HostInfoGsmStatus',
+    'G90HostStatus',
     'G90MessageTypes', 'G90NotificationTypes', 'G90ArmDisarmTypes',
     'G90AlertTypes', 'G90AlertSources', 'G90AlertStates',
     'G90AlertStateChangeTypes', 'G90HistoryStates', 'G90Error',
