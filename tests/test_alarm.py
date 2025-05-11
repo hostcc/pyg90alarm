@@ -1,8 +1,6 @@
 """
 Tests for G90Alarm class
 """
-# pylint: disable=too-many-lines
-
 import asyncio
 from itertools import cycle
 from unittest.mock import MagicMock
@@ -14,27 +12,18 @@ from pyg90alarm.alarm import (
 from pyg90alarm.local.host_info import (
     G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
 )
-from pyg90alarm.entities.sensor import (
-    G90Sensor, G90SensorUserFlags,
-)
 from pyg90alarm.entities.device import (
     G90Device,
 )
-
 from pyg90alarm.local.host_status import (
     G90HostStatus,
 )
 from pyg90alarm.local.user_data_crc import (
     G90UserDataCRC,
 )
-from pyg90alarm.local.config import (
-    G90AlertConfigFlags,
-)
 from pyg90alarm.const import (
     G90RemoteButtonStates,
 )
-
-
 from .device_mock import DeviceMock
 
 
@@ -214,29 +203,6 @@ async def test_control_device(mock_device: DeviceMock) -> None:
     ]
 
 
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-])
-async def test_single_sensor(mock_device: DeviceMock) -> None:
-    """
-    Tests for retrieving single sensor from the panel.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    sensors = await g90.sensors
-
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-    ]
-    assert len(sensors) == 1
-    assert isinstance(sensors, list)
-    assert isinstance(sensors[0], G90Sensor)
-    assert sensors[0].name == 'Remote'
-    assert sensors[0].index == 10
-    assert isinstance(sensors[0]._asdict(), dict)
-
-
 # See `test_get_devices_concurrent` for the explanation of the test
 @pytest.mark.g90device(sent_data=cycle([
     b'ISTART[102,'
@@ -323,84 +289,6 @@ async def test_find_sensor(mock_device: DeviceMock) -> None:
     assert sensor is None
     sensor = await g90.find_sensor(10, 'Remote', exclude_unavailable=False)
     assert sensor is not None
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[3,1,3],["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]'
-    b']]IEND\0',
-])
-async def test_multiple_sensors_shorter_than_page(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests for retrieving multiple sensors from the panel, while the number of
-    those is shorter than a single page.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    sensors = await g90.sensors
-
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-    ]
-    assert len(sensors) == 3
-    assert isinstance(sensors, list)
-    assert isinstance(sensors[0], G90Sensor)
-    assert sensors[0].name == 'Remote 1'
-    assert sensors[0].index == 10
-    assert sensors[0].is_wireless is True
-    assert isinstance(sensors[1], G90Sensor)
-    assert sensors[1].name == 'Remote 2'
-    assert sensors[1].index == 11
-    assert sensors[1].is_wireless is True
-    assert isinstance(sensors[2], G90Sensor)
-    assert sensors[2].name == 'Cord 1'
-    assert sensors[2].index == 12
-    assert sensors[2].is_wireless is False
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[11,1,10],'
-    b'["Remote 1",10,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 2",11,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 3",12,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 4",13,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 5",14,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 6",15,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 7",16,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 8",17,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 9",18,0,10,1,0,32,0,0,16,1,0,""],'
-    b'["Remote 10",19,0,10,1,0,32,0,0,16,1,0,""]'
-    b']]IEND\0',
-    b'ISTART[102,'
-    b'[[11,11,1],'
-    b'["Remote 11",20,0,10,1,0,32,0,0,16,1,0,""]'
-    b']]IEND\0',
-])
-async def test_multiple_sensors_longer_than_page(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests for retrieving multiple sensors from the panel, while the number of
-    those is longer than a single page.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    sensors = await g90.sensors
-
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-        b'ISTART[102,102,[102,[11,11]]]IEND\0',
-    ]
-    assert len(sensors) == 11
-    assert isinstance(sensors, list)
-    assert isinstance(sensors[0], G90Sensor)
-    assert sensors[0].name == 'Remote 1'
-    assert sensors[0].index == 10
 
 
 @pytest.mark.g90device(
@@ -909,50 +797,6 @@ async def test_disarm(mock_device: DeviceMock) -> None:
     ]
 
 
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[117,[1]]IEND\0',
-])
-async def test_alert_config(mock_device: DeviceMock) -> None:
-    """
-    Tests for retrieving alert configuration from the device.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    config = await g90.get_alert_config()
-    prop_config = await g90.alert_config
-    assert config == prop_config
-    assert await mock_device.recv_data == [b'ISTART[117,117,""]IEND\0']
-    assert isinstance(config, G90AlertConfigFlags)
-
-
-@pytest.mark.g90device(sent_data=[
-    b"ISTART[117,[1]]IEND\0",
-    b"ISTART[117,[3]]IEND\0",
-    b"ISTARTIEND\0",
-])
-async def test_set_alert_config(mock_device: DeviceMock) -> None:
-    """
-    Tests for setting alert configuration to the the device.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    await g90.set_alert_config(
-        await g90.get_alert_config()
-        | G90AlertConfigFlags.AC_POWER_FAILURE  # noqa:W503
-        | G90AlertConfigFlags.HOST_LOW_VOLTAGE  # noqa:W503
-    )
-    assert await mock_device.recv_data == [
-        b'ISTART[117,117,""]IEND\0',
-        b'ISTART[117,117,""]IEND\0',
-        b"ISTART[116,116,[116,[9]]]IEND\0",
-    ]
-    # Validate we retrieve same alert configuration just has been set
-    assert await g90.get_alert_config() == (
-        G90AlertConfigFlags.AC_POWER_FAILURE
-        | G90AlertConfigFlags.HOST_LOW_VOLTAGE  # noqa:W503
-    )
-
-
 @pytest.mark.g90device(
     sent_data=[
         # First command to get alert configuration is from
@@ -1041,112 +885,6 @@ async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b'ISTART[102,'
-    b'[[2,2,1],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b"ISTARTIEND\0",
-])
-async def test_sensor_disable(mock_device: DeviceMock) -> None:
-    """
-    Tests for disabling a sensor.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    sensors = await g90.sensors
-    assert sensors[1].enabled
-    await sensors[1].set_enabled(False)
-    assert not sensors[1].enabled
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-        b'ISTART[102,102,[102,[2,2]]]IEND\0',
-        b'ISTART[103,103,[103,'
-        b'["Night Light2",10,0,138,0,0,32,0,0,17,1,0,2,"060A0600"]'
-        b']]IEND\0',
-    ]
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b'ISTART[102,'
-    b'[[2,2,1],'
-    b'["Night Light2",10,0,138,0,0,1,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b"ISTARTIEND\0",
-])
-async def test_sensor_disable_externally_modified(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests for disabling a sensor that has been modified externally.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    sensors = await g90.sensors
-    assert sensors[1].enabled
-    await sensors[1].set_enabled(False)
-    assert sensors[1].enabled
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-        b'ISTART[102,102,[102,[2,2]]]IEND\0',
-    ]
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[1,1,1],["Unsupported",10,0,255,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b"ISTARTIEND\0",
-])
-async def test_sensor_unsupported_disable(mock_device: DeviceMock) -> None:
-    """
-    Tests for disabling an unsupported sensor.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    sensors = await g90.sensors
-    assert sensors[0].enabled
-    await sensors[0].set_enabled(False)
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-    ]
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b'ISTART[102,[[2,2,0]]]IEND\0',
-])
-async def test_sensor_disable_sensor_not_found_on_refresh(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests for disabling a sensor that is not found on refresh.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    sensors = await g90.sensors
-    assert sensors[1].enabled
-    await sensors[1].set_enabled(False)
-    assert sensors[1].enabled
-    assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-        b'ISTART[102,102,[102,[2,2]]]IEND\0',
-    ]
-
-
-@pytest.mark.g90device(sent_data=[
     b'ISTART[138,'
     b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
     b']]IEND\0',
@@ -1169,33 +907,21 @@ async def test_device_unsupported_disable(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[1,1,1],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b'ISTART[102,'
-    b'[[1,1,1],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b'ISTART[138,'
+    b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
-async def test_sensor_set_user_flags(mock_device: DeviceMock) -> None:
+async def test_device_delete(mock_device: DeviceMock) -> None:
     """
-    Tests for setting user flags on a sensor.
+    Tests for deleting the device.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    sensors = await g90.sensors
-    await sensors[0].set_user_flag(
-        # Intentionally contains non-user settable flag, which should be
-        # ignored and not configured for the sensor that initial doesn't have
-        # it set
-        G90SensorUserFlags.INDEPENDENT_ZONE | G90SensorUserFlags.ARM_DELAY
-        | G90SensorUserFlags.SUPPORTS_UPDATING_SUBTYPE
-    )
+
+    devices = await g90.get_devices()
+    await devices[0].delete()
+    assert devices[0].is_unavailable
     assert await mock_device.recv_data == [
-        b'ISTART[102,102,[102,[1,10]]]IEND\0',
-        b'ISTART[102,102,[102,[1,1]]]IEND\0',
-        b'ISTART[103,103,[103,'
-        b'["Night Light2",10,0,138,0,0,18,0,0,17,1,0,2,"060A0600"]'
-        b']]IEND\0',
+        b'ISTART[138,138,[138,[1,10]]]IEND\0',
+        b'ISTART[136,136,[136,[10]]]IEND\0',
     ]

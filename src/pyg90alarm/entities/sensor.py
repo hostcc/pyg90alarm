@@ -52,7 +52,7 @@ class G90SensorCommonData:  # pylint:disable=too-many-instance-attributes
     type_id: int
     subtype: int
     timeout: int
-    user_flag_data: int
+    user_flags_data: int
     baudrate: int
     protocol_id: int
     reserved_data: int
@@ -115,6 +115,35 @@ class G90SensorUserFlags(IntFlag):
         | ALERT_WHEN_AWAY_AND_HOME
         | ALERT_WHEN_AWAY
     )
+
+
+class G90SensorAlertModes(IntEnum):
+    """
+    Dedicated alert modes for the sensors (subset of user flags).
+    """
+    ALERT_ALWAYS = 0
+    ALERT_WHEN_AWAY = 1
+    ALERT_WHEN_AWAY_AND_HOME = 2
+
+
+# Mapping of relevant user flags to alert modes
+ALERT_MODES_MAP_BY_FLAG = {
+    # No 'when away' or 'when away and home' flag set means 'alert always
+    G90SensorUserFlags.NONE:
+        G90SensorAlertModes.ALERT_ALWAYS,
+    G90SensorUserFlags.ALERT_WHEN_AWAY:
+        G90SensorAlertModes.ALERT_WHEN_AWAY,
+    G90SensorUserFlags.ALERT_WHEN_AWAY_AND_HOME:
+        G90SensorAlertModes.ALERT_WHEN_AWAY_AND_HOME,
+}
+
+# Reversed mapping of alert modes to corresponding user flags
+ALERT_MODES_MAP_BY_VALUE = dict(
+    zip(
+        ALERT_MODES_MAP_BY_FLAG.values(),
+        ALERT_MODES_MAP_BY_FLAG.keys()
+    )
+)
 
 
 class G90SensorProtocols(IntEnum):
@@ -364,11 +393,21 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
     @property
     def user_flag(self) -> G90SensorUserFlags:
         """
+        User flags for the sensor, retained for compatibility - please use
+        `:attr:user_flags` instead.
+
+        :return: User flags
+        """
+        return self.user_flags
+
+    @property
+    def user_flags(self) -> G90SensorUserFlags:
+        """
         User flags for the sensor (disabled/enabled, arming type etc).
 
         :return: User flags
         """
-        return G90SensorUserFlags(self._protocol_data.user_flag_data)
+        return G90SensorUserFlags(self._protocol_data.user_flags_data)
 
     @property
     def node_count(self) -> int:
@@ -418,13 +457,32 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         return self._proto_idx
 
     @property
+    def supports_updates(self) -> bool:
+        """
+        Indicates if the sensor supports updates.
+
+        :return: Support for updates
+        """
+        if not self._definition:
+            _LOGGER.warning(
+                'Manipulating with user flags for sensor index=%s'
+                ' is unsupported - no sensor definition for'
+                ' type=%s, subtype=%s',
+                self.index,
+                self._protocol_data.type_id,
+                self._protocol_data.subtype
+            )
+            return False
+        return True
+
+    @property
     def supports_enable_disable(self) -> bool:
         """
         Indicates if disabling/enabling the sensor is supported.
 
         :return: Support for enabling/disabling the sensor
         """
-        return self._definition is not None
+        return self.supports_updates
 
     @property
     def protocol_data(self) -> G90SensorIncomingData:
@@ -518,16 +576,14 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         )
         self._door_open_when_arming = value
 
-    @property
-    def enabled(self) -> bool:
-        """
-        Indicates if the sensor is enabled.
-
-        :return: If sensor is enabled
-        """
-        return self.user_flag & G90SensorUserFlags.ENABLED != 0
-
     async def set_user_flag(self, value: G90SensorUserFlags) -> None:
+        """
+        Sets user flags of the sensor, retained for compatibility - please use
+        `:meth:set_user_flags` instead.
+        """
+        await self.set_user_flags(value)
+
+    async def set_user_flags(self, value: G90SensorUserFlags) -> None:
         """
         Sets user flags of the sensor.
 
@@ -535,26 +591,21 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
           :attr:`.G90SensorUserFlags.USER_SETTABLE` will be ignored and
           preserved from existing sensor flags.
         """
+        if not self.supports_updates:
+            return
+
+        # Checking private attribute directly, since `mypy` doesn't recognize
+        # the check for sensor definition is done over
+        # `self.supports_updates` property
+        if not self._definition:
+            return
+
         if value & ~G90SensorUserFlags.USER_SETTABLE:
             _LOGGER.warning(
                 'User flags for sensor index=%s contain non-user settable'
                 ' flags, those will be ignored: %s',
                 self.index, repr(value & ~G90SensorUserFlags.USER_SETTABLE)
             )
-        # Checking private attribute directly, since `mypy` doesn't recognize
-        # the check for sensor definition to be defined if done over
-        # `self.supports_enable_disable` property
-        if not self._definition:
-            _LOGGER.warning(
-                'Manipulating with user flags for sensor index=%s'
-                ' is unsupported - no sensor definition for'
-                ' type=%s, subtype=%s',
-                self.index,
-                self._protocol_data.type_id,
-                self._protocol_data.subtype
-            )
-
-            return
 
         # Refresh actual sensor data from the alarm panel before modifying it.
         # This implies the sensor is at the same position within sensor list
@@ -593,24 +644,32 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             )
             return
 
-        prev_user_flag = self.user_flag
+        prev_user_flags = self.user_flags
 
         # Re-instantiate the protocol data with modified user flags
         _data = asdict(self._protocol_data)
-        _data['user_flag_data'] = (
+        _data['user_flags_data'] = (
             # Preserve flags that are not user-settable
-            self.user_flag & ~G90SensorUserFlags.USER_SETTABLE
+            self.user_flags & ~G90SensorUserFlags.USER_SETTABLE
         ) | (
             # Combine them with the new user-settable flags
             value & G90SensorUserFlags.USER_SETTABLE
         )
         self._protocol_data = self._protocol_incoming_data_kls(**_data)
 
+        if self.user_flags == prev_user_flags:
+            _LOGGER.debug(
+                'Sensor index=%s: user flags %s have not changed,'
+                ' skipping update',
+                self._protocol_data.index, repr(prev_user_flags)
+            )
+            return
+
         _LOGGER.debug(
-            'Sensor index=%s: previous user_flag %s, resulting user_flag %s',
+            'Sensor index=%s: previous user flags %s, resulting flags %s',
             self._protocol_data.index,
-            repr(prev_user_flag),
-            repr(self.user_flag)
+            repr(prev_user_flags),
+            repr(self.user_flags)
         )
 
         # Generate protocol data from write operation, deriving values either
@@ -623,7 +682,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             type_id=self._protocol_data.type_id,
             subtype=self._protocol_data.subtype,
             timeout=self._protocol_data.timeout,
-            user_flag_data=self._protocol_data.user_flag_data,
+            user_flags_data=self._protocol_data.user_flags_data,
             baudrate=self._protocol_data.baudrate,
             protocol_id=self._protocol_data.protocol_id,
             reserved_data=self._definition.reserved_data,
@@ -637,19 +696,109 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             G90Commands.SETSINGLESENSOR, list(astuple(outgoing_data))
         )
 
+    def get_flag(self, flag: G90SensorUserFlags) -> bool:
+        """
+        Gets the user flag for the sensor.
+
+        :param flag: User flag to get
+        :return: User flag value
+        """
+        return flag in self.user_flag
+
+    async def set_flag(
+        self, flag: G90SensorUserFlags, value: bool
+    ) -> None:
+        """
+        Sets the user flag for the sensor.
+
+        :param flag: User flag to set
+        :param value: New value for the user flag
+        """
+        # Skip updating the flag if it has the desired value
+        if self.get_flag(flag) == value:
+            _LOGGER.debug(
+                'Sensor index=%s: user flag %s has not changed,'
+                ' skipping update',
+                self._protocol_data.index, repr(flag)
+            )
+            return
+
+        # Invert corresponding user flag and set it
+        user_flag = self.user_flag ^ flag
+        await self.set_user_flag(user_flag)
+
+    @property
+    def enabled(self) -> bool:
+        """
+        Indicates if the sensor is enabled, using `:meth:get_user_flag` instead
+        is preferred.
+
+        :return: If sensor is enabled
+        """
+        return self.get_flag(G90SensorUserFlags.ENABLED)
+
     async def set_enabled(self, value: bool) -> None:
         """
-        Sets the sensor enabled/disabled.
-        """
+        Sets the sensor enabled/disabled, using `:meth:set_user_flag` instead
+        is preferred.
 
-        # Modify the value of the user flag setting enabled/disabled one
-        # appropriately.
-        user_flag = self.user_flag
-        if value:
-            user_flag |= G90SensorUserFlags.ENABLED
-        else:
-            user_flag &= ~G90SensorUserFlags.ENABLED
-        await self.set_user_flag(user_flag)
+        :param value: New the sensor should be enabled
+        """
+        await self.set_flag(G90SensorUserFlags.ENABLED, value)
+
+    @property
+    def alert_mode(self) -> G90SensorAlertModes:
+        """
+        Alert mode for the sensor.
+
+        :return: Alert mode
+        """
+        # Filter out irrelevant flags
+        mode = self.user_flag & (
+            G90SensorUserFlags.ALERT_WHEN_AWAY
+            | G90SensorUserFlags.ALERT_WHEN_AWAY_AND_HOME
+        )
+        # Map the relevant user flags to alert mode
+        result = ALERT_MODES_MAP_BY_FLAG.get(mode, None)
+
+        if result is None:
+            raise ValueError(
+                f"Unknown alert mode for sensor {self.name}: {mode}"
+                f" (user flag: {self.user_flag})"
+            )
+
+        return result
+
+    async def set_alert_mode(self, value: G90SensorAlertModes) -> None:
+        """
+        Sets the sensor alert mode.
+        """
+        # Skip update if the value is already set to the requested one
+        if self.alert_mode == value:
+            _LOGGER.debug(
+                'Sensor index=%s: alert mode %s has not changed,'
+                ' skipping update',
+                self._protocol_data.index, repr(value)
+            )
+            return
+
+        # Map the alert mode to user flag value
+        result = ALERT_MODES_MAP_BY_VALUE.get(value, None)
+
+        if result is None:
+            raise ValueError(
+                f"Attempting to set alert mode for sensor {self.name} to"
+                f" unknown value '{value}'"
+            )
+
+        # Add the mapped value over the user flags, filtering out previous
+        # value of the alert mode
+        user_flags = self.user_flag & ~(
+            G90SensorUserFlags.ALERT_WHEN_AWAY
+            | G90SensorUserFlags.ALERT_WHEN_AWAY_AND_HOME
+        ) | result
+        # Set the updated user flags
+        await self.set_user_flags(user_flags)
 
     @property
     def extra_data(self) -> Any:
@@ -674,6 +823,19 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
     def is_unavailable(self, value: bool) -> None:
         self._unavailable = value
 
+    async def delete(self) -> None:
+        """
+        Deletes the sensor from the alarm panel.
+        """
+        _LOGGER.debug("Deleting sensor: %s", self)
+
+        # Mark the sensor as unavailable
+        self.is_unavailable = True
+        # Delete the sensor from the alarm panel
+        await self.parent.command(
+            G90Commands.DELSENSOR, [self.index]
+        )
+
     def _asdict(self) -> Dict[str, Any]:
         """
         Returns dictionary representation of the sensor.
@@ -693,8 +855,15 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             'user_flag': self.user_flag,
             'reserved': self.reserved,
             'extra_data': self.extra_data,
-            'enabled': self.enabled,
-            'supports_enable_disable': self.supports_enable_disable,
+            'enabled': self.get_flag(G90SensorUserFlags.ENABLED),
+            'detect_door': self.get_flag(G90SensorUserFlags.DETECT_DOOR),
+            'door_chime': self.get_flag(G90SensorUserFlags.DOOR_CHIME),
+            'independent_zone': self.get_flag(
+                G90SensorUserFlags.INDEPENDENT_ZONE
+            ),
+            'arm_delay': self.get_flag(G90SensorUserFlags.ARM_DELAY),
+            'alert_mode': self.alert_mode,
+            'supports_updates': self.supports_updates,
             'is_wireless': self.is_wireless,
             'is_low_battery': self.is_low_battery,
             'is_tampered': self.is_tampered,

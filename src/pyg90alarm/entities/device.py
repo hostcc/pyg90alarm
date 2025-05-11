@@ -50,7 +50,7 @@ class G90Device(G90Sensor):
                                   [self.index, 1, self.subindex])
 
     @property
-    def supports_enable_disable(self) -> bool:
+    def supports_updates(self) -> bool:
         """
         Indicates if disabling/enabling the device (relay) is supported.
 
@@ -64,12 +64,12 @@ class G90Device(G90Sensor):
         # mostly.
         return False
 
-    async def set_enabled(self, value: bool) -> None:
+    async def delete(self) -> None:
         """
-        Changes the disabled/enabled state of the device (relay).
-
-        :param value: Whether to enable or disable the device
+        Deletes the device (relay) from the G90 alarm panel.
         """
-        _LOGGER.warning(
-            'Manipulating with enable/disable for device is unsupported'
-        )
+        _LOGGER.debug("Deleting device: %s", self)
+        # Mark the device as unavailable
+        self.is_unavailable = True
+        # Delete the device from the alarm panel
+        await self.parent.command(G90Commands.DELDEVICE, [self.index])

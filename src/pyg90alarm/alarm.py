@@ -201,7 +201,7 @@ class G90Alarm(G90NotificationProtocol):
         ] = None
         self._tamper_cb: Optional[TamperCallback] = None
         self._reset_occupancy_interval = reset_occupancy_interval
-        self._alert_config: Optional[G90AlertConfigFlags] = None
+        self._alert_config = G90AlertConfig(self)
         self._sms_alert_when_armed = False
         self._alert_simulation_task: Optional[Task[Any]] = None
         self._alert_simulation_start_listener_back = False
@@ -385,50 +385,29 @@ class G90Alarm(G90NotificationProtocol):
         return G90HostStatus(*res)
 
     @property
-    async def alert_config(self) -> G90AlertConfigFlags:
+    def alert_config(self) -> G90AlertConfig:
         """
-        Property over new :meth:`.get_alert_config` method, retained for
-        compatibility.
+        Provides alert configuration object.
+
+        :return: Alert configuration object
         """
-        return await self.get_alert_config()
+        return self._alert_config
 
     async def get_alert_config(self) -> G90AlertConfigFlags:
         """
-        Retrieves the alert configuration flags from the device. Please note
-        the configuration is cached upon first call, so you need to
-        re-instantiate the class to reflect any updates there.
+        Provides alert configuration flags, retained for compatibility - using
+        `:attr:alert_config` and `:class:G90AlertConfig` is preferred.
 
         :return: The alerts configured
         """
-        if not self._alert_config:
-            self._alert_config = await self._alert_config_uncached()
-        return self._alert_config
-
-    async def _alert_config_uncached(self) -> G90AlertConfigFlags:
-        """
-        Retrieves the alert configuration flags directly from the device.
-
-        :return: The alerts configured
-        """
-        res = await self.command(G90Commands.GETNOTICEFLAG)
-        return G90AlertConfig(*res).flags
+        return await self.alert_config.flags
 
     async def set_alert_config(self, flags: G90AlertConfigFlags) -> None:
         """
-        Sets the alert configuration flags on the device.
+        Sets the alert configuration flags, retained for compatibility - using
+        `:attr:alert_config` and `:class:G90AlertConfig` is preferred.
         """
-        # Use uncached method retrieving the alert configuration, to ensure the
-        # actual value retrieved from the device
-        alert_config = await self._alert_config_uncached()
-        if alert_config != self._alert_config:
-            _LOGGER.warning(
-                'Alert configuration changed externally,'
-                ' overwriting (read "%s", will be set to "%s")',
-                str(alert_config), str(flags)
-            )
-        await self.command(G90Commands.SETNOTICEFLAG, [flags.value])
-        # Update the alert configuration stored
-        self._alert_config = flags
+        await self.alert_config.set(flags)
 
     @property
     async def user_data_crc(self) -> G90UserDataCRC:
@@ -514,9 +493,9 @@ class G90Alarm(G90NotificationProtocol):
 
             # Determine if door close notifications are available for the given
             # sensor
-            alert_config_flags = await self.alert_config
-            door_close_alert_enabled = (
-                G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags)
+            door_close_alert_enabled = await self.alert_config.get_flag(
+                G90AlertConfigFlags.DOOR_CLOSE
+            )
             # The condition intentionally doesn't account for cord sensors of
             # subtype door, since those won't send door open/close alerts, only
             # notifications
@@ -532,7 +511,8 @@ class G90Alarm(G90NotificationProtocol):
                               ' (alert config flags %s) or is a cord sensor,'
                               ' closing event will be emulated upon'
                               ' %s seconds',
-                              name, sensor.type, alert_config_flags,
+                              name, sensor.type,
+                              await self.alert_config.flags,
                               self._reset_occupancy_interval)
                 G90Callback.invoke_delayed(
                     self._reset_occupancy_interval,
@@ -599,17 +579,12 @@ class G90Alarm(G90NotificationProtocol):
         :param state: Device state (armed, disarmed, armed home)
         """
         if self._sms_alert_when_armed:
-            if state == G90ArmDisarmTypes.DISARM:
-                # Disable SMS alerts from the device
-                await self.set_alert_config(
-                    await self.alert_config & ~G90AlertConfigFlags.SMS_PUSH
+            await self.alert_config.set_flag(
+                G90AlertConfigFlags.SMS_PUSH,
+                state in (
+                    G90ArmDisarmTypes.ARM_AWAY, G90ArmDisarmTypes.ARM_HOME
                 )
-            if state in (G90ArmDisarmTypes.ARM_AWAY,
-                         G90ArmDisarmTypes.ARM_HOME):
-                # Enable SMS alerts from the device
-                await self.set_alert_config(
-                    await self.alert_config | G90AlertConfigFlags.SMS_PUSH
-                )
+            )
 
         # Reset the tampered and door open when arming flags on all sensors
         # having those set
