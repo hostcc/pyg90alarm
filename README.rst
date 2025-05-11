@@ -49,8 +49,8 @@ Python, and it opens up a way for further integrations.
 Supported hardware
 ==================
 
-It mightn't possible to list every system supported by the package due to
-manufacturers name the products differently.  Here is the list of hardware
+It might not be possible to list every system supported by the package due to
+manufacturers naming the products differently.  Here is the list of hardware
 known to work with the package:
 
 * `PST G90B Plus <http://www.cameralarms.com/products/auto_dial_alarm_system/185.html>`_
@@ -123,7 +123,7 @@ set the IP address allocation up.
    alert to be enabled in the mobile application, otherwise it won't be
    recorded in the history.
 
-For the local notifications to be enabled the ```G90Alarm.use_local_notifications()``` needs to be called upon contstucting an instance of ``G90Alarm`` class, then ```G90Alarm.listen_notifications()`z to start processing those coming from the panel - the code fragment below demonstrate that though being incomplete since callbacks (e.g. ``G90Alarm.on_armdisarm()``) should be set for the actual processing of the notifications.
+For the local notifications to be enabled the ``G90Alarm.use_local_notifications()`` needs to be called upon constructing an instance of ``G90Alarm`` class, then ``G90Alarm.listen_notifications()`` to start processing those coming from the panel - the code fragment below demonstrates that though being incomplete since callbacks (e.g. ``G90Alarm.on_armdisarm()``) should be set for the actual processing of the notifications.
 
 .. code:: python
 
@@ -142,10 +142,10 @@ Cloud notifications
 The cloud protocol is native to the panel and is used to interact with mobile application. The package can mimic the cloud server and interpret the messages the panel sends to the cloud, allowing to receive the notifications and alerts.
 While the protocol also allows to send commands to the panel, it is not implemented and local protocol is used for that - i.e. when cloud notifications are in use the local protocol still utilized for sending commands to the panel.
 
-The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port (not customizeable at panel side). To process the cloud notifications all the traffic from panel towards the cloud (IP address ``47.88.7.61`` and TCP port ``5678`` as of writing) needs to be diverted to the node where the package is running - depending on your network equipment it could be port forwarding, DNAT or other means. It is unclear whether the panel utilizes DNS to resolve the cloud service IP address, hence the documentation only mentions IP-based traffic redirection.
+The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port (not customizable at panel side). To process the cloud notifications all the traffic from panel towards the cloud (IP address ``47.88.7.61`` and TCP port ``5678`` as of writing) needs to be diverted to the node where the package is running - depending on your network equipment it could be port forwarding, DNAT or other means. It is unclear whether the panel utilizes DNS to resolve the cloud service IP address, hence the documentation only mentions IP-based traffic redirection.
 
 Please see
-`cloud-protocol.rst <docs/cloud-protocol.rst>`_ for further details on the protocol.
+`the section <docs/cloud-protocol.rst>`_ for further details on the protocol.
 
 The benefit of the cloud notifications is that the panel no longer required to have ``10.10.10.250`` IP address.
 
@@ -153,10 +153,10 @@ The package could act as:
 
 - Standalone cloud server with no Internet connectivity or cloud service
   required at all - good if you'd like to avoid having a vendor service involved. Please note the mobile application will show panel as offline in this mode
-- Chained cloud server, where in addition to intepreting the notifications it
-  will also forward all packets received from the panel to the cloud server, and pass its responses back to the panel. This allows to have notificaitons processed by the package and the mobile application working as well.
+- Chained cloud server, where in addition to interpreting the notifications it
+  will also forward all packets received from the panel to the cloud server, and pass its responses back to the panel. This allows to have notifications processed by the package and the mobile application working as well.
 
-  .. note:: Sending packets upstream to the known IP address and port of the cloud server might result in those looped back (since traffic from panel to cloud service has to be redirected to the host where package runs), if your network equipment can't account for source address in redirection rules (i.e. limiting the port redirection to the panel's IP address). In that case you'll need another redirection, from the host where the package runs to the cloud service using an IP from your network. That way those two redirection rules will coexist correctly. To illustate:
+  .. note:: Sending packets upstream to the known IP address and port of the cloud server might result in those looped back (since traffic from panel to cloud service has to be redirected to the host where package runs), if your network equipment can't account for source address in redirection rules (i.e. limiting the port redirection to the panel's IP address). In that case you'll need another redirection, from the host where the package runs to the cloud service using an IP from your network. That way those two redirection rules will coexist correctly. To illustrate:
 
    Port forwarding rule 1:
 
@@ -165,6 +165,7 @@ The package could act as:
    - Port: 5678
    - Redirect to host: host where package runs
    - Redirect to port: 5678 (or other port if you want to use it)
+
 
    Port forwarding rule 2 (optional):
 
