@@ -35,6 +35,7 @@ from .entities.device import G90Device
 from .local.host_info import (
     G90HostInfo, G90HostInfoWifiStatus, G90HostInfoGsmStatus
 )
+from .local.config import G90AlertConfigFlags
 from .local.host_status import G90HostStatus
 from .const import (
     G90MessageTypes,
@@ -51,7 +52,7 @@ from .exceptions import G90Error, G90TimeoutError
 __all__ = [
     'G90Alarm', 'G90BaseCommand', 'G90PaginatedResult', 'G90DeviceAlert',
     'G90Sensor', 'G90SensorTypes', 'G90SensorAlertModes', 'G90SensorUserFlags',
-    'G90Device',
+    'G90AlertConfigFlags', 'G90Device',
     'G90HostInfo', 'G90HostInfoWifiStatus', 'G90HostInfoGsmStatus',
     'G90HostStatus',
     'G90MessageTypes', 'G90NotificationTypes', 'G90ArmDisarmTypes',
