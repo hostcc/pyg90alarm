@@ -20,6 +20,7 @@
 """
 Base entity.
 """
+from __future__ import annotations
 from abc import ABC, abstractmethod
 # `Self` has been introduced in Python 3.11, need to use `typing_extensions`
 # for earlier versions
@@ -80,4 +81,13 @@ class G90BaseEntity(ABC):
         Get the index of the entity.
 
         :return: Index of the entity.
+        """
+
+    @property
+    @abstractmethod
+    def subindex(self) -> int:
+        """
+        Get the subindex of the entity.
+
+        :return: Subindex of the entity.
         """

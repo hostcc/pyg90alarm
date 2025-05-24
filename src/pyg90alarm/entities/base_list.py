@@ -24,11 +24,21 @@ Base entity list.
 from abc import ABC, abstractmethod
 from typing import (
     List, AsyncGenerator, Optional, TypeVar, Generic, cast, TYPE_CHECKING,
+    Callable, Coroutine, Union
 )
 import asyncio
 import logging
 
+from ..exceptions import G90Error
 from .base_entity import G90BaseEntity
+from ..callback import G90Callback
+
+T = TypeVar('T', bound=G90BaseEntity)
+ListChangeCallback = Union[
+    Callable[[T, bool], None],
+    Callable[[T, bool], Coroutine[None, None, None]]
+]
+
 if TYPE_CHECKING:
     from ..alarm import G90Alarm
 else:
@@ -36,7 +46,6 @@ else:
     # (`G90Alarm` -> `G90SensorList` -> `G90BaseList` -> `G90Alarm`)
     G90Alarm = object
 
-T = TypeVar('T', bound=G90BaseEntity)
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -50,6 +59,7 @@ class G90BaseList(Generic[T], ABC):
         self._entities: List[T] = []
         self._lock = asyncio.Lock()
         self._parent = parent
+        self._list_change_cb: Optional[ListChangeCallback[T]] = None
 
     @abstractmethod
     async def _fetch(self) -> AsyncGenerator[T, None]:
@@ -91,26 +101,41 @@ class G90BaseList(Generic[T], ABC):
             entities = self._fetch()
 
             non_existing_entities = self._entities.copy()
-            async for entity in entities:
-                try:
-                    existing_entity_idx = self._entities.index(entity)
-                except ValueError:
-                    existing_entity_idx = None
+            try:
+                async for entity in entities:
+                    try:
+                        existing_entity = next(
+                            x for x in self._entities if x == entity
+                        )
+                    except StopIteration:
+                        existing_entity = None
 
-                if existing_entity_idx is not None:
-                    existing_entity = self._entities[existing_entity_idx]
-                    # Update the existing entity with the new data
-                    _LOGGER.debug(
-                        "Updating existing entity '%s' from protocol"
-                        " data '%s'", existing_entity, entity
-                    )
+                    if existing_entity is not None:
+                        # Update the existing entity with the new data
+                        _LOGGER.debug(
+                            "Updating existing entity '%s' from protocol"
+                            " data '%s'", existing_entity, entity
+                        )
 
-                    self._entities[existing_entity_idx].update(entity)
-                    non_existing_entities.remove(entity)
-                else:
-                    # Add the new entity to the list
-                    _LOGGER.debug('Adding new entity: %s', entity)
-                    self._entities.append(entity)
+                        existing_entity.update(entity)
+                        non_existing_entities.remove(existing_entity)
+
+                        # Invoke the list change callback for the existing
+                        # entity to notify about the update
+                        G90Callback.invoke(
+                            self._list_change_cb, existing_entity, False
+                        )
+                    else:
+                        # Add the new entity to the list
+                        _LOGGER.debug('Adding new entity: %s', entity)
+                        self._entities.append(entity)
+                        # Invoke the list change callback for the new entity
+                        G90Callback.invoke(self._list_change_cb, entity, True)
+            except TypeError as err:
+                _LOGGER.error(
+                    'Failed to fetch entities: %s', err
+                )
+                raise G90Error(err) from err
 
             # Mark the entities that are no longer in the list
             for unavailable_entity in non_existing_entities:
@@ -126,30 +151,30 @@ class G90BaseList(Generic[T], ABC):
 
             return self._entities
 
-    async def find(
-        self, idx: int, name: str, exclude_unavailable: bool
+    async def find_by_idx(
+        self, idx: int, exclude_unavailable: bool, subindex: int = 0
     ) -> Optional[T]:
         """
-        Finds entity by index and name.
+        Finds entity by index.
 
         :param idx: Entity index
-        :param name: Entity name
         :param exclude_unavailable: Exclude unavailable entities
-        :return: Entity instance
+        :param subindex: Entity subindex
+        :return: Entity instance or None if not found
         """
         entities = await self.entities
 
         found = None
-        # Fast lookup by direct index
-        if idx < len(entities) and entities[idx].name == name:
+        if idx < len(entities):
             entity = entities[idx]
-            _LOGGER.debug('Found entity via fast lookup: %s', entity)
-            found = entity
+            if entity.index == idx and entity.subindex == subindex:
+                # Fast lookup by direct index
+                _LOGGER.debug('Found entity via fast lookup: %s', entity)
+                found = entity
 
-        # Fast lookup failed, perform slow one over the whole entities list
         if not found:
             for entity in entities:
-                if entity.index == idx and entity.name == name:
+                if entity.index == idx and entity.subindex == subindex:
                     _LOGGER.debug('Found entity: %s', entity)
                     found = entity
 
@@ -161,5 +186,83 @@ class G90BaseList(Generic[T], ABC):
                 'Entity is found but unavailable, will result in none returned'
             )
 
-        _LOGGER.error('Entity not found: idx=%s, name=%s', idx, name)
+        _LOGGER.error(
+            'Entity not found by index=%s and subindex=%s', idx, subindex
+        )
         return None
+
+    async def find(
+        self, idx: int, name: str, exclude_unavailable: bool, subindex: int = 0
+    ) -> Optional[T]:
+        """
+        Finds entity by index, subindex and name.
+
+        :param idx: Entity index
+        :param name: Entity name
+        :param exclude_unavailable: Exclude unavailable entities
+        :param subindex: Entity subindex
+        :return: Entity instance or None if not found
+        """
+        found = await self.find_by_idx(idx, exclude_unavailable, subindex)
+        if not found:
+            return None
+
+        if found.name == name:
+            return found
+
+        _LOGGER.error(
+            'Entity not found: index=%s, subindex=%s, name=%s',
+            idx, subindex, name
+        )
+        return None
+
+    async def find_free_idx(self) -> int:
+        """
+        Finds the first free index in the list.
+
+        The index is from protocol point of view (`.index` attribute of the
+        protocol data), not the index in the list. The index is required when
+        registering a new entity on the panel.
+
+        :return: Free index
+        """
+        entities = await self.entities
+
+        # Collect indexes in use by the existing entities
+        occupied_indexes = set(x.index for x in entities)
+        # Generate a set of possible indexes from 0 to the maximum index in
+        # use
+        possible_indexes = set(range(0, max(occupied_indexes)))
+
+        try:
+            # Find the first free index by taking difference between
+            # possible indexes and occupied ones, and then taking the minimum
+            # value off the difference
+            free_idx = min(
+                set(possible_indexes).difference(occupied_indexes)
+            )
+            _LOGGER.debug(
+                'Found free index: %s out of occupied indexes: %s',
+                free_idx, occupied_indexes
+            )
+            return free_idx
+        except ValueError:
+            # If no gaps in existing indexes, then return the index next to
+            # the last existing entity
+            return len(entities)
+
+    @property
+    def list_change_callback(self) -> Optional[ListChangeCallback[T]]:
+        """
+        List change callback.
+
+        Invoked when the list of entities is changed, i.e. when a new entity is
+        added or an existing one is updated.
+
+        :return: Callback
+        """
+        return self._list_change_cb
+
+    @list_change_callback.setter
+    def list_change_callback(self, value: ListChangeCallback[T]) -> None:
+        self._list_change_cb = value

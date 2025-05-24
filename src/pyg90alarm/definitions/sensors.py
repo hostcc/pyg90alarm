@@ -19,841 +19,825 @@
 # SOFTWARE.
 
 """
-Sensor definitions for G90 devices, required when modifying them since writing
-a sensor to the device requires values not present on read.
+Sensor definitions for G90 alarm panel.
 """
-from typing import NamedTuple
-from enum import IntEnum
+from __future__ import annotations
+import logging
+from .base import (
+    G90PeripheralDefinition,
+    G90PeripheralDefinitionsBase,
+    G90PeripheralTypes,
+    G90PeripheralProtocols,
+    G90PeripheralRwModes,
+    G90PeripheralMatchModes,
+    unique_definitions
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
-class SensorMatchMode(IntEnum):
+@unique_definitions
+class G90SensorDefinitions(G90PeripheralDefinitionsBase):
     """
-    Defines compare (match) mode for the sensor.
+    Sensor definitions for G90 devices, required when modifying them since
+    writing a sensor to the device requires values not present on read.
     """
-    ALL = 0
-    ONLY20BITS = 1
-    ONLY16BITS = 2
+    SENSOR_DEFINITIONS = [
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Door Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=2,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Glass Break Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=3,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Gas Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=4,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Smoke Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=5,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="SOS Button: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=6,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Vibration Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=7,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Water Leak Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=9,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Beam Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=8,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="PIR Motion Sensor: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=11,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="RFID: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.CORD_SENSOR,
+            subtype=12,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Door Bell: Wired",
+            protocol=G90PeripheralProtocols.CORD,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.IR_2_4G,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.WRITE,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Infrared Transcoder",
+            protocol=G90PeripheralProtocols.RF_PRIVATE,
+            timeout=0,
+            baudrate=800,
+            node_count=1
+        ),
 
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.TOUCH_SWITCH_2_4G,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.WRITE,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Switch: 2.4G Type 1",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=960,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.TOUCH_SWITCH_2_4G,
+            subtype=2,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.WRITE,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Switch: 2.4G Type 2",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=960,
+            node_count=2
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.TOUCH_SWITCH_2_4G,
+            subtype=3,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.WRITE,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Switch: 2.4G Type 3",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=960,
+            node_count=3
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.TOUCH_SWITCH_2_4G,
+            subtype=4,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.WRITE,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Switch: 2.4G Type 4",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=960,
+            node_count=4
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.DOOR,
+            subtype=0,
+            rx=5,
+            tx=0,
+            private_data='F100f5017d02f803f90400',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY16BITS,
+            name="Door Sensor: WDS07",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.DOOR,
+            subtype=1,
+            rx=2,
+            tx=0,
+            private_data='0001020400',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Door Sensor: Non-smart",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.DOOR,
+            subtype=3,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Door Sensor: WRDS01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.DOOR,
+            subtype=2,
+            rx=5,
+            tx=0,
+            private_data='F100f5017d02f803f904',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY16BITS,
+            name="Door Sensor: Smart",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.GLASS,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Glass Break Sensor: BLPS",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.GAS,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Gas Sensor: WGD01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.SMOKE,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Smoke Sensor: WSD02",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.SMOKE,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Smoke Sensor: WSD04",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.SOS,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="SOS Button: WEB01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.SOS,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="SOS Button: WEB03",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.VIB,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Vibration Sensor: WSS01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.WATER,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Water Leak Sensor: LSTC02",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.WATER,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Water Leak Sensor: LSTC01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=3,
+            rx=3,
+            tx=0,
+            private_data='06000301020200',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="PIR Motion Sensor: WMS08",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=12,
+            rx=3,
+            tx=0,
+            private_data='060003010202000314',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="PIR Motion Sensor: WMS08B",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: ODPIR",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=5,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: N650",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=6,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: WPD02",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=8,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: WCMS02",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=9,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: CWMS01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=11,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: WMS04",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=2,
+            rx=3,
+            tx=0,
+            private_data='04000801020200',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="PIR Motion Sensor: WMS07",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=4,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: ODPIR03",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=7,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: WPD01",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.INFRARED,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="PIR Motion Sensor: Ceiling",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.IN_BEAM,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Beam Sensor: ABT",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.IN_BEAM,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Beam Sensor: ABE",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.IN_BEAM,
+            subtype=2,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Beam Sensor: ABH",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.REMOTE,
+            subtype=1,
+            rx=4,
+            tx=0,
+            private_data='0d000b010e02070300',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Remote: RMC08",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.REMOTE,
+            subtype=0,
+            rx=4,
+            tx=0,
+            private_data='cf00fc01f3023f0300',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY16BITS,
+            name="Remote: RMC07",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.REMOTE,
+            subtype=4,
+            rx=4,
+            tx=0,
+            private_data='cf00fc01f3023f0300',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY16BITS,
+            name="Remote: RMC02",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.REMOTE,
+            subtype=2,
+            rx=3,
+            tx=0,
+            private_data='07000602050300',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Remote: 3 Button",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.RFID,
+            subtype=1,
+            rx=11,
+            tx=0,
+            private_data='0e0007010d020b03010402050c060a0709080809060a00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="RFID: K07",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.DOORBELL,
+            subtype=1,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Door Bell: WDB",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.BUTTONID,
+            subtype=1,
+            rx=4,
+            tx=0,
+            private_data='07000e010d020b0300',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Fingerprint: Sensor",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.WATCH,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY16BITS,
+            name="SOS Button: Watch",
+            protocol=G90PeripheralProtocols.RF_2262,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.FINGER_LOCK,
+            subtype=1,
+            rx=0,
+            tx=2,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY16BITS,
+            name="Fingerprint: Lock",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.SUBHOST,
+            subtype=0,
+            rx=0,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ALL,
+            name="Sub Host: SS08S",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=1480,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.GAS_VALVE,
+            subtype=0,
+            rx=2,
+            tx=1,
+            private_data='09000801ff0e0e',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Gas Valve Sensor: WGD02",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=1600,
+            node_count=1
+        ),
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.REMOTE_2_4G,
+            subtype=4,
+            rx=4,
+            tx=0,
+            private_data='00',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="Remote: RMC2.4G",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
+    ]
 
-class SensorRwMode(IntEnum):
-    """
-    Defines read/write mode for the sensor.
-    """
-    READ = 0
-    WRITE = 1
-    READ_WRITE = 2
-
-
-class SensorDefinition(NamedTuple):
-    """
-    Holds sensor definition data.
-    """
-    type: int
-    subtype: int
-    rx: int
-    tx: int
-    private_data: str
-    rwMode: SensorRwMode
-    matchMode: SensorMatchMode
-
-    @property
-    def reserved_data(self) -> int:
+    @classmethod
+    def definitions(cls) -> list[G90PeripheralDefinition]:
         """
-        Sensor's 'reserved_data' field to be written, combined of match
-        and RW mode values bitwise.
+        Gets all sensor definitions.
+
+        :return: List of sensor definitions.
         """
-        return self.matchMode.value << 4 | self.rwMode.value
-
-
-SENSOR_DEFINITIONS = [
-    # Cord Door Sensor
-    SensorDefinition(
-        type=126,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Glass Sensor
-    SensorDefinition(
-        type=126,
-        subtype=2,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Gas Sensor
-    SensorDefinition(
-        type=126,
-        subtype=3,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Smoke Sensor
-    SensorDefinition(
-        type=126,
-        subtype=4,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord SOS Sensor
-    SensorDefinition(
-        type=126,
-        subtype=5,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Vibration Sensor
-    SensorDefinition(
-        type=126,
-        subtype=6,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Water Sensor
-    SensorDefinition(
-        type=126,
-        subtype=7,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Beam Sensor
-    SensorDefinition(
-        type=126,
-        subtype=9,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord PIR motion sensor
-    SensorDefinition(
-        type=126,
-        subtype=8,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord RFID Sensor
-    SensorDefinition(
-        type=126,
-        subtype=11,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Bell Sensor
-    SensorDefinition(
-        type=126,
-        subtype=12,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Cord Device
-    SensorDefinition(
-        type=254,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket S07
-    SensorDefinition(
-        type=128,
-        subtype=3,
-        rx=0,
-        tx=2,
-        private_data='060A0600',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket JDQ
-    SensorDefinition(
-        type=128,
-        subtype=0,
-        rx=0,
-        tx=2,
-        private_data='0707070B0B0D0D0E0E00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket Relay (single channel)
-    SensorDefinition(
-        type=128,
-        subtype=1,
-        rx=0,
-        tx=2,
-        private_data='07070700',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket Switch
-    SensorDefinition(
-        type=128,
-        subtype=4,
-        rx=0,
-        tx=2,
-        private_data='050D0500',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket Switch (3 channel)
-    SensorDefinition(
-        type=128,
-        subtype=5,
-        rx=0,
-        tx=2,
-        private_data='070A0E080D060B00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket Switch (4 channel)
-    SensorDefinition(
-        type=128,
-        subtype=6,
-        rx=0,
-        tx=2,
-        private_data='0B0D0E0B0C090A070800',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Rolling curtain
-    SensorDefinition(
-        type=130,
-        subtype=0,
-        rx=0,
-        tx=7,
-        private_data='070B0E0D0C09030100',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Curtain
-    SensorDefinition(
-        type=130,
-        subtype=1,
-        rx=0,
-        tx=7,
-        private_data='0804010200',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Sliding window
-    SensorDefinition(
-        type=130,
-        subtype=1,
-        rx=0,
-        tx=7,
-        private_data='0E0B0E0D0C09030100',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Push Window curtain
-    SensorDefinition(
-        type=130,
-        subtype=2,
-        rx=0,
-        tx=7,
-        private_data='070B0E0D0C09030100',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Air Conditioner
-    SensorDefinition(
-        type=133,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # TV
-    SensorDefinition(
-        type=135,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Infrared Transcoder
-    SensorDefinition(
-        type=145,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Siren SS08
-    SensorDefinition(
-        type=129,
-        subtype=0,
-        rx=0,
-        tx=2,
-        private_data='FEFEF600',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Siren SS07A
-    SensorDefinition(
-        type=129,
-        subtype=4,
-        rx=0,
-        tx=2,
-        private_data='FEFEF600',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Siren SS04
-    SensorDefinition(
-        type=129,
-        subtype=5,
-        rx=0,
-        tx=2,
-        private_data='FCFCCF00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Siren SS02B
-    SensorDefinition(
-        type=129,
-        subtype=1,
-        rx=0,
-        tx=2,
-        private_data='FCFCCF00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Solar-powered siren
-    SensorDefinition(
-        type=129,
-        subtype=2,
-        rx=0,
-        tx=2,
-        private_data='FEFEFD00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Night Light
-    SensorDefinition(
-        type=138,
-        subtype=0,
-        rx=0,
-        tx=2,
-        private_data='060A0600',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Socket_2.4G
-    SensorDefinition(
-        type=140,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Siren_2.4G
-    SensorDefinition(
-        type=141,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Switch 2.4G Type 2
-    SensorDefinition(
-        type=142,
-        subtype=2,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Switch 2.4G Type 1
-    SensorDefinition(
-        type=143,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Switch 2.4G Type 2
-    SensorDefinition(
-        type=143,
-        subtype=2,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Switch 2.4G Type 3
-    SensorDefinition(
-        type=143,
-        subtype=3,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Switch 2.4G Type 4
-    SensorDefinition(
-        type=143,
-        subtype=4,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Curtain 2.4G
-    SensorDefinition(
-        type=144,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.WRITE,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Door Sensor WDS07
-    SensorDefinition(
-        type=1,
-        subtype=0,
-        rx=5,
-        tx=0,
-        private_data='F100f5017d02f803f90400',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Door Sensor
-    SensorDefinition(
-        type=1,
-        subtype=1,
-        rx=2,
-        tx=0,
-        private_data='0001020400',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Door Sensor WRDS01
-    SensorDefinition(
-        type=1,
-        subtype=3,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Door Sensor
-    SensorDefinition(
-        type=1,
-        subtype=2,
-        rx=5,
-        tx=0,
-        private_data='F100f5017d02f803f904',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Glass Break Sensor BLPS
-    SensorDefinition(
-        type=2,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Gas Detector WGD01
-    SensorDefinition(
-        type=3,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Smoke Detector WSD02
-    SensorDefinition(
-        type=4,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Smoke Detector WSD04
-    SensorDefinition(
-        type=4,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Panic Button WEB01
-    SensorDefinition(
-        type=5,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Panic Button WEB03
-    SensorDefinition(
-        type=5,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Shock Sensor WSS01
-    SensorDefinition(
-        type=6,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Water Detector LSTC02
-    SensorDefinition(
-        type=7,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Water Detector LSTC01
-    SensorDefinition(
-        type=7,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor WMS08
-    SensorDefinition(
-        type=8,
-        subtype=3,
-        rx=3,
-        tx=0,
-        private_data='06000301020200',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # PIR motion sensor WMS08B
-    SensorDefinition(
-        type=8,
-        subtype=12,
-        rx=3,
-        tx=0,
-        private_data='060003010202000314',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # PIR motion sensor ODPIR
-    SensorDefinition(
-        type=8,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor N650
-    SensorDefinition(
-        type=8,
-        subtype=5,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor WPD02
-    SensorDefinition(
-        type=8,
-        subtype=6,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor WCMS02
-    SensorDefinition(
-        type=8,
-        subtype=8,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor CWMS01
-    SensorDefinition(
-        type=8,
-        subtype=9,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor WMS04
-    SensorDefinition(
-        type=8,
-        subtype=11,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor WMS07
-    SensorDefinition(
-        type=8,
-        subtype=2,
-        rx=3,
-        tx=0,
-        private_data='04000801020200',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # PIR motion sensor ODPIR03
-    SensorDefinition(
-        type=8,
-        subtype=4,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor WPD01
-    SensorDefinition(
-        type=8,
-        subtype=7,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # PIR motion sensor PIR Ceiling
-    SensorDefinition(
-        type=8,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Beams ABT
-    SensorDefinition(
-        type=9,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Beams ABE
-    SensorDefinition(
-        type=9,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Beams ABH
-    SensorDefinition(
-        type=9,
-        subtype=2,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Remote RMC08
-    SensorDefinition(
-        type=10,
-        subtype=1,
-        rx=4,
-        tx=0,
-        private_data='0d000b010e02070300',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Remote RMC07
-    SensorDefinition(
-        type=10,
-        subtype=0,
-        rx=4,
-        tx=0,
-        private_data='cf00fc01f3023f0300',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Remote RMC02
-    SensorDefinition(
-        type=10,
-        subtype=4,
-        rx=4,
-        tx=0,
-        private_data='cf00fc01f3023f0300',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Remote
-    SensorDefinition(
-        type=10,
-        subtype=2,
-        rx=3,
-        tx=0,
-        private_data='07000602050300',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # RFID K07
-    SensorDefinition(
-        type=11,
-        subtype=1,
-        rx=11,
-        tx=0,
-        private_data='0e0007010d020b03010402050c060a0709080809060a00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Door Bell WDB
-    SensorDefinition(
-        type=12,
-        subtype=1,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # TouchID Detector
-    SensorDefinition(
-        type=13,
-        subtype=1,
-        rx=4,
-        tx=0,
-        private_data='07000e010d020b0300',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # SOS Watch
-    SensorDefinition(
-        type=14,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Fingerprint Lock
-    SensorDefinition(
-        type=15,
-        subtype=1,
-        rx=0,
-        tx=2,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY16BITS
-    ),
-    # Sub Host SS08S
-    SensorDefinition(
-        type=16,
-        subtype=0,
-        rx=0,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ALL
-    ),
-    # Gas Valve Detector WGD02
-    SensorDefinition(
-        type=18,
-        subtype=0,
-        rx=2,
-        tx=1,
-        private_data='09000801ff0e0e',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-    # Remote 2.4G RMC2.4G
-    SensorDefinition(
-        type=17,
-        subtype=4,
-        rx=4,
-        tx=0,
-        private_data='00',
-        rwMode=SensorRwMode.READ,
-        matchMode=SensorMatchMode.ONLY20BITS
-    ),
-]
+        _LOGGER.debug(
+            "Number of sensor definitions: %d", len(cls.SENSOR_DEFINITIONS)
+        )
+        return cls.SENSOR_DEFINITIONS

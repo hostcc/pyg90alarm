@@ -114,3 +114,14 @@ class G90NotificationProtocol:
         :param zone_name: Name of the sensor that reports SOS.
         :param is_host_sos: Indicates if the SOS is host-initiated.
         """
+
+    async def on_sensor_change(
+        self, sensor_idx: int, sensor_name: str, added: bool
+    ) -> None:
+        """
+        Invoked when a sensor is added or changed on the panel.
+
+        :param sensor_idx: Index of the sensor.
+        :param sensor_name: Name of the sensor.
+        :param added: True if the sensor was added.
+        """

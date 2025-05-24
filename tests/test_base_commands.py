@@ -8,7 +8,9 @@ import pytest
 from pyg90alarm.local.base_cmd import (
     G90BaseCommand,
 )
-from pyg90alarm.exceptions import (G90Error, G90TimeoutError)
+from pyg90alarm.exceptions import (
+    G90Error, G90TimeoutError, G90CommandError, G90CommandFailure
+)
 from pyg90alarm.const import G90Commands
 
 from .device_mock import DeviceMock
@@ -278,4 +280,44 @@ async def test_command_code_none_error(mock_device: DeviceMock) -> None:
     )
 
     with pytest.raises(G90Error, match="'NONE' command code is disallowed"):
+        await g90.process()
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTARTfailIEND\0',
+])
+async def test_command_failure(mock_device: DeviceMock) -> None:
+    """
+    Verifies that command failure is handled properly.
+    """
+    g90 = G90BaseCommand(
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
+
+    with pytest.raises(
+        G90CommandFailure,
+        match=re.escape('Command GETHOSTINFO (code=206) failed')
+    ):
+        await g90.process()
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTARTerrordummyIEND\0',
+])
+async def test_command_error(mock_device: DeviceMock) -> None:
+    """
+    Verifies that command error is handled properly.
+    """
+    g90 = G90BaseCommand(
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO
+    )
+
+    with pytest.raises(
+        G90CommandError,
+        match=re.escape(
+            "Command GETHOSTINFO (code=206) failed with error: 'dummy'"
+        )
+    ):
         await g90.process()

@@ -34,6 +34,8 @@ CLOUD_NOTIFICATIONS_HOST = '0.0.0.0'
 CLOUD_NOTIFICATIONS_PORT = 5678
 REMOTE_CLOUD_HOST = '47.88.7.61'
 REMOTE_CLOUD_PORT = 5678
+DEVICE_REGISTRATION_TIMEOUT = 30
+ROOM_ID = 0
 
 CMD_PAGE_SIZE = 10
 
@@ -92,6 +94,7 @@ class G90Commands(IntEnum):
     """)
     GETSINGLEDEVICE = 139
     SETSINGLEDEVICE = 140
+    SENDREGDEVICERESULT = 162
     DELALLDEVICES = 203
     # Host config
     GETHOSTCONFIG = 106
@@ -170,7 +173,7 @@ class G90NotificationTypes(IntEnum):
     Defines types of notifications sent by the alarm panel.
     """
     ARM_DISARM = 1
-    SENSOR_ADDED = 4
+    SENSOR_CHANGE = 4
     SENSOR_ACTIVITY = 5
     DOOR_OPEN_WHEN_ARMING = 6
     FIRMWARE_UPDATING = 8

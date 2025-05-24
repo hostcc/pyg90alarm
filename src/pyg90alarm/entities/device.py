@@ -22,10 +22,13 @@
 Provides interface to devices (switches) of G90 alarm panel.
 """
 from __future__ import annotations
+from typing import Optional
 import logging
 from .sensor import G90Sensor
 from ..const import G90Commands
-
+from ..definitions.base import G90PeripheralDefinition
+from ..definitions.devices import G90DeviceDefinitions
+from ..exceptions import G90PeripheralDefinitionNotFound
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,6 +37,25 @@ class G90Device(G90Sensor):
     """
     Interacts with device (relay) on G90 alarm panel.
     """
+    @property
+    def definition(self) -> Optional[G90PeripheralDefinition]:
+        """
+        Returns the definition for the device.
+
+        :return: Device definition
+        """
+        if not self._definition:
+            # No definition has been cached, try to find it by type, subtype
+            # and protocol
+            try:
+                self._definition = (
+                    G90DeviceDefinitions.get_by_id(
+                        self.type, self.subtype, self.protocol
+                    )
+                )
+            except G90PeripheralDefinitionNotFound:
+                return None
+        return self._definition
 
     async def turn_on(self) -> None:
         """

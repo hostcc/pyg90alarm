@@ -29,9 +29,16 @@ from typing import (
 )
 
 from enum import IntEnum, IntFlag
-from ..definitions.sensors import SENSOR_DEFINITIONS, SensorDefinition
+from ..definitions.base import (
+    G90PeripheralDefinition,
+    G90PeripheralProtocols, G90PeripheralTypes,
+)
+from ..definitions.sensors import (
+    G90SensorDefinitions,
+)
 from ..const import G90Commands
 from .base_entity import G90BaseEntity
+from ..exceptions import G90PeripheralDefinitionNotFound
 if TYPE_CHECKING:
     from ..alarm import (
         G90Alarm, SensorStateCallback, SensorLowBatteryCallback,
@@ -146,57 +153,6 @@ ALERT_MODES_MAP_BY_VALUE = dict(
 )
 
 
-class G90SensorProtocols(IntEnum):
-    """
-    Protocol types for the sensors.
-    """
-    RF_1527 = 0
-    RF_2262 = 1
-    RF_PRIVATE = 2
-    RF_SLIDER = 3
-    CORD = 5
-    WIFI = 4
-    USB = 6
-
-
-class G90SensorTypes(IntEnum):
-    """
-    Sensor types.
-    """
-    DOOR = 1
-    GLASS = 2
-    GAS = 3
-    SMOKE = 4
-    SOS = 5
-    VIB = 6
-    WATER = 7
-    INFRARED = 8
-    IN_BEAM = 9
-    REMOTE = 10
-    RFID = 11
-    DOORBELL = 12
-    BUTTONID = 13
-    WATCH = 14
-    FINGER_LOCK = 15
-    SUBHOST = 16
-    REMOTE_2_4G = 17
-    CORD_SENSOR = 126
-    SOCKET = 128
-    SIREN = 129
-    CURTAIN = 130
-    SLIDINGWIN = 131
-    AIRCON = 136
-    TV = 137
-    NIGHTLIGHT = 138
-    SOCKET_2_4G = 140
-    SIREN_2_4G = 141
-    SWITCH_2_4G = 142
-    TOUCH_SWITCH_2_4G = 143
-    CURTAIN_2_4G = 144
-    CORD_DEV = 254
-    UNKNOWN = 255
-
-
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -239,16 +195,27 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         self._proto_idx = proto_idx
         self._extra_data: Any = None
         self._unavailable = False
+        self._definition: Optional[G90PeripheralDefinition] = None
 
-        self._definition: Optional[SensorDefinition] = None
-        # Get sensor definition corresponds to the sensor type/subtype if any
-        for s_def in SENSOR_DEFINITIONS:
-            if (
-                s_def.type == self._protocol_data.type_id
-                and s_def.subtype == self._protocol_data.subtype  # noqa:W503
-            ):
-                self._definition = s_def
-                break
+    @property
+    def definition(self) -> Optional[G90PeripheralDefinition]:
+        """
+        Returns the definition for the sensor.
+
+        :return: Sensor definition
+        """
+        if not self._definition:
+            # No definition has been cached, try to find it by type, subtype
+            # and protocol
+            try:
+                self._definition = (
+                    G90SensorDefinitions.get_by_id(
+                        self.type, self.subtype, self.protocol
+                    )
+                )
+            except G90PeripheralDefinitionNotFound:
+                return None
+        return self._definition
 
     def update(self, obj: G90Sensor) -> None:
         """
@@ -355,22 +322,22 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         self._occupancy = value
 
     @property
-    def protocol(self) -> G90SensorProtocols:
+    def protocol(self) -> G90PeripheralProtocols:
         """
         Protocol type of the sensor.
 
         :return: Protocol type
         """
-        return G90SensorProtocols(self._protocol_data.protocol_id)
+        return G90PeripheralProtocols(self._protocol_data.protocol_id)
 
     @property
-    def type(self) -> G90SensorTypes:
+    def type(self) -> G90PeripheralTypes:
         """
         Type of the sensor.
 
         :return: Sensor type
         """
-        return G90SensorTypes(self._protocol_data.type_id)
+        return G90PeripheralTypes(self._protocol_data.type_id)
 
     @property
     def subtype(self) -> int:
@@ -457,13 +424,25 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         return self._proto_idx
 
     @property
+    def type_name(self) -> Optional[str]:
+        """
+        Type of the sensor.
+
+        :return: Type
+        """
+        if not self.definition:
+            return None
+
+        return self.definition.name
+
+    @property
     def supports_updates(self) -> bool:
         """
         Indicates if the sensor supports updates.
 
         :return: Support for updates
         """
-        if not self._definition:
+        if not self.definition:
             _LOGGER.warning(
                 'Manipulating with user flags for sensor index=%s'
                 ' is unsupported - no sensor definition for'
@@ -498,7 +477,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         Indicates if the sensor is wireless.
         """
-        return self.protocol not in (G90SensorProtocols.CORD,)
+        return self.protocol not in (G90PeripheralProtocols.CORD,)
 
     @property
     def is_low_battery(self) -> bool:
@@ -597,7 +576,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         # Checking private attribute directly, since `mypy` doesn't recognize
         # the check for sensor definition is done over
         # `self.supports_updates` property
-        if not self._definition:
+        if not self.definition:
             return
 
         if value & ~G90SensorUserFlags.USER_SETTABLE:
@@ -685,11 +664,11 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             user_flags_data=self._protocol_data.user_flags_data,
             baudrate=self._protocol_data.baudrate,
             protocol_id=self._protocol_data.protocol_id,
-            reserved_data=self._definition.reserved_data,
+            reserved_data=self.definition.reserved_data,
             node_count=self._protocol_data.node_count,
-            rx=self._definition.rx,
-            tx=self._definition.tx,
-            private_data=self._definition.private_data,
+            rx=self.definition.rx,
+            tx=self.definition.tx,
+            private_data=self.definition.private_data,
         )
         # Modify the sensor
         await self._parent.command(
