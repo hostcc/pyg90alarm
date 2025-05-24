@@ -73,7 +73,7 @@ class G90SensorList(G90BaseList[G90Sensor]):
 
         :param idx: Sensor index.
         :param name: Sensor name.
-        :param _added: True if the sensor was added, False if removed.
+        :param added: True if the sensor was added, False if removed.
         """
         _LOGGER.debug(
             "Sensor change callback: name='%s', index=%d, added=%s",

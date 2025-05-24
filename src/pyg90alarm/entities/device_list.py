@@ -113,7 +113,8 @@ class G90DeviceList(G90BaseList[G90Device]):
         # Confirm the registration of the device to the panel
         res = await self._parent.command(
             G90Commands.SENDREGDEVICERESULT,
-            [1]  # 1 = register, 0 = cancel
+            # 1 = register, 0 = cancel
+            [1]
         )
 
         # The command above returns the index of the added device in the
