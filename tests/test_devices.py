@@ -57,7 +57,7 @@ async def test_get_devices_concurrent(mock_device: DeviceMock) -> None:
 
     # Issue two concurrent requests to retrieve devices
     res = await asyncio.gather(g90.get_devices(), g90.get_devices())
-    # Ensure only single exchange with the panel
+    # Ensure only corresponding number of exchanges with the panel
     assert g90.paginated_result.call_count == 2
     # While `pylint` demands use of generator, the comprehension is used
     # instead for ease of troubleshooting test failures as it will show the
@@ -289,3 +289,43 @@ async def test_multinode_device_register(mock_device: DeviceMock) -> None:
     new_device = devices[1]
     assert isinstance(new_device, G90Device)
     assert devices[1].name == "Test socket#1"
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[138,'
+    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+    b'ISTART[138,'
+    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+])
+async def test_device_update(mock_device: DeviceMock) -> None:
+    """
+    Tests updating the device and callback assocaited.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Set up the sensor list change callback to be called when the sensor
+    # list is updated
+    g90.device_list_change_callback = MagicMock()
+    future = asyncio.get_running_loop().create_future()
+    g90.device_list_change_callback.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+
+    # Trigger device list update
+    devices = await g90.get_devices()
+
+    # Verify the callback is called with correct parameters, indicating the
+    # device has been added to the list
+    await asyncio.wait([future], timeout=0.1)
+    g90.device_list_change_callback.assert_called_once_with(
+        devices[0], True
+    )
+
+    # Subsequently retrieving the list of devices should result in same
+    # callback invoked, but with different parameters
+    future = asyncio.get_running_loop().create_future()
+    await g90.get_devices()
+    await asyncio.wait([future], timeout=0.1)
+    g90.device_list_change_callback.assert_called_with(
+        devices[0], False
+    )
