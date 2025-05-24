@@ -90,6 +90,18 @@ class G90ArmDisarmInfo:
 
 
 @dataclass
+class G90SensorChangeInfo:
+    """
+    Represents the sensor added notification received from the device.
+
+    :meta private:
+    """
+    idx: int
+    name: str
+    action: int  # 1 - if added, 2 - for update (?)
+
+
+@dataclass
 class G90DeviceAlert:  # pylint: disable=too-many-instance-attributes
     """
     Represents alert received from the device.
@@ -170,6 +182,21 @@ class G90NotificationsBase:
             G90Callback.invoke(
                 self._protocol.on_door_open_when_arming,
                 g90_zone_info.idx, g90_zone_info.name
+            )
+            return
+
+        # Sensor has been added or removed
+        if notification.kind == G90NotificationTypes.SENSOR_CHANGE:
+            g90_sensor_info = G90SensorChangeInfo(*notification.data)
+            sensor_added = g90_sensor_info.action == 1
+            _LOGGER.debug(
+                'Sensor change notification, added=%s: %s',
+                sensor_added, g90_sensor_info
+            )
+            G90Callback.invoke(
+                self._protocol.on_sensor_change,
+                g90_sensor_info.idx, g90_sensor_info.name,
+                sensor_added
             )
             return
 

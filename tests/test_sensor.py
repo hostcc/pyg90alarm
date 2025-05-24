@@ -2,9 +2,12 @@
 Tests for the G90Sensor class.
 """
 from __future__ import annotations
+import asyncio
+from unittest.mock import MagicMock
+from contextlib import nullcontext, AbstractContextManager
 import pytest
-from pyg90alarm.alarm import (
-    G90Alarm,
+from pyg90alarm import (
+    G90Alarm, G90Error, G90EntityRegistrationError,
 )
 from pyg90alarm.entities.sensor import (
     G90Sensor, G90SensorUserFlags, G90SensorAlertModes,
@@ -116,12 +119,12 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
     b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,63,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,63,0,0,17,1,0,""]'
+    b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
+    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
     b']]IEND\0',
     b'ISTART[102,'
     b'[[2,2,1],'
-    b'["Night Light2",10,0,138,0,0,63,0,0,17,1,0,""]'
+    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
@@ -132,7 +135,7 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,62,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,62,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='enabled',
@@ -148,7 +151,7 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,61,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,61,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='arm_delay',
@@ -158,7 +161,7 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,59,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,59,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='detect_door',
@@ -168,7 +171,7 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,55,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,55,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='door_chime',
@@ -178,7 +181,7 @@ async def test_single_sensor(mock_device: DeviceMock) -> None:
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,47,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,47,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='independent_zone',
@@ -205,12 +208,12 @@ async def test_sensor_user_flag(
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
     b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,63,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,63,0,0,17,1,0,""]'
+    b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
+    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
     b']]IEND\0',
     b'ISTART[102,'
     b'[[2,2,1],'
-    b'["Night Light2",10,0,138,0,0,63,0,0,17,1,0,""]'
+    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
@@ -222,7 +225,7 @@ async def test_sensor_user_flag(
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,31,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,31,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='always',
@@ -233,7 +236,7 @@ async def test_sensor_user_flag(
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[2,2]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,95,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,95,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='when-away',
@@ -266,12 +269,12 @@ async def test_sensor_user_alert_mode(
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
     b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b'["Cord 1",11,0,126,1,0,33,0,5,16,1,0,""],'
+    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
     b']]IEND\0',
     b'ISTART[102,'
     b'[[2,2,1],'
-    b'["Night Light2",10,0,138,0,0,1,0,0,17,1,0,""]'
+    b'["Cord 2",10,0,126,1,0,1,0,5,16,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
@@ -316,8 +319,8 @@ async def test_sensor_unsupported_disable(mock_device: DeviceMock) -> None:
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
     b'[[2,1,2],'
-    b'["Night Light1",11,0,138,0,0,33,0,0,17,1,0,""],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b'["Cord 1",11,0,126,1,0,33,0,5,16,1,0,""],'
+    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
     b']]IEND\0',
     b'ISTART[102,[[2,2,0]]]IEND\0',
 ])
@@ -342,11 +345,11 @@ async def test_sensor_disable_sensor_not_found_on_refresh(
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
     b'[[1,1,1],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
     b']]IEND\0',
     b'ISTART[102,'
     b'[[1,1,1],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
@@ -361,7 +364,7 @@ async def test_sensor_disable_sensor_not_found_on_refresh(
                 b'ISTART[102,102,[102,[1,10]]]IEND\0',
                 b'ISTART[102,102,[102,[1,1]]]IEND\0',
                 b'ISTART[103,103,[103,'
-                b'["Night Light2",10,0,138,0,0,18,0,0,17,1,0,2,"060A0600"]'
+                b'["Cord 2",10,0,126,1,0,18,0,5,16,1,0,0,"00"]'
                 b']]IEND\0',
             ],
             id='set-flags',
@@ -392,7 +395,7 @@ async def test_sensor_set_user_flags(
 @pytest.mark.g90device(sent_data=[
     b'ISTART[102,'
     b'[[1,1,1],'
-    b'["Night Light2",10,0,138,0,0,33,0,0,17,1,0,""]'
+    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
     b']]IEND\0',
     b"ISTARTIEND\0",
 ])
@@ -408,3 +411,164 @@ async def test_sensor_delete(mock_device: DeviceMock) -> None:
         b'ISTART[102,102,[102,[1,10]]]IEND\0',
         b'ISTART[131,131,[131,[10]]]IEND\0',
     ]
+
+
+REGISTER_SENSOR_SENT_DATA = [
+    b'ISTART[102,'
+    b'[[2,1,2],'
+    b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
+    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
+    b']]IEND\0',
+    b'ISTARTIEND\0',
+    b'ISTART[102,'
+    b'[[3,1,3],'
+    b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
+    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""],'
+    b'["Test sensor",3,0,1,3,0,33,0,0,0,1,0,""]'
+    b']]IEND\0',
+]
+
+
+@pytest.mark.parametrize(
+    'expected_exception', [
+        # Normal operation, no exception expected
+        pytest.param(
+            nullcontext(),
+            id='register-sensor-ok',
+            marks=pytest.mark.g90device(
+                sent_data=REGISTER_SENSOR_SENT_DATA,
+                notification_data=[b'[170,[4,[3, "Test sensor", 1]]]\0']
+            ),
+        ),
+        # Operartion simulates the panel sent the notification for the newly
+        # added sensor, but it was not found in the list of sensors then
+        pytest.param(
+            pytest.raises(G90EntityRegistrationError),
+            id='register-sensor-not-found',
+            marks=pytest.mark.g90device(
+                sent_data=REGISTER_SENSOR_SENT_DATA,
+                notification_data=[b'[170,[4,[33, "Test sensor", 1]]]\0']
+            ),
+        ),
+        # Operation simulates the panel did not send the notification
+        # for the newly added sensor
+        pytest.param(
+            pytest.raises(G90EntityRegistrationError),
+            id='register-sensor-timed-out',
+            marks=pytest.mark.g90device(
+                sent_data=REGISTER_SENSOR_SENT_DATA,
+                notification_data=[]
+            ),
+        ),
+        # Operation simulates the panel sent the notification for the newly
+        # added sensor, but it retrieving sensor list afterwards resulted in
+        # an error
+        pytest.param(
+            pytest.raises(G90Error),
+            id='register-sensor-failed-update',
+            marks=pytest.mark.g90device(
+                sent_data=[
+                    b'ISTART[102,'
+                    b'[[2,1,2],'
+                    b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
+                    b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
+                    b']]IEND\0',
+                    b'ISTARTIEND\0',
+                    b'garbage',
+                ],
+                notification_data=[b'[170,[4,[3, "Test sensor", 1]]]\0']
+            ),
+        ),
+    ])
+async def test_sensor_register(
+    expected_exception: AbstractContextManager[Exception],
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for registering a sensor.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    # Setup the notifications, since those are required to complete the
+    # registration process
+    await g90.use_local_notifications(
+        notifications_local_host=mock_device.notification_host,
+        notifications_local_port=mock_device.notification_port
+    )
+    await g90.listen_notifications()
+
+    # Attempt to register a new sensor in parallel with simulating the
+    # notification from the panel, otherwise the registration will timeout
+    task = asyncio.create_task(
+        g90.register_sensor('Door Sensor: WRDS01', 'Test sensor', timeout=0.2),
+    )
+    # Simulate some delay for panel to complete the registration and send the
+    # notification
+    await asyncio.sleep(0.1)
+    await mock_device.send_next_notification()
+
+    # Wait for registration to complete
+    await asyncio.wait([task], timeout=0.5)
+
+    with expected_exception:
+        # Retrieve the sensor just registered
+        sensor = task.result()
+
+        # Verify the sensor is registered properly
+        assert isinstance(sensor, G90Sensor)
+        assert sensor.name == 'Test sensor'
+        assert sensor.index == 3
+
+        # Verify the sequence of commands sent to the panel
+        assert await mock_device.recv_data == [
+            b'ISTART[102,102,[102,[1,10]]]IEND\0',
+            b'ISTART[156,156,[156,'
+            b'["Test sensor",0,0,1,3,0,33,0,0,0,1,0,0,"00"]'
+            b']]IEND\0',
+            b'ISTART[102,102,[102,[1,10]]]IEND\0',
+        ]
+
+    await g90.close_notifications()
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,'
+    b'[[1,1,1],'
+    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
+    b']]IEND\0',
+    b'ISTART[102,'
+    b'[[1,1,1],'
+    b'["Cord 2",10,0,126,1,0,32,0,5,16,1,0,""]'
+    b']]IEND\0',
+])
+async def test_sensor_update(mock_device: DeviceMock) -> None:
+    """
+    Tests updating the sensor and callback assocaited.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Set up the sensor list change callback to be called when the sensor
+    # list is updated
+    g90.sensor_list_change_callback = MagicMock()
+    future = asyncio.get_running_loop().create_future()
+    g90.sensor_list_change_callback.side_effect = (
+        lambda *args: future.set_result(True)
+    )
+
+    # Trigger sensor list update
+    sensors = await g90.get_sensors()
+
+    # Verify the callback is called with correct parameters, indicating the
+    # sensor has been added to the list
+    await asyncio.wait([future], timeout=0.1)
+    g90.sensor_list_change_callback.assert_called_once_with(
+        sensors[0], True
+    )
+
+    # Subsequently retrieving the list of sensors should result in same
+    # callback invoked, but with different parameters
+    future = asyncio.get_running_loop().create_future()
+    await g90.get_sensors()
+    await asyncio.wait([future], timeout=0.1)
+    g90.sensor_list_change_callback.assert_called_with(
+        sensors[0], False
+    )
