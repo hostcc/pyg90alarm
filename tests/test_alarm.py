@@ -208,7 +208,9 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
 
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 10 and x.name == 'Remote']
-    sensor[0].state_callback = lambda *args: future.set_result(True)
+    state_cb = MagicMock()
+    state_cb.side_effect = lambda *args: future.set_result(True)
+    sensor[0].state_callback = state_cb
 
     await g90.listen_notifications()
     await mock_device.send_next_notification()

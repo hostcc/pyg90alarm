@@ -548,9 +548,10 @@ async def test_sensor_update(mock_device: DeviceMock) -> None:
 
     # Set up the sensor list change callback to be called when the sensor
     # list is updated
-    g90.sensor_list_change_callback = MagicMock()
+    list_change_cb = MagicMock()
+    g90.sensor_list_change_callback = list_change_cb
     future = asyncio.get_running_loop().create_future()
-    g90.sensor_list_change_callback.side_effect = (
+    list_change_cb.side_effect = (
         lambda *args: future.set_result(True)
     )
 
@@ -560,15 +561,11 @@ async def test_sensor_update(mock_device: DeviceMock) -> None:
     # Verify the callback is called with correct parameters, indicating the
     # sensor has been added to the list
     await asyncio.wait([future], timeout=0.1)
-    g90.sensor_list_change_callback.assert_called_once_with(
-        sensors[0], True
-    )
+    list_change_cb.assert_called_once_with(sensors[0], True)
 
     # Subsequently retrieving the list of sensors should result in same
     # callback invoked, but with different parameters
     future = asyncio.get_running_loop().create_future()
     await g90.get_sensors()
     await asyncio.wait([future], timeout=0.1)
-    g90.sensor_list_change_callback.assert_called_with(
-        sensors[0], False
-    )
+    list_change_cb.assert_called_with(sensors[0], False)

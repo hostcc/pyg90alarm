@@ -38,6 +38,7 @@ from ..definitions.sensors import (
 )
 from ..const import G90Commands
 from .base_entity import G90BaseEntity
+from ..callback import G90CallbackList
 from ..exceptions import G90PeripheralDefinitionNotFound
 if TYPE_CHECKING:
     from ..alarm import (
@@ -183,14 +184,20 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         self._parent = parent
         self._subindex = subindex
         self._occupancy = False
-        self._state_callback: Optional[SensorStateCallback] = None
-        self._low_battery_callback: Optional[SensorLowBatteryCallback] = None
+        self._state_callback: G90CallbackList[SensorStateCallback] = (
+            G90CallbackList()
+        )
+        self._low_battery_callback: G90CallbackList[
+            SensorLowBatteryCallback
+        ] = G90CallbackList()
         self._low_battery = False
         self._tampered = False
-        self._door_open_when_arming_callback: Optional[
+        self._door_open_when_arming_callback: G90CallbackList[
             SensorDoorOpenWhenArmingCallback
-        ] = None
-        self._tamper_callback: Optional[SensorTamperCallback] = None
+        ] = G90CallbackList()
+        self._tamper_callback: G90CallbackList[SensorTamperCallback] = (
+            G90CallbackList()
+        )
         self._door_open_when_arming = False
         self._proto_idx = proto_idx
         self._extra_data: Any = None
@@ -239,41 +246,49 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         return f'{self._protocol_data.parent_name}#{self._subindex + 1}'
 
     @property
-    def state_callback(self) -> Optional[SensorStateCallback]:
+    def state_callback(self) -> G90CallbackList[SensorStateCallback]:
         """
         Callback that is invoked when the sensor changes its state.
 
         :return: Sensor state callback
+
+        .. seealso:: :attr:`G90Alarm.sensor_callback` for compatiblity notes
         """
         return self._state_callback
 
     @state_callback.setter
     def state_callback(self, value: SensorStateCallback) -> None:
-        self._state_callback = value
+        self._state_callback.add(value)
 
     @property
-    def low_battery_callback(self) -> Optional[SensorLowBatteryCallback]:
+    def low_battery_callback(
+        self
+    ) -> G90CallbackList[SensorLowBatteryCallback]:
         """
         Callback that is invoked when the sensor reports on low battery
         condition.
 
         :return: Sensor's low battery callback
+
+        .. seealso:: :attr:`G90Alarm.sensor_callback` for compatiblity notes
         """
         return self._low_battery_callback
 
     @low_battery_callback.setter
     def low_battery_callback(self, value: SensorLowBatteryCallback) -> None:
-        self._low_battery_callback = value
+        self._low_battery_callback.add(value)
 
     @property
     def door_open_when_arming_callback(
         self
-    ) -> Optional[SensorDoorOpenWhenArmingCallback]:
+    ) -> G90CallbackList[SensorDoorOpenWhenArmingCallback]:
         """
         Callback that is invoked when the sensor reports on open door
         condition when arming.
 
         :return: Sensor's door open when arming callback
+
+        .. seealso:: :attr:`G90Alarm.sensor_callback` for compatiblity notes
         """
         return self._door_open_when_arming_callback
 
@@ -281,20 +296,22 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
     def door_open_when_arming_callback(
         self, value: SensorDoorOpenWhenArmingCallback
     ) -> None:
-        self._door_open_when_arming_callback = value
+        self._door_open_when_arming_callback.add(value)
 
     @property
-    def tamper_callback(self) -> Optional[SensorTamperCallback]:
+    def tamper_callback(self) -> G90CallbackList[SensorTamperCallback]:
         """
         Callback that is invoked when the sensor reports being tampered.
 
         :return: Sensor's tamper callback
+
+        .. seealso:: :attr:`G90Alarm.sensor_callback` for compatiblity notes
         """
         return self._tamper_callback
 
     @tamper_callback.setter
     def tamper_callback(self, value: SensorTamperCallback) -> None:
-        self._tamper_callback = value
+        self._tamper_callback.add(value)
 
     @property
     def occupancy(self) -> bool:
@@ -446,10 +463,8 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             _LOGGER.warning(
                 'Manipulating with user flags for sensor index=%s'
                 ' is unsupported - no sensor definition for'
-                ' type=%s, subtype=%s',
-                self.index,
-                self._protocol_data.type_id,
-                self._protocol_data.subtype
+                ' type=%s, subtype=%s, protocol=%s',
+                self.index, self.type, self.subtype, self.protocol
             )
             return False
         return True
