@@ -201,7 +201,7 @@ class G90BaseCommand(DatagramProtocol):
 
         if not isinstance(resp, list):
             raise G90Error(
-                f"Mailformed response, 'list' expected: '{payload}'"
+                f"Malformed response, 'list' expected: '{payload}'"
             )
 
         if resp is not None:

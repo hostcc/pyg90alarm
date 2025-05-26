@@ -124,9 +124,9 @@ class G90NotificationsBase:
     There is a basic check to ensure only notifications/alerts from the correct
     device are processed - the check uses the host and port of the device, and
     the device ID (GUID) that is set by the ancestor class that implements the
-    commands (e.g. :class:`G90Alarm`). The latter to work correctly needs a
+    commands (e.g. :class:`.G90Alarm`). The latter to work correctly needs a
     command to be performed first, one that fetches device GUID and then stores
-    it using :attr:`.device_id` (e.g. :meth:`G90Alarm.get_host_info`).
+    it using :attr:`.device_id` (e.g. :meth:`.G90Alarm.get_host_info`).
     """
     def __init__(
         self, protocol_factory: Callable[[], G90NotificationProtocol],

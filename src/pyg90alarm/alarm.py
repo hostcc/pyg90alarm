@@ -471,7 +471,7 @@ class G90Alarm(G90NotificationProtocol):
     async def get_alert_config(self) -> G90AlertConfigFlags:
         """
         Provides alert configuration flags, retained for compatibility - using
-        `:attr:alert_config` and `:class:G90AlertConfig` is preferred.
+        :attr:`alert_config` and :class:`.G90AlertConfig` is preferred.
 
         :return: The alerts configured
         """
@@ -480,7 +480,7 @@ class G90Alarm(G90NotificationProtocol):
     async def set_alert_config(self, flags: G90AlertConfigFlags) -> None:
         """
         Sets the alert configuration flags, retained for compatibility - using
-        `:attr:alert_config` and `:class:G90AlertConfig` is preferred.
+        :attr:`alert_config` and :class:`.G90AlertConfig` is preferred.
         """
         await self.alert_config.set(flags)
 
@@ -606,8 +606,8 @@ class G90Alarm(G90NotificationProtocol):
 
         Setting the property will add the callback to the list of (retained for
         compatilibity with earlier package versions), or
-        :class:`G90CallbackList` instance could be accessed over the property -
-        `G90Alarm(...).sensor_callback.add(callback)` or
+        :class:`.G90CallbackList` instance could be accessed over the
+        property - `G90Alarm(...).sensor_callback.add(callback)` or
         `G90Alarm(...).sensor_callback.remove(callback)` methods could be used
         to add or remove the callback, respectively.
         """
