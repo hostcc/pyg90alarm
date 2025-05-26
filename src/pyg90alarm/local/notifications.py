@@ -42,12 +42,12 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
     There is a basic check to ensure only notifications/alerts from the correct
     device are processed - the check uses the host and port of the device, and
     the device ID (GUID) that is set by the ancestor class that implements the
-    commands (e.g. :class:`G90Alarm`). The latter to work correctly needs a
+    commands (e.g. :class:`.G90Alarm`). The latter to work correctly needs a
     command to be performed first, one that fetches device GUID and then stores
-    it using :attr:`.device_id` (e.g. :meth:`G90Alarm.get_host_info`).
+    it using :attr:`.device_id` (e.g. :meth:`.G90Alarm.get_host_info`).
 
     :param protocol_factory: A callable that returns a new instance of the
-     :class:`G90NotificationProtocol` class.
+     :class:`.G90NotificationProtocol` class.
     :param port: The port on which the device is listening for notifications.
     :param host: The host on which the device is listening for notifications.
     :param local_port: The port on which the local host is listening for

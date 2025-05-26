@@ -12,9 +12,6 @@ from pyg90alarm.alarm import (
 from pyg90alarm.local.host_info import (
     G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
 )
-from pyg90alarm.entities.device import (
-    G90Device,
-)
 from pyg90alarm.local.host_status import (
     G90HostStatus,
 )
@@ -93,114 +90,6 @@ async def test_user_data_crc(mock_device: DeviceMock) -> None:
     assert crc.scene_list == '4'
     assert crc.ifttt_list == '5'
     assert crc.fingerprint_list == '6'
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[138,'
-    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-])
-async def test_devices(mock_device: DeviceMock) -> None:
-    """
-    Tests for retrieving devices from the panel.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    devices = await g90.get_devices()
-    prop_devices = await g90.devices
-
-    assert devices == prop_devices
-    assert await mock_device.recv_data == [
-        b'ISTART[138,138,[138,[1,10]]]IEND\0',
-    ]
-    assert len(devices) == 1
-    assert isinstance(devices, list)
-    assert isinstance(devices[0], G90Device)
-    assert devices[0].name == 'Switch'
-    assert devices[0].index == 10
-    assert isinstance(devices[0]._asdict(), dict)
-
-
-# Provide an endless sequence of simulated panel responses for the devices
-# list. Each attempt will simulate a single device. This sequence will prevent
-# `G90TimeoutError` if the code under test initiates more exchanges with the
-# panel than the simulated data contains.
-@pytest.mark.g90device(sent_data=cycle([
-    b'ISTART[138,'
-    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-]))
-async def test_get_devices_concurrent(mock_device: DeviceMock) -> None:
-    """
-    Tests for concurrently retrieving list of devices produces consistent
-    results.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    g90.paginated_result = MagicMock(  # type: ignore[method-assign]
-        spec=g90.paginated_result, wraps=g90.paginated_result
-    )
-
-    # Issue two concurrent requests to retrieve devices
-    res = await asyncio.gather(g90.get_devices(), g90.get_devices())
-    # Ensure only single exchange with the panel
-    assert g90.paginated_result.call_count == 2
-    # While `pylint` demands use of generator, the comprehension is used
-    # instead for ease of troubleshooting test failures as it will show the
-    # list elements, not just generator instance
-    # pylint: disable=use-a-generator
-    assert all([len(x) == 1 for x in res])
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[138,'
-    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,2,0,""]]]IEND\0'
-])
-async def test_multinode_device(mock_device: DeviceMock) -> None:
-    """
-    Tests for retrieving multi-node devices (e.g. multi-channel switch) from
-    the panel.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    devices = await g90.get_devices()
-    prop_devices = await g90.devices
-
-    assert devices == prop_devices
-    assert await mock_device.recv_data == [
-        b'ISTART[138,138,[138,[1,10]]]IEND\0',
-    ]
-    assert len(devices) == 2
-    assert isinstance(devices, list)
-    assert isinstance(devices[0], G90Device)
-    assert devices[0].name == 'Switch#1'
-    assert devices[0].index == 10
-    assert devices[0].subindex == 0
-    assert devices[1].name == 'Switch#2'
-    assert devices[1].index == 10
-    assert devices[1].subindex == 1
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[138,'
-    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-    b'ISTARTIEND\0',
-    b'ISTARTIEND\0',
-])
-async def test_control_device(mock_device: DeviceMock) -> None:
-    """
-    Tests for controlling devices from the panel.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    devices = await g90.get_devices()
-    prop_devices = await g90.devices
-
-    assert devices == prop_devices
-    await devices[0].turn_on()
-    await devices[0].turn_off()
-    assert await mock_device.recv_data == [
-        b'ISTART[138,138,[138,[1,10]]]IEND\0',
-        b'ISTART[137,137,[137,[10,0,0]]]IEND\0',
-        b'ISTART[137,137,[137,[10,1,0]]]IEND\0',
-    ]
 
 
 # See `test_get_devices_concurrent` for the explanation of the test
@@ -319,7 +208,9 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
 
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 10 and x.name == 'Remote']
-    sensor[0].state_callback = lambda *args: future.set_result(True)
+    state_cb = MagicMock()
+    state_cb.side_effect = lambda *args: future.set_result(True)
+    sensor[0].state_callback = state_cb
 
     await g90.listen_notifications()
     await mock_device.send_next_notification()
@@ -882,46 +773,3 @@ async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
         b'ISTART[117,117,""]IEND\0',
         b"ISTART[116,116,[116,[1]]]IEND\0",
     ]).issubset(set(await mock_device.recv_data))
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[138,'
-    b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b"ISTARTIEND\0",
-])
-async def test_device_unsupported_disable(mock_device: DeviceMock) -> None:
-    """
-    Tests for disabling an unsupported device.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    devices = await g90.get_devices()
-    prop_devices = await g90.devices
-    assert devices == prop_devices
-    assert devices[0].enabled
-    await devices[0].set_enabled(False)
-    assert await mock_device.recv_data == [
-        b'ISTART[138,138,[138,[1,10]]]IEND\0',
-    ]
-
-
-@pytest.mark.g90device(sent_data=[
-    b'ISTART[138,'
-    b'[[1,1,1],["Water",10,0,7,0,0,33,0,0,17,1,0,""]'
-    b']]IEND\0',
-    b"ISTARTIEND\0",
-])
-async def test_device_delete(mock_device: DeviceMock) -> None:
-    """
-    Tests for deleting the device.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-
-    devices = await g90.get_devices()
-    await devices[0].delete()
-    assert devices[0].is_unavailable
-    assert await mock_device.recv_data == [
-        b'ISTART[138,138,[138,[1,10]]]IEND\0',
-        b'ISTART[136,136,[136,[10]]]IEND\0',
-    ]

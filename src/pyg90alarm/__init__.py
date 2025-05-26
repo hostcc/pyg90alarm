@@ -29,11 +29,20 @@ from .notifications.base import (
     G90DeviceAlert,
 )
 from .entities.sensor import (
-    G90Sensor, G90SensorTypes, G90SensorAlertModes, G90SensorUserFlags
+    G90Sensor, G90SensorAlertModes, G90SensorUserFlags
 )
 from .entities.device import G90Device
 from .local.host_info import (
     G90HostInfo, G90HostInfoWifiStatus, G90HostInfoGsmStatus
+)
+from .definitions.sensors import (
+    G90SensorDefinitions
+)
+from .definitions.devices import (
+    G90DeviceDefinitions
+)
+from .definitions.base import (
+    G90PeripheralTypes,
 )
 from .local.config import G90AlertConfigFlags
 from .local.host_status import G90HostStatus
@@ -47,16 +56,29 @@ from .const import (
     G90AlertStateChangeTypes,
     G90HistoryStates,
 )
-from .exceptions import G90Error, G90TimeoutError
+from .exceptions import (
+    G90Error, G90TimeoutError, G90CommandError, G90CommandFailure,
+    G90EntityRegistrationError, G90PeripheralDefinitionNotFound,
+)
 
 __all__ = [
     'G90Alarm', 'G90BaseCommand', 'G90PaginatedResult', 'G90DeviceAlert',
-    'G90Sensor', 'G90SensorTypes', 'G90SensorAlertModes', 'G90SensorUserFlags',
-    'G90AlertConfigFlags', 'G90Device',
+    # Sensors and related
+    'G90Sensor', 'G90PeripheralTypes', 'G90SensorAlertModes',
+    'G90SensorUserFlags',
+    'G90AlertConfigFlags',
+    'G90Device',
+    # Panel information and status
     'G90HostInfo', 'G90HostInfoWifiStatus', 'G90HostInfoGsmStatus',
     'G90HostStatus',
+    # Types for alerts and notifications
     'G90MessageTypes', 'G90NotificationTypes', 'G90ArmDisarmTypes',
     'G90AlertTypes', 'G90AlertSources', 'G90AlertStates',
-    'G90AlertStateChangeTypes', 'G90HistoryStates', 'G90Error',
-    'G90TimeoutError',
+    'G90AlertStateChangeTypes', 'G90HistoryStates',
+    # Exceptions
+    'G90Error',
+    'G90TimeoutError', 'G90CommandError', 'G90CommandFailure',
+    'G90EntityRegistrationError', 'G90PeripheralDefinitionNotFound',
+    # Definitions
+    'G90SensorDefinitions', 'G90DeviceDefinitions'
 ]

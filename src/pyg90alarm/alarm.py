@@ -69,15 +69,21 @@ from .const import (
     CLOUD_NOTIFICATIONS_PORT,
     REMOTE_CLOUD_HOST,
     REMOTE_CLOUD_PORT,
+    DEVICE_REGISTRATION_TIMEOUT,
+    ROOM_ID,
     G90ArmDisarmTypes,
     G90RemoteButtonStates,
 )
 from .local.base_cmd import (G90BaseCommand, G90BaseCommandData)
 from .local.paginated_result import G90PaginatedResult, G90PaginatedResponse
-from .entities.sensor import (G90Sensor, G90SensorTypes)
+from .entities.base_list import ListChangeCallback
+from .entities.sensor import G90Sensor
 from .entities.sensor_list import G90SensorList
 from .entities.device import G90Device
 from .entities.device_list import G90DeviceList
+from .definitions.base import (
+    G90PeripheralTypes
+)
 from .notifications.protocol import (
     G90NotificationProtocol
 )
@@ -92,7 +98,7 @@ from .local.host_status import G90HostStatus
 from .local.config import (G90AlertConfig, G90AlertConfigFlags)
 from .local.history import G90History
 from .local.user_data_crc import G90UserDataCRC
-from .callback import G90Callback
+from .callback import G90Callback, G90CallbackList
 from .exceptions import G90Error, G90TimeoutError
 from .cloud.notifications import G90CloudNotifications
 
@@ -159,6 +165,10 @@ if TYPE_CHECKING:
         Callable[[], None],
         Callable[[], Coroutine[None, None, None]]
     ]
+    SensorChangeCallback = Union[
+        Callable[[int, str, bool], None],
+        Callable[[int, str, bool], Coroutine[None, None, None]]
+    ]
 
 
 # pylint: disable=too-many-public-methods
@@ -186,20 +196,37 @@ class G90Alarm(G90NotificationProtocol):
         self._port: int = port
         self._notifications: Optional[G90NotificationsBase] = None
         self._sensors = G90SensorList(self)
+        # The callback will be invoked when sensor list changes, e.g. sensor is
+        # added or updated
+        self._sensors.list_change_callback = self.on_sensor_list_change
         self._devices = G90DeviceList(self)
-        self._sensor_cb: Optional[SensorCallback] = None
-        self._armdisarm_cb: Optional[ArmDisarmCallback] = None
-        self._door_open_close_cb: Optional[DoorOpenCloseCallback] = None
-        self._alarm_cb: Optional[AlarmCallback] = None
-        self._low_battery_cb: Optional[LowBatteryCallback] = None
-        self._sos_cb: Optional[SosCallback] = None
-        self._remote_button_press_cb: Optional[
+        # Similarly for the device list
+        self._devices.list_change_callback = self.on_device_list_change
+        self._sensor_cb: G90CallbackList[SensorCallback] = G90CallbackList()
+        self._armdisarm_cb: G90CallbackList[ArmDisarmCallback] = (
+            G90CallbackList()
+        )
+        self._door_open_close_cb: G90CallbackList[DoorOpenCloseCallback] = (
+            G90CallbackList()
+        )
+        self._alarm_cb: G90CallbackList[AlarmCallback] = G90CallbackList()
+        self._low_battery_cb: G90CallbackList[LowBatteryCallback] = (
+            G90CallbackList()
+        )
+        self._sos_cb: G90CallbackList[SosCallback] = G90CallbackList()
+        self._remote_button_press_cb: G90CallbackList[
             RemoteButtonPressCallback
-        ] = None
-        self._door_open_when_arming_cb: Optional[
+        ] = G90CallbackList()
+        self._door_open_when_arming_cb: G90CallbackList[
             DoorOpenWhenArmingCallback
-        ] = None
-        self._tamper_cb: Optional[TamperCallback] = None
+        ] = G90CallbackList()
+        self._tamper_cb: G90CallbackList[TamperCallback] = G90CallbackList()
+        self._sensor_list_change_cb: G90CallbackList[
+            ListChangeCallback[G90Sensor]
+        ] = G90CallbackList()
+        self._device_list_change_cb: G90CallbackList[
+            ListChangeCallback[G90Device]
+        ] = G90CallbackList()
         self._reset_occupancy_interval = reset_occupancy_interval
         self._alert_config = G90AlertConfig(self)
         self._sms_alert_when_armed = False
@@ -322,6 +349,23 @@ class G90Alarm(G90NotificationProtocol):
         """
         return await self._sensors.find(idx, name, exclude_unavailable)
 
+    async def register_sensor(
+        self, definition_name: str, name: Optional[str] = None,
+        timeout: float = DEVICE_REGISTRATION_TIMEOUT
+    ) -> G90Sensor:
+        """
+        Registers the sensor with the panel.
+
+        :param definition_name: Name of the sensor definition to register
+        :param name: Optional name of the sensor to register, if not provided
+         the name will be taken from the definition
+        :param timeout: Timeout for the registration process, in seconds
+        :return: Sensor instance
+        """
+        return await self._sensors.register(
+            definition_name, ROOM_ID, timeout, name
+        )
+
     @property
     async def devices(self) -> List[G90Device]:
         """
@@ -343,6 +387,37 @@ class G90Alarm(G90NotificationProtocol):
         :return: List of devices
         """
         return await self._devices.update()
+
+    async def find_device(
+        self, idx: int, name: str, exclude_unavailable: bool = True
+    ) -> Optional[G90Device]:
+        """
+        Finds device by index and name.
+
+        :param idx: Device index
+        :param name: Device name
+        :param exclude_unavailable: Flag indicating if unavailable devices
+         should be excluded from the search
+        :return: Device instance
+        """
+        return await self._devices.find(idx, name, exclude_unavailable)
+
+    async def register_device(
+        self, definition_name: str, name: Optional[str] = None,
+        timeout: float = DEVICE_REGISTRATION_TIMEOUT
+    ) -> G90Device:
+        """
+        Registers device (relay, switch) with the panel.
+
+        :param definition_name: Name of the device definition to register
+        :param name: Optional name of the device to register, if not provided
+         the name will be taken from the definition
+        :param timeout: Timeout for the registration process, in seconds
+        :return: Device instance
+        """
+        return await self._devices.register(
+            definition_name, ROOM_ID, timeout, name
+        )
 
     @property
     async def host_info(self) -> G90HostInfo:
@@ -396,7 +471,7 @@ class G90Alarm(G90NotificationProtocol):
     async def get_alert_config(self) -> G90AlertConfigFlags:
         """
         Provides alert configuration flags, retained for compatibility - using
-        `:attr:alert_config` and `:class:G90AlertConfig` is preferred.
+        :attr:`alert_config` and :class:`.G90AlertConfig` is preferred.
 
         :return: The alerts configured
         """
@@ -405,7 +480,7 @@ class G90Alarm(G90NotificationProtocol):
     async def set_alert_config(self, flags: G90AlertConfigFlags) -> None:
         """
         Sets the alert configuration flags, retained for compatibility - using
-        `:attr:alert_config` and `:class:G90AlertConfig` is preferred.
+        :attr:`alert_config` and :class:`.G90AlertConfig` is preferred.
         """
         await self.alert_config.set(flags)
 
@@ -489,7 +564,7 @@ class G90Alarm(G90NotificationProtocol):
             # notification itself
             def reset_sensor_occupancy(sensor: G90Sensor) -> None:
                 sensor._set_occupancy(False)
-                G90Callback.invoke(sensor.state_callback, sensor.occupancy)
+                sensor.state_callback.invoke(sensor.occupancy)
 
             # Determine if door close notifications are available for the given
             # sensor
@@ -499,7 +574,7 @@ class G90Alarm(G90NotificationProtocol):
             # The condition intentionally doesn't account for cord sensors of
             # subtype door, since those won't send door open/close alerts, only
             # notifications
-            sensor_is_door = sensor.type == G90SensorTypes.DOOR
+            sensor_is_door = sensor.type == G90PeripheralTypes.DOOR
 
             # Alarm panel could emit door close alerts (if enabled) for sensors
             # of type `door`, and such event will be used to reset the
@@ -519,21 +594,28 @@ class G90Alarm(G90NotificationProtocol):
                     reset_sensor_occupancy, sensor)
 
             # Invoke per-sensor callback if provided
-            G90Callback.invoke(sensor.state_callback, occupancy)
+            sensor.state_callback.invoke(occupancy)
 
         # Invoke global callback if provided
-        G90Callback.invoke(self._sensor_cb, idx, name, occupancy)
+        self._sensor_cb.invoke(idx, name, occupancy)
 
     @property
-    def sensor_callback(self) -> Optional[SensorCallback]:
+    def sensor_callback(self) -> G90CallbackList[SensorCallback]:
         """
         Sensor activity callback, which is invoked when sensor activates.
+
+        Setting the property will add the callback to the list of (retained for
+        compatilibity with earlier package versions), or
+        :class:`.G90CallbackList` instance could be accessed over the
+        property - `G90Alarm(...).sensor_callback.add(callback)` or
+        `G90Alarm(...).sensor_callback.remove(callback)` methods could be used
+        to add or remove the callback, respectively.
         """
         return self._sensor_cb
 
     @sensor_callback.setter
     def sensor_callback(self, value: SensorCallback) -> None:
-        self._sensor_cb = value
+        self._sensor_cb.add(value)
 
     async def on_door_open_close(
         self, event_id: int, zone_name: str, is_open: bool
@@ -552,22 +634,24 @@ class G90Alarm(G90NotificationProtocol):
         # closed, since the notifications aren't sent for such events
         await self.on_sensor_activity(event_id, zone_name, is_open)
         # Invoke user specified callback if any
-        G90Callback.invoke(
-            self._door_open_close_cb, event_id, zone_name, is_open
-        )
+        self._door_open_close_cb.invoke(event_id, zone_name, is_open)
 
     @property
-    def door_open_close_callback(self) -> Optional[DoorOpenCloseCallback]:
+    def door_open_close_callback(
+        self
+    ) -> G90CallbackList[DoorOpenCloseCallback]:
         """
         The door open/close callback, which is invoked when door
         is opened or closed (if corresponding alert is configured on the
         device).
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._door_open_close_cb
 
     @door_open_close_callback.setter
     def door_open_close_callback(self, value: DoorOpenCloseCallback) -> None:
-        self._door_open_close_cb = value
+        self._door_open_close_cb.add(value)
 
     async def on_armdisarm(self, state: G90ArmDisarmTypes) -> None:
         """
@@ -596,19 +680,21 @@ class G90Alarm(G90NotificationProtocol):
                 # pylint: disable=protected-access
                 sensor._set_door_open_when_arming(False)
 
-        G90Callback.invoke(self._armdisarm_cb, state)
+        self._armdisarm_cb.invoke(state)
 
     @property
-    def armdisarm_callback(self) -> Optional[ArmDisarmCallback]:
+    def armdisarm_callback(self) -> G90CallbackList[ArmDisarmCallback]:
         """
         The device arm/disarm callback, which is invoked when device state
         changes.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._armdisarm_cb
 
     @armdisarm_callback.setter
     def armdisarm_callback(self, value: ArmDisarmCallback) -> None:
-        self._armdisarm_cb = value
+        self._armdisarm_cb.add(value)
 
     async def on_alarm(
         self, event_id: int, zone_name: str, is_tampered: bool
@@ -643,26 +729,26 @@ class G90Alarm(G90NotificationProtocol):
                 sensor._set_tampered(True)
 
                 # Invoke per-sensor callback if provided
-                G90Callback.invoke(sensor.tamper_callback)
+                sensor.tamper_callback.invoke()
 
         # Invoke global tamper callback if provided and the sensor is tampered
         if is_tampered:
-            G90Callback.invoke(self._tamper_cb, event_id, zone_name)
+            self._tamper_cb.invoke(event_id, zone_name)
 
-        G90Callback.invoke(
-            self._alarm_cb, event_id, zone_name, extra_data
-        )
+        self._alarm_cb.invoke(event_id, zone_name, extra_data)
 
     @property
-    def alarm_callback(self) -> Optional[AlarmCallback]:
+    def alarm_callback(self) -> G90CallbackList[AlarmCallback]:
         """
         The device alarm callback, which is invoked when device alarm triggers.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._alarm_cb
 
     @alarm_callback.setter
     def alarm_callback(self, value: AlarmCallback) -> None:
-        self._alarm_cb = value
+        self._alarm_cb.add(value)
 
     async def on_low_battery(self, event_id: int, zone_name: str) -> None:
         """
@@ -682,21 +768,23 @@ class G90Alarm(G90NotificationProtocol):
             # pylint: disable=protected-access
             sensor._set_low_battery(True)
             # Invoke per-sensor callback if provided
-            G90Callback.invoke(sensor.low_battery_callback)
+            sensor.low_battery_callback.invoke()
 
-        G90Callback.invoke(self._low_battery_cb, event_id, zone_name)
+        self._low_battery_cb.invoke(event_id, zone_name)
 
     @property
-    def low_battery_callback(self) -> Optional[LowBatteryCallback]:
+    def low_battery_callback(self) -> G90CallbackList[LowBatteryCallback]:
         """
         Low battery callback, which is invoked when sensor reports the
         condition.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._low_battery_cb
 
     @low_battery_callback.setter
     def low_battery_callback(self, value: LowBatteryCallback) -> None:
-        self._low_battery_cb = value
+        self._low_battery_cb.add(value)
 
     async def on_sos(
         self, event_id: int, zone_name: str, is_host_sos: bool
@@ -714,7 +802,7 @@ class G90Alarm(G90NotificationProtocol):
           (host)
         """
         _LOGGER.debug('on_sos: %s %s %s', event_id, zone_name, is_host_sos)
-        G90Callback.invoke(self._sos_cb, event_id, zone_name, is_host_sos)
+        self._sos_cb.invoke(event_id, zone_name, is_host_sos)
 
         # Also report the event as alarm for unification, hard-coding the
         # sensor name in case of host SOS
@@ -731,15 +819,17 @@ class G90Alarm(G90NotificationProtocol):
             )
 
     @property
-    def sos_callback(self) -> Optional[SosCallback]:
+    def sos_callback(self) -> G90CallbackList[SosCallback]:
         """
         SOS callback, which is invoked when SOS alert is triggered.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._sos_cb
 
     @sos_callback.setter
     def sos_callback(self, value: SosCallback) -> None:
-        self._sos_cb = value
+        self._sos_cb.add(value)
 
     async def on_remote_button_press(
         self, event_id: int, zone_name: str, button: G90RemoteButtonStates
@@ -757,9 +847,7 @@ class G90Alarm(G90NotificationProtocol):
         _LOGGER.debug(
             'on_remote_button_press: %s %s %s', event_id, zone_name, button
         )
-        G90Callback.invoke(
-            self._remote_button_press_cb, event_id, zone_name, button
-        )
+        self._remote_button_press_cb.invoke(event_id, zone_name, button)
 
         # Also report the event as sensor activity for unification (remote is
         # just a special type of the sensor)
@@ -768,10 +856,12 @@ class G90Alarm(G90NotificationProtocol):
     @property
     def remote_button_press_callback(
         self
-    ) -> Optional[RemoteButtonPressCallback]:
+    ) -> G90CallbackList[RemoteButtonPressCallback]:
         """
         Remote button press callback, which is invoked when remote button is
         pressed.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._remote_button_press_cb
 
@@ -779,7 +869,7 @@ class G90Alarm(G90NotificationProtocol):
     def remote_button_press_callback(
         self, value: RemoteButtonPressCallback
     ) -> None:
-        self._remote_button_press_cb = value
+        self._remote_button_press_cb.add(value)
 
     async def on_door_open_when_arming(
         self, event_id: int, zone_name: str
@@ -802,17 +892,19 @@ class G90Alarm(G90NotificationProtocol):
             # pylint: disable=protected-access
             sensor._set_door_open_when_arming(True)
             # Invoke per-sensor callback if provided
-            G90Callback.invoke(sensor.door_open_when_arming_callback)
+            sensor.door_open_when_arming_callback.invoke()
 
-        G90Callback.invoke(self._door_open_when_arming_cb, event_id, zone_name)
+        self._door_open_when_arming_cb.invoke(event_id, zone_name)
 
     @property
     def door_open_when_arming_callback(
         self
-    ) -> Optional[DoorOpenWhenArmingCallback]:
+    ) -> G90CallbackList[DoorOpenWhenArmingCallback]:
         """
         Door open when arming callback, which is invoked when sensor reports
         the condition.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
         """
         return self._door_open_when_arming_cb
 
@@ -820,10 +912,10 @@ class G90Alarm(G90NotificationProtocol):
     def door_open_when_arming_callback(
         self, value: DoorOpenWhenArmingCallback
     ) -> None:
-        self._door_open_when_arming_cb = value
+        self._door_open_when_arming_cb.add(value)
 
     @property
-    async def tamper_callback(self) -> Optional[TamperCallback]:
+    def tamper_callback(self) -> G90CallbackList[TamperCallback]:
         """
         Tamper callback, which is invoked when sensor reports the condition.
         """
@@ -831,7 +923,109 @@ class G90Alarm(G90NotificationProtocol):
 
     @tamper_callback.setter
     def tamper_callback(self, value: TamperCallback) -> None:
-        self._tamper_cb = value
+        self._tamper_cb.add(value)
+
+    async def on_sensor_change(
+        self, sensor_idx: int, sensor_name: str, added: bool
+    ) -> None:
+        """
+        Invoked when sensor is added or removed from the device.
+
+        There is no user-visible callback assoiciated with this method, those
+        will be handled by `on_sensor_list_change()` method.
+
+        Please note the method is for internal use by the class.
+
+        :param sensor_idx: The index of the sensor being added/removed.
+        :param sensor_name: The name of the sensor.
+        :param added: Flag indicating if the sensor is added or removed
+        """
+        _LOGGER.debug(
+            'on_sensor_change: idx=%s name=%s added=%s',
+            sensor_idx, sensor_name, added
+        )
+
+        # Invoke internal callback for sensor list to finish the registration
+        # process
+        G90Callback.invoke(
+            self._sensors.sensor_change_callback,
+            sensor_idx, sensor_name, added
+        )
+
+    @property
+    def sensor_list_change_callback(
+        self
+    ) -> G90CallbackList[ListChangeCallback[G90Sensor]]:
+        """
+        Sensor list change callback, which is invoked when sensor list
+        changes.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        """
+        return self._sensor_list_change_cb
+
+    @sensor_list_change_callback.setter
+    def sensor_list_change_callback(
+        self, value: ListChangeCallback[G90Sensor]
+    ) -> None:
+        self._sensor_list_change_cb.add(value)
+
+    async def on_sensor_list_change(
+        self, sensor: G90Sensor, added: bool
+    ) -> None:
+        """
+        Invoked when sensor list is changed.
+
+        Fires corresponding callback if set by the user with
+        :attr:`.sensor_list_change_callback`.
+        Please note the method is for internal use by the class.
+
+        :param sensor: The sensor being added or removed
+        :param added: Flag indicating if the sensor is added or removed
+        """
+        _LOGGER.debug(
+            'on_sensor_list_change: %s added=%s', repr(sensor), added
+        )
+
+        self._sensor_list_change_cb.invoke(sensor, added)
+
+    @property
+    def device_list_change_callback(
+        self
+    ) -> G90CallbackList[ListChangeCallback[G90Device]]:
+        """
+        Device list change callback, which is invoked when device list
+        changes.
+
+        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        """
+        return self._device_list_change_cb
+
+    @device_list_change_callback.setter
+    def device_list_change_callback(
+        self, value: ListChangeCallback[G90Device]
+    ) -> None:
+        self._device_list_change_cb.add(value)
+
+    async def on_device_list_change(
+        self, device: G90Device, added: bool
+    ) -> None:
+        """
+        Invoked when device list is changed.
+
+        Fires corresponding callback if set by the user with
+        :attr:`.device_list_change_callback`.
+
+        Please note the method is for internal use by the class.
+
+        :param device: The device being added or removed
+        :param added: Flag indicating if the device is added or removed
+        """
+        _LOGGER.debug(
+            'on_device_list_change: %s added=%s', repr(device), added
+        )
+
+        self._device_list_change_cb.invoke(device, added)
 
     async def listen_notifications(self) -> None:
         """

@@ -37,3 +37,27 @@ class G90TimeoutError(asyncio.TimeoutError):  # pylint:disable=R0903
     Raised when particular package class to report an operation (typically
     device command) has timed out.
     """
+
+
+class G90CommandFailure(G90Error):
+    """
+    Raised when a command to the alarm panel reports failure.
+    """
+
+
+class G90CommandError(G90Error):
+    """
+    Raised when a command to the alarm panel reports an error.
+    """
+
+
+class G90EntityRegistrationError(G90Error):
+    """
+    Raised when registering an entity to the alarm panel fails.
+    """
+
+
+class G90PeripheralDefinitionNotFound(G90Error):
+    """
+    Raised when a peripheral definition is not found.
+    """

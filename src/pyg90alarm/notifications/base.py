@@ -90,6 +90,18 @@ class G90ArmDisarmInfo:
 
 
 @dataclass
+class G90SensorChangeInfo:
+    """
+    Represents the sensor added notification received from the device.
+
+    :meta private:
+    """
+    idx: int
+    name: str
+    action: int  # 1 - if added, 2 - for update (?)
+
+
+@dataclass
 class G90DeviceAlert:  # pylint: disable=too-many-instance-attributes
     """
     Represents alert received from the device.
@@ -112,9 +124,9 @@ class G90NotificationsBase:
     There is a basic check to ensure only notifications/alerts from the correct
     device are processed - the check uses the host and port of the device, and
     the device ID (GUID) that is set by the ancestor class that implements the
-    commands (e.g. :class:`G90Alarm`). The latter to work correctly needs a
+    commands (e.g. :class:`.G90Alarm`). The latter to work correctly needs a
     command to be performed first, one that fetches device GUID and then stores
-    it using :attr:`.device_id` (e.g. :meth:`G90Alarm.get_host_info`).
+    it using :attr:`.device_id` (e.g. :meth:`.G90Alarm.get_host_info`).
     """
     def __init__(
         self, protocol_factory: Callable[[], G90NotificationProtocol],
@@ -170,6 +182,21 @@ class G90NotificationsBase:
             G90Callback.invoke(
                 self._protocol.on_door_open_when_arming,
                 g90_zone_info.idx, g90_zone_info.name
+            )
+            return
+
+        # Sensor has been added or removed
+        if notification.kind == G90NotificationTypes.SENSOR_CHANGE:
+            g90_sensor_info = G90SensorChangeInfo(*notification.data)
+            sensor_added = g90_sensor_info.action == 1
+            _LOGGER.debug(
+                'Sensor change notification, added=%s: %s',
+                sensor_added, g90_sensor_info
+            )
+            G90Callback.invoke(
+                self._protocol.on_sensor_change,
+                g90_sensor_info.idx, g90_sensor_info.name,
+                sensor_added
             )
             return
 

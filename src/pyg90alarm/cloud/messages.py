@@ -40,7 +40,7 @@ from ..const import (
     G90AlertStateChangeTypes, REMOTE_CLOUD_HOST, REMOTE_CLOUD_PORT,
     G90AlertTypes, G90AlertSources, G90AlertStates,
 )
-from ..entities.sensor import G90SensorTypes
+from ..definitions.base import G90PeripheralTypes
 from ..notifications.base import G90DeviceAlert
 
 
@@ -369,19 +369,19 @@ class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
 
     type: int
     sensor_id: int
-    _sensor_type: G90SensorTypes
+    _sensor_type: G90PeripheralTypes
     _sensor_state: int
     _sensor: bytes
     _timestamp: int  # Unix timestamp
 
     @property
-    def sensor_type(self) -> G90SensorTypes:
+    def sensor_type(self) -> G90PeripheralTypes:
         """
         Get the sensor type.
 
         :return: The type of the sensor that triggered the event
         """
-        return G90SensorTypes(self._sensor_type)
+        return G90PeripheralTypes(self._sensor_type)
 
     @property
     def sensor_state(self) -> G90AlertStates:
@@ -453,7 +453,7 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
 
     type: int
     sensor_id: int
-    _sensor_type: G90SensorTypes
+    _sensor_type: G90PeripheralTypes
     _sensor_state: int
     _sensor: bytes
     _timestamp: int  # Unix timestamp
@@ -478,13 +478,13 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
         return self._sensor.decode().rstrip('\x00')
 
     @property
-    def sensor_type(self) -> G90SensorTypes:
+    def sensor_type(self) -> G90PeripheralTypes:
         """
         Get the sensor type for the alarm event.
 
         :return: The type of sensor that triggered the alarm
         """
-        return G90SensorTypes(self._sensor_type)
+        return G90PeripheralTypes(self._sensor_type)
 
     @property
     def as_device_alert(self) -> G90DeviceAlert:

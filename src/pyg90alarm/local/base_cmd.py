@@ -30,7 +30,9 @@ from asyncio.protocols import DatagramProtocol
 from asyncio.transports import DatagramTransport, BaseTransport
 from typing import Optional, Tuple, List, Any
 from dataclasses import dataclass
-from ..exceptions import (G90Error, G90TimeoutError)
+from ..exceptions import (
+    G90Error, G90TimeoutError, G90CommandFailure, G90CommandError
+)
 from ..const import G90Commands
 
 
@@ -168,19 +170,39 @@ class G90BaseCommand(DatagramProtocol):
         if not data.endswith('IEND\0'):
             raise G90Error('Missing end marker in data')
         payload = data[6:-5]
-        _LOGGER.debug("Decoded from wire: JSON string '%s'", payload)
+        _LOGGER.debug("Decoded from wire: string '%s'", payload)
+
+        if not payload:
+            return
+
+        # Panel may report the last command has failed
+        if payload == 'fail':
+            raise G90CommandFailure(
+                f"Command {self._code.name}"
+                f" (code={self._code.value}) failed"
+            )
+
+        # Also, panel may report an error supplying specific reason, e.g.
+        # command and its arguments that have failed
+        if payload.startswith('error'):
+            error = payload[5:]
+            raise G90CommandError(
+                f"Command {self._code.name}"
+                f" (code={self._code.value}) failed"
+                f" with error: '{error}'")
 
         resp = None
-        if payload:
-            try:
-                resp = json.loads(payload)
-            except json.JSONDecodeError as exc:
-                raise G90Error('Unable to parse response as JSON:'
-                               f" '{payload}'") from exc
+        try:
+            resp = json.loads(payload, strict=False)
+        except json.JSONDecodeError as exc:
+            raise G90Error(
+                f"Unable to parse response as JSON: '{payload}'"
+            ) from exc
 
-            if not isinstance(resp, list):
-                raise G90Error('Mailformed response,'
-                               f" 'list' expected: '{payload}'")
+        if not isinstance(resp, list):
+            raise G90Error(
+                f"Malformed response, 'list' expected: '{payload}'"
+            )
 
         if resp is not None:
             self._resp = G90Header(*resp)

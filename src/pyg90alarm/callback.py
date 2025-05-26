@@ -25,10 +25,10 @@ from __future__ import annotations
 import asyncio
 from functools import (partial, wraps)
 from asyncio import Task
-from typing import Any, Callable, Coroutine, cast, Optional, Union
+from typing import (
+    Any, Callable, Coroutine, cast, Optional, Union, TypeVar, Generic
+)
 import logging
-
-_LOGGER = logging.getLogger(__name__)
 
 Callback = Optional[
     Union[
@@ -36,6 +36,9 @@ Callback = Optional[
         Callable[..., Coroutine[None, None, None]],
     ]
 ]
+T = TypeVar('T', bound=Callback)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class G90Callback:
@@ -106,3 +109,38 @@ class G90Callback:
         """
         loop = asyncio.get_running_loop()
         loop.call_later(delay, partial(callback, *args, **kwargs))
+
+
+class G90CallbackList(Generic[T]):
+    """
+    Implements a list of callbacks.
+    """
+    def __init__(self) -> None:
+        self._callbacks: list[T] = []
+
+    def add(self, callback: T) -> None:
+        """
+        Adds a callback to the list.
+        """
+        if callback and callback not in self._callbacks:
+            self._callbacks.append(callback)
+
+    def remove(self, callback: T) -> None:
+        """
+        Removes a callback from the list.
+        """
+        if callback in self._callbacks:
+            self._callbacks.remove(callback)
+
+    def clear(self) -> None:
+        """
+        Clears the list of callbacks.
+        """
+        self._callbacks.clear()
+
+    def invoke(self, *args: Any, **kwargs: Any) -> None:
+        """
+        Invokes all callbacks in the list.
+        """
+        for callback in self._callbacks:
+            G90Callback.invoke(callback, *args, **kwargs)
