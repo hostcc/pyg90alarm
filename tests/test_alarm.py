@@ -432,6 +432,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
         # Alert configuration, used by sensor activity callback invoked when
         # handling alarm
         b'ISTART[117,[256]]IEND\0',
+        b'ISTART[117,[256]]IEND\0',
     ],
     notification_data=[
         b'[208,[3,100,1,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
@@ -553,6 +554,7 @@ async def test_sensor_tamper_callback(
         b'ISTART[102,'
         b'[[1,1,1],["Remote",11,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
         b'ISTART[117,[256]]IEND\0',
+        b'ISTART[117,[256]]IEND\0',
     ],
     notification_data=[
         # Host SOS
@@ -602,8 +604,17 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
     # Button press callback should be called with the remote button state, but
     # only for SOS initiated by the remote
     button_cb.assert_called_once_with(11, 'Remote', G90RemoteButtonStates.SOS)
-
     await g90.close_notifications()
+
+    # Test incurs other callbacks and corresponding tasks (two invocations of
+    # on_sensor_activity callback for reflecting state changes for the remote
+    # as a sensor), but those aren't in scope - explicitly await any
+    # pending tasks to avoid asyncio warnings
+    await asyncio.gather(
+        *(t for t in asyncio.all_tasks() if t is not asyncio.current_task()),
+        # Ignore exceptions from other tasks
+        return_exceptions=True
+    )
 
 
 @pytest.mark.g90device(
@@ -690,11 +701,7 @@ async def test_disarm(mock_device: DeviceMock) -> None:
 
 @pytest.mark.g90device(
     sent_data=[
-        # First command to get alert configuration is from
-        # `G90Alarm.get_alert_config()` property
-        b"ISTART[117,[1]]IEND\0",
-        # Second command for same is invoked by `G90Alarm.set_alert_config`
-        # that checks if alert config has been modified externally
+        # Get alert configuration
         b"ISTART[117,[1]]IEND\0",
         b"ISTARTIEND\0",
         # Simulated list of sensors, which is used to reset door open when
@@ -737,7 +744,6 @@ async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
 @pytest.mark.g90device(
     sent_data=[
         # See above for the clarification on command sequence
-        b"ISTART[117,[513]]IEND\0",
         b"ISTART[117,[513]]IEND\0",
         b"ISTARTIEND\0",
         b'ISTART[102,'

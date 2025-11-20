@@ -22,7 +22,7 @@
 Represents various configuration aspects of the alarm panel.
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 import logging
 from dataclasses import dataclass
 from enum import IntFlag
@@ -79,22 +79,9 @@ class G90AlertConfig:
     Represents alert configuration as received from the alarm panel.
     """
     def __init__(self, parent: G90Alarm) -> None:
-        self._alert_config: Optional[G90AlertConfigData] = None
         self.parent = parent
 
     async def _get(self) -> G90AlertConfigData:
-        """
-        Retrieves the alert configuration flags from the device. Please note
-        the configuration is cached upon first call, so you need to
-        re-instantiate the class to reflect any updates there.
-
-        :return: The alerts configured
-        """
-        if not self._alert_config:
-            self._alert_config = await self._get_uncached()
-        return self._alert_config
-
-    async def _get_uncached(self) -> G90AlertConfigData:
         """
         Retrieves the alert configuration flags directly from the device.
 
@@ -111,21 +98,22 @@ class G90AlertConfig:
 
     async def set(self, flags: G90AlertConfigFlags) -> None:
         """
+        .. deprecated:: Raises RuntimeError. Use :meth:`set_flag` instead.
+
+        This method is deprecated and will always raise a RuntimeError.
+        Please use :meth:`set_flag` to set individual flags.
+        """
+        raise RuntimeError(
+            'The set() method is deprecated. Please use set_flag() to set'
+            ' individual flags instead.'
+        )
+
+    async def _set(self, flags: G90AlertConfigFlags) -> None:
+        """
         Sets the alert configuration flags on the device.
         """
-        # Use uncached method retrieving the alert configuration, to ensure the
-        # actual value retrieved from the device
         _LOGGER.debug('Setting alert configuration to %s', repr(flags))
-        alert_config = await self._get_uncached()
-        if alert_config != self._alert_config:
-            _LOGGER.warning(
-                'Alert configuration changed externally,'
-                ' overwriting (read "%s", will be set to "%s")',
-                repr(alert_config), repr(flags)
-            )
         await self.parent.command(G90Commands.SETNOTICEFLAG, [flags.value])
-        # Update the alert configuration stored
-        (await self._get()).flags = flags
 
     async def get_flag(self, flag: G90AlertConfigFlags) -> bool:
         """
@@ -135,20 +123,27 @@ class G90AlertConfig:
 
     async def set_flag(self, flag: G90AlertConfigFlags, value: bool) -> None:
         """
+        Sets the given flag to the desired value.
+
+        Uses read-modify-write approach.
+
         :param flag: The flag to set
         :param value: The value to set
         """
+        # Retrieve current flags
+        current_flags = await self.flags
         # Skip updating the flag if it has the desired value
-        if await self.get_flag(flag) == value:
+        if (flag in current_flags) == value:
             _LOGGER.debug(
                 'Flag %s already set to %s, skipping update',
                 repr(flag), value
             )
             return
 
-        # Invert corresponding user flag and set it
-        flags = await self.flags ^ flag
-        await self.set(flags)
+        # Invert corresponding user flag
+        flags = current_flags ^ flag
+        # Set the updated flags
+        await self._set(flags)
 
     @property
     async def flags(self) -> G90AlertConfigFlags:
