@@ -34,7 +34,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           # Disable shallow clone for Sonar scanner, as it needs access to the
           # history
@@ -76,7 +76,7 @@ jobs:
       id-token: write  # Required for trusted publishing
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # `setuptools_scm` needs tags
       - name: Set Python up
