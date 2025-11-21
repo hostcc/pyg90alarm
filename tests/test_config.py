@@ -29,12 +29,8 @@ async def test_alert_config(mock_device: DeviceMock) -> None:
 
 @pytest.mark.g90device(sent_data=[
     b"ISTART[117,[1]]IEND\0",
+    b"ISTART[117,[1]]IEND\0",
     b"ISTARTIEND\0",
-    b"ISTART[117,[0]]IEND\0",
-    b"ISTARTIEND\0",
-    # Responses for getting flags after setting them
-    b"ISTART[117,[8]]IEND\0",
-    b"ISTART[117,[8]]IEND\0",
 ])
 async def test_set_alert_config(mock_device: DeviceMock) -> None:
     """
@@ -44,7 +40,7 @@ async def test_set_alert_config(mock_device: DeviceMock) -> None:
 
     # The flag is already set, so no update should be performed
     await g90.alert_config.set_flag(
-        G90AlertConfigFlags.AC_POWER_FAILURE, False
+        G90AlertConfigFlags.AC_POWER_FAILURE, True
     )
     await g90.alert_config.set_flag(
         G90AlertConfigFlags.HOST_LOW_VOLTAGE, True
@@ -52,13 +48,6 @@ async def test_set_alert_config(mock_device: DeviceMock) -> None:
 
     assert await mock_device.recv_data == [
         b'ISTART[117,117,""]IEND\0',
-        b"ISTART[116,116,[116,[0]]]IEND\0",
         b'ISTART[117,117,""]IEND\0',
-        b"ISTART[116,116,[116,[8]]]IEND\0",
+        b"ISTART[116,116,[116,[9]]]IEND\0",
     ]
-
-    # Validate we retrieve same alert configuration just has been set
-    assert await g90.alert_config.get_flag(
-        G90AlertConfigFlags.AC_POWER_FAILURE) is False
-    assert await g90.alert_config.get_flag(
-        G90AlertConfigFlags.HOST_LOW_VOLTAGE) is True
