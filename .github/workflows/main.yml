@@ -34,13 +34,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           # Disable shallow clone for Sonar scanner, as it needs access to the
           # history
           fetch-depth: 0
       - name: Set Python up
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python }}
       - name: Install testing tools
@@ -56,7 +56,7 @@ jobs:
           package_version=`python3 setup.py --version`
           echo "VALUE=$package_version" >> $GITHUB_OUTPUT
       - name: SonarCloud scanning
-        uses: sonarsource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@v4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -76,11 +76,11 @@ jobs:
       id-token: write  # Required for trusted publishing
     steps:
       - name: Checkout the code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0  # `setuptools_scm` needs tags
       - name: Set Python up
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: 3.9
       - name: Install the PEP517 package builder
@@ -93,7 +93,7 @@ jobs:
         if: github.event_name != 'release'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          repository_url: https://test.pypi.org/legacy/
+          repository-url: https://test.pypi.org/legacy/
           attestations: true
       - name: Publish the release to PyPi
         # Publish to production PyPi only happens when a release published out
