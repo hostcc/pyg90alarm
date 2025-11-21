@@ -98,7 +98,7 @@ class G90AlertConfig:
 
     async def set(self, flags: G90AlertConfigFlags) -> None:
         """
-        .. deprecated:: Raises RuntimeError. Use :meth:`set_flag` instead.
+        .. deprecated:: 2.3.0
 
         This method is deprecated and will always raise a RuntimeError.
         Please use :meth:`set_flag` to set individual flags.
