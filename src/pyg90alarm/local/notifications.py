@@ -55,7 +55,8 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
     :param local_host: The host on which the local host is listening for
      notifications.
     """
-    def __init__(  # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-positional-arguments,too-many-arguments
+    def __init__(
         self, protocol_factory: Callable[[], G90NotificationProtocol],
         port: int, host: str, local_port: int, local_host: str,
     ):

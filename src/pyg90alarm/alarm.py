@@ -1231,6 +1231,7 @@ class G90Alarm(G90NotificationProtocol):
             local_port=notifications_local_port
         )
 
+    # pylint: disable=too-many-positional-arguments
     async def use_cloud_notifications(
         self, cloud_local_host: str = CLOUD_NOTIFICATIONS_HOST,
         cloud_local_port: int = CLOUD_NOTIFICATIONS_PORT,

@@ -49,11 +49,11 @@ class G90PaginatedResult:
     Processes paginated response from G90 corresponding panel commands.
     """
     # pylint: disable=too-few-public-methods
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
     def __init__(
         self, host: str, port: int, code: G90Commands, start: int = 1,
         end: Optional[int] = None, **kwargs: Any
     ):
-        # pylint: disable=too-many-arguments
         self._host = host
         self._port = port
         self._code = code
