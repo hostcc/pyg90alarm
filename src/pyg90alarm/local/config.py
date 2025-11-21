@@ -140,10 +140,14 @@ class G90AlertConfig:
             )
             return
 
-        # Invert corresponding user flag
-        flags = current_flags ^ flag
+        # Set or reset corresponding user flag depending on desired value
+        if value:
+            current_flags |= flag
+        else:
+            current_flags &= ~flag
+
         # Set the updated flags
-        await self._set(flags)
+        await self._set(current_flags)
 
     @property
     async def flags(self) -> G90AlertConfigFlags:
