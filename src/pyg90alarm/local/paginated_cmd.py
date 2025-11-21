@@ -48,11 +48,11 @@ class G90PaginatedCommand(G90BaseCommand):
     """
     Implements paginated command for alarm panel protocol.
     """
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
     def __init__(
         self, host: str, port: int, code: G90Commands, start: int, end: int,
         **kwargs: Any
     ) -> None:
-        # pylint: disable=too-many-arguments
         self._start = start
         self._end = end
         self._expected_nelems = end - start + 1
