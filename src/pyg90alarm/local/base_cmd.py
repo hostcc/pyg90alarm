@@ -59,11 +59,11 @@ class G90BaseCommand(DatagramProtocol):
     # Lock need to be shared across all of the class instances
     _sk_lock = asyncio.Lock()
 
+    # pylint: disable=too-many-positional-arguments,too-many-arguments
     def __init__(self, host: str, port: int, code: G90Commands,
                  data: Optional[G90BaseCommandData] = None,
                  local_port: Optional[int] = None,
                  timeout: float = 3.0, retries: int = 3) -> None:
-        # pylint: disable=too-many-arguments
         self._remote_host = host
         self._remote_port = port
         self._local_port = local_port
