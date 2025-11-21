@@ -69,7 +69,8 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
     :param keep_single_connection: Whether to keep only a single device
      connection
     """
-    # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-positional-arguments,too-many-arguments
+    # pylint:disable=too-many-statements
     def __init__(
         self,
         protocol_factory: Callable[[], G90NotificationProtocol],

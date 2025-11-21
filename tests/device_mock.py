@@ -406,7 +406,8 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
     :param cloud_upstream_port: The port the simulated cloud upstream
      endpoint listens on for client requests
     """
-    def __init__(  # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-positional-arguments,too-many-arguments
+    def __init__(
         self, data: List[bytes], notification_data: List[bytes],
         device_port: int, notification_port: int,
         cloud_notification_data: Optional[List[bytes]] = None,
