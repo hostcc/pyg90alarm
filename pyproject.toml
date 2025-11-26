@@ -11,6 +11,7 @@ local_scheme = "no-local-version"
 log_cli = 1
 log_cli_level = "error"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 pythonpath = "src/"
 
 [tool.coverage.run]

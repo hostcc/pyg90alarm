@@ -68,7 +68,7 @@ class G90BaseList(Generic[T], ABC):
 
         :return: Async generator of entities
         """
-        yield cast(T, None)
+        yield cast(T, None)  # pragma: no cover
 
     @property
     async def entities(self) -> List[T]:
@@ -231,8 +231,12 @@ class G90BaseList(Generic[T], ABC):
         # Collect indexes in use by the existing entities
         occupied_indexes = set(x.index for x in entities)
         # Generate a set of possible indexes from 0 to the maximum index in
-        # use
-        possible_indexes = set(range(0, max(occupied_indexes)))
+        # use, or provide an empty set if there are no existing entities
+        if occupied_indexes:
+            possible_indexes = set(range(0, max(occupied_indexes)))
+        else:
+            # No occupied indexes, so possible_indexes is empty
+            possible_indexes = set()
 
         try:
             # Find the first free index by taking difference between
@@ -241,15 +245,16 @@ class G90BaseList(Generic[T], ABC):
             free_idx = min(
                 set(possible_indexes).difference(occupied_indexes)
             )
-            _LOGGER.debug(
-                'Found free index: %s out of occupied indexes: %s',
-                free_idx, occupied_indexes
-            )
-            return free_idx
         except ValueError:
             # If no gaps in existing indexes, then return the index next to
             # the last existing entity
-            return len(entities)
+            free_idx = len(entities)
+
+        _LOGGER.debug(
+            'Found free index=%s out of occupied indexes: %s',
+            free_idx, occupied_indexes
+        )
+        return free_idx
 
     @property
     def list_change_callback(self) -> Optional[ListChangeCallback[T]]:
