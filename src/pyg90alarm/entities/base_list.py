@@ -243,7 +243,7 @@ class G90BaseList(Generic[T], ABC):
             # possible indexes and occupied ones, and then taking the minimum
             # value off the difference
             free_idx = min(
-                set(possible_indexes).difference(occupied_indexes)
+                possible_indexes.difference(occupied_indexes)
             )
         except ValueError:
             # If no gaps in existing indexes, then return the index next to
