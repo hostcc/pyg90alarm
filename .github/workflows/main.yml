@@ -56,7 +56,7 @@ jobs:
           package_version=`python3 setup.py --version`
           echo "VALUE=$package_version" >> $GITHUB_OUTPUT
       - name: SonarCloud scanning
-        uses: SonarSource/sonarqube-scan-action@v6
+        uses: SonarSource/sonarqube-scan-action@v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
