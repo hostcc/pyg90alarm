@@ -44,7 +44,7 @@ from .definitions.devices import (
 from .definitions.base import (
     G90PeripheralTypes,
 )
-from .local.config import G90AlertConfigFlags
+from .local.alert_config import G90AlertConfigFlags
 from .local.host_status import G90HostStatus
 from .const import (
     G90MessageTypes,

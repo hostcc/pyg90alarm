@@ -95,9 +95,11 @@ from .local.targeted_discovery import (
 )
 from .local.host_info import G90HostInfo
 from .local.host_status import G90HostStatus
-from .local.config import (G90AlertConfig, G90AlertConfigFlags)
+from .local.alert_config import (G90AlertConfig, G90AlertConfigFlags)
 from .local.history import G90History
 from .local.user_data_crc import G90UserDataCRC
+from .local.alarm_phones import G90AlarmPhones
+from .local.host_config import G90HostConfig
 from .callback import G90Callback, G90CallbackList
 from .exceptions import G90Error, G90TimeoutError
 from .cloud.notifications import G90CloudNotifications
@@ -483,6 +485,22 @@ class G90Alarm(G90NotificationProtocol):
         :attr:`alert_config` and :class:`.G90AlertConfig` is preferred.
         """
         await self.alert_config.set(flags)
+
+    async def alarm_phones(self) -> G90AlarmPhones:
+        """
+        Provides access to alarm panel phone numbers.
+
+        :return: Alarm panel phone numbers
+        """
+        return await G90AlarmPhones.load(parent=self)
+
+    async def host_config(self) -> G90HostConfig:
+        """
+        Provides access to alarm panel configuration.
+
+        :return: Alarm panel configuration
+        """
+        return await G90HostConfig.load(parent=self)
 
     @property
     async def user_data_crc(self) -> G90UserDataCRC:

@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Ilia Sotnikov
+# Copyright (c) 2026 Ilia Sotnikov
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -18,15 +18,30 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """
-Compatibility module for the alert configuration, which should be imported
-from `local.alert_config` instead.
+Protocol entity for G90 alarm panel phone numbers.
 """
-from .alert_config import (
-    G90AlertConfig, G90AlertConfigData, G90AlertConfigFlags
-)
+from __future__ import annotations
+from dataclasses import dataclass
+from ..const import G90Commands
+from .dataclass_load_save import DataclassLoadSave
 
-__all__ = [
-    'G90AlertConfig',
-    'G90AlertConfigData',
-    'G90AlertConfigFlags',
-]
+
+@dataclass
+class G90AlarmPhones(DataclassLoadSave):
+    """
+    Interprets data fields of GETALMPHONE/SETALMPHONE commands.
+    """
+    # pylint: disable=too-many-instance-attributes
+    LOAD_COMMAND = G90Commands.GETALMPHONE
+    SAVE_COMMAND = G90Commands.SETALMPHONE
+
+    panel_password: str
+    panel_phone_number: str
+    phone_number_1: str
+    phone_number_2: str
+    phone_number_3: str
+    phone_number_4: str
+    phone_number_5: str
+    phone_number_6: str
+    sms_push_number_1: str
+    sms_push_number_2: str
