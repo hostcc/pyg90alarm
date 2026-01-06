@@ -507,7 +507,7 @@ class G90Alarm(G90NotificationProtocol):
         """
         Provides access to alarm panel network configuration.
 
-        :return: Alarm panel configuration
+        :return: Alarm panel network configuration
         """
         return await G90NetConfig.load(parent=self)
 
