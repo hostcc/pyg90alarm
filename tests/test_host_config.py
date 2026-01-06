@@ -5,7 +5,9 @@ import pytest
 from pyg90alarm.alarm import (
     G90Alarm,
 )
-from pyg90alarm.local.host_config import G90HostConfig, G90SpeechLanguage
+from pyg90alarm.local.host_config import (
+    G90HostConfig, G90SpeechLanguage, G90VolumeLevel,
+)
 from .device_mock import DeviceMock
 
 
@@ -29,15 +31,15 @@ async def test_host_config(mock_device: DeviceMock) -> None:
     # Verify retrieved values
     assert cfg.alarm_siren_duration == 900
     assert cfg.speech_language == G90SpeechLanguage.ENGLISH_MALE
-    assert cfg.speech_volume == 2
+    assert cfg.speech_volume_level == G90VolumeLevel.HIGH
     assert cfg.timezone_offset_m == 60
-    assert cfg.gsm_volume == 2
-    assert cfg.key_tone_volume == 0
+    assert cfg.gsm_volume_level == G90VolumeLevel.HIGH
+    assert cfg.key_tone_volume_level == G90VolumeLevel.MUTE
     assert cfg.call_in_ring_duration == 60
     assert cfg.alarm_delay == 0
     assert cfg.arm_delay == 0
     assert cfg.backlight_duration == 1
-    assert cfg.alarm_volume == 2
+    assert cfg.alarm_volume_level == G90VolumeLevel.HIGH
 
     # Modify and save configuration
     cfg.alarm_siren_duration = 600

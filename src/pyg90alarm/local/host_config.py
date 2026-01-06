@@ -21,6 +21,7 @@
 Protocol entity for G90 alarm panel config.
 """
 from __future__ import annotations
+from typing import Dict, Any
 from dataclasses import dataclass
 from enum import IntEnum
 from .dataclass_load_save import DataclassLoadSave
@@ -51,6 +52,15 @@ class G90SpeechLanguage(IntEnum):
     RUSSIAN_MALE = 18
 
 
+class G90VolumeLevel(IntEnum):
+    """
+    Supported volume levels.
+    """
+    MUTE = 0
+    LOW = 1
+    HIGH = 2
+
+
 @dataclass
 class G90HostConfig(DataclassLoadSave):
     """
@@ -64,13 +74,13 @@ class G90HostConfig(DataclassLoadSave):
     arm_delay: int
     alarm_delay: int
     backlight_duration: int
-    alarm_volume: int
-    speech_volume: int
+    _alarm_volume_level: int
+    _speech_volume_level: int
     call_in_ring_duration: int
     _speech_language: int
-    key_tone_volume: int
+    _key_tone_volume_level: int
     timezone_offset_m: int
-    gsm_volume: int
+    _gsm_volume_level: int
 
     @property
     def speech_language(self) -> G90SpeechLanguage:
@@ -78,3 +88,69 @@ class G90HostConfig(DataclassLoadSave):
         Returns the speech language as an enum.
         """
         return G90SpeechLanguage(self._speech_language)
+
+    @speech_language.setter
+    def speech_language(self, value: G90SpeechLanguage) -> None:
+        self._speech_language = value.value
+
+    @property
+    def alarm_volume_level(self) -> G90VolumeLevel:
+        """
+        Returns the alarm volume level as an enum.
+        """
+        return G90VolumeLevel(self._alarm_volume_level)
+
+    @alarm_volume_level.setter
+    def alarm_volume_level(self, value: G90VolumeLevel) -> None:
+        self._alarm_volume_level = value.value
+
+    @property
+    def speech_volume_level(self) -> G90VolumeLevel:
+        """
+        Returns the speech volume level as an enum.
+        """
+        return G90VolumeLevel(self._speech_volume_level)
+
+    @speech_volume_level.setter
+    def speech_volume_level(self, value: G90VolumeLevel) -> None:
+        self._speech_volume_level = value.value
+
+    @property
+    def key_tone_volume_level(self) -> G90VolumeLevel:
+        """
+        Returns the key tone volume level as an enum.
+        """
+        return G90VolumeLevel(self._key_tone_volume_level)
+
+    @key_tone_volume_level.setter
+    def key_tone_volume_level(self, value: G90VolumeLevel) -> None:
+        self._key_tone_volume_level = value.value
+
+    @property
+    def gsm_volume_level(self) -> G90VolumeLevel:
+        """
+        Returns the GSM volume level as an enum.
+        """
+        return G90VolumeLevel(self._gsm_volume_level)
+
+    @gsm_volume_level.setter
+    def gsm_volume_level(self, value: G90VolumeLevel) -> None:
+        self._gsm_volume_level = value.value
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the dataclass fields as a dictionary.
+        """
+        return {
+            'alarm_siren_duration': self.alarm_siren_duration,
+            'arm_delay': self.arm_delay,
+            'alarm_delay': self.alarm_delay,
+            'backlight_duration': self.backlight_duration,
+            'alarm_volume_level': self.alarm_volume_level.name,
+            'speech_volume_level': self.speech_volume_level.name,
+            'call_in_ring_duration': self.call_in_ring_duration,
+            'speech_language': self.speech_language.name,
+            'key_tone_volume_level': self.key_tone_volume_level.name,
+            'timezone_offset_m': self.timezone_offset_m,
+            'gsm_volume_level': self.gsm_volume_level.name,
+        }
