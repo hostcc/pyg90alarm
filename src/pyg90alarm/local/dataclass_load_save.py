@@ -40,14 +40,14 @@ class DataclassLoadSave:
     Base class for loading/saving dataclasses to a device.
 
     There are multiple ways to implement the functionality:
-     - Encapculate the dataclass inside another class that handles
+     - Encapsulate the dataclass inside another class that handles
        loading/saving and exposes dataclass fields as properties. The latter
        part gets complex as properties need to be asynchronous, as well as
        added dynamically at runtime to improve maintainability.
      - Inherit from this class, which provides `load` and `save` methods. This
        is believed to be more concise and easier to understand.
      - Use a mixin class to provide loading/saving functionality. This approach
-       adds complexity as won't have access to the dataclass fields directly.
+       adds complexity as it won't have access to the dataclass fields directly.
 
     Implementing classes must define `LOAD_COMMAND` and `SAVE_COMMAND` class
     variables to specify which commands to use for loading and saving data.
@@ -76,6 +76,8 @@ class DataclassLoadSave:
         """
         Post-initialization processing.
         """
+        # Instance variable to hold reference to parent G90Alarm instance,
+        # declared here to avoid being part of dataclass fields
         self._parent: Optional[G90Alarm] = None
 
     async def save(self) -> None:
@@ -94,10 +96,9 @@ class DataclassLoadSave:
     @classmethod
     async def load(cls: Type[S], parent: G90Alarm) -> S:
         """
-        Create an instance with default/empty values.
+        Create an instance with values loaded from the device.
 
-        Returns:
-            G90AlarmPhonesData instance with default values
+        :return: An instance of the dataclass loaded from the device.
         """
         assert cls.LOAD_COMMAND is not None, '`LOAD_COMMAND` must be defined'
         assert parent is not None, '`parent` must be provided'
@@ -113,6 +114,8 @@ class DataclassLoadSave:
     def _asdict(self) -> Dict[str, Any]:
         """
         Returns the dataclass fields as a dictionary.
+
+        :return: A dictionary representation.
         """
         return asdict(self)
 
@@ -123,5 +126,7 @@ class DataclassLoadSave:
         `str()` is used instead of `repr()` since dataclass provides `repr()`
         by default, and it would be impractical to require each ancestor to
         disable that.
+
+        :return: A textual representation.
         """
         return super().__repr__() + f'({str(self._asdict())})'
