@@ -21,6 +21,7 @@
 Protocol entity for G90 alarm panel phone numbers.
 """
 from __future__ import annotations
+from typing import Dict, Any
 from dataclasses import dataclass
 from ..const import G90Commands
 from .dataclass_load_save import DataclassLoadSave
@@ -45,3 +46,20 @@ class G90AlarmPhones(DataclassLoadSave):
     phone_number_6: str
     sms_push_number_1: str
     sms_push_number_2: str
+
+    def _asdict(self) -> Dict[str, Any]:
+        """
+        Returns the dataclass fields as a dictionary, masking sensitive data.
+        """
+        return {
+            'panel_password': '********',
+            'panel_phone_number': self.panel_phone_number,
+            'phone_number_1': self.phone_number_1,
+            'phone_number_2': self.phone_number_2,
+            'phone_number_3': self.phone_number_3,
+            'phone_number_4': self.phone_number_4,
+            'phone_number_5': self.phone_number_5,
+            'phone_number_6': self.phone_number_6,
+            'sms_push_number_1': self.sms_push_number_1,
+            'sms_push_number_2': self.sms_push_number_2,
+        }

@@ -85,7 +85,7 @@ class DataclassLoadSave:
         assert self.SAVE_COMMAND is not None, '`SAVE_COMMAND` must be defined'
         assert self._parent is not None, 'Please call `load()` first'
 
-        _LOGGER.debug('Setting data to the device: %s', repr(self))
+        _LOGGER.debug('Setting data to the device: %s', str(self))
         await self._parent.command(
             self.SAVE_COMMAND,
             list(astuple(self))
@@ -104,7 +104,7 @@ class DataclassLoadSave:
 
         data = await parent.command(cls.LOAD_COMMAND)
         obj = cls(*data)
-        _LOGGER.debug('Loaded data: %s', repr(obj))
+        _LOGGER.debug('Loaded data: %s', str(obj))
 
         obj._parent = parent
 
@@ -115,3 +115,13 @@ class DataclassLoadSave:
         Returns the dataclass fields as a dictionary.
         """
         return asdict(self)
+
+    def __str__(self) -> str:
+        """
+        Textual representation of the entry.
+
+        `str()` is used instead of `repr()` since dataclass provides `repr()`
+        by default, and it would be impractical to require each ancestor to
+        disable that.
+        """
+        return super().__repr__() + f'({str(self._asdict())})'
