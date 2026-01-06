@@ -267,6 +267,6 @@ class G90History:
 
     def __repr__(self) -> str:
         """
-        Textural representation of the history entry.
+        Textual representation of the history entry.
         """
         return super().__repr__() + f'({repr(self._asdict())})'
