@@ -156,6 +156,7 @@ class G90Commands(IntEnum):
     DELALLLOCK = 223
     # Miscellaneous
     GETAPINFO = 212
+    SETAPINFO = 213
     PINGBYGPRS = 218
     PING = 219
 

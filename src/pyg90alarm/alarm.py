@@ -100,6 +100,7 @@ from .local.history import G90History
 from .local.user_data_crc import G90UserDataCRC
 from .local.alarm_phones import G90AlarmPhones
 from .local.host_config import G90HostConfig
+from .local.net_config import G90NetConfig
 from .callback import G90Callback, G90CallbackList
 from .exceptions import G90Error, G90TimeoutError
 from .cloud.notifications import G90CloudNotifications
@@ -501,6 +502,14 @@ class G90Alarm(G90NotificationProtocol):
         :return: Alarm panel configuration
         """
         return await G90HostConfig.load(parent=self)
+
+    async def net_config(self) -> G90NetConfig:
+        """
+        Provides access to alarm panel network configuration.
+
+        :return: Alarm panel configuration
+        """
+        return await G90NetConfig.load(parent=self)
 
     @property
     async def user_data_crc(self) -> G90UserDataCRC:
