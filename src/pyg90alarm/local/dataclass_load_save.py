@@ -44,10 +44,9 @@ class DataclassLoadSave:
        loading/saving and exposes dataclass fields as properties. The latter
        part gets complex as properties need to be asynchronous, as well as
        added dynamically at runtime to improve maintainability.
-     - Inherit from this class, which provides `load` and `save` methods. This
-       is believed to be more concise and easier to understand.
-     - Use a mixin class to provide loading/saving functionality. This approach
-       adds complexity as it won't have access to the dataclass fields directly.
+     - Inherit from this class, which provides `load` and `save` methods on top
+       of standard dataclasses. This is believed to be more concise and easier
+       to understand.
 
     Implementing classes must define `LOAD_COMMAND` and `SAVE_COMMAND` class
     variables to specify which commands to use for loading and saving data.
