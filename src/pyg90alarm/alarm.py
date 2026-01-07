@@ -654,7 +654,7 @@ class G90Alarm(G90NotificationProtocol):
         is opened or closed (if corresponding alert is configured on the
         device).
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._door_open_close_cb
 
@@ -697,7 +697,7 @@ class G90Alarm(G90NotificationProtocol):
         The device arm/disarm callback, which is invoked when device state
         changes.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._armdisarm_cb
 
@@ -751,7 +751,7 @@ class G90Alarm(G90NotificationProtocol):
         """
         The device alarm callback, which is invoked when device alarm triggers.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._alarm_cb
 
@@ -787,7 +787,7 @@ class G90Alarm(G90NotificationProtocol):
         Low battery callback, which is invoked when sensor reports the
         condition.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._low_battery_cb
 
@@ -832,7 +832,7 @@ class G90Alarm(G90NotificationProtocol):
         """
         SOS callback, which is invoked when SOS alert is triggered.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._sos_cb
 
@@ -870,7 +870,7 @@ class G90Alarm(G90NotificationProtocol):
         Remote button press callback, which is invoked when remote button is
         pressed.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._remote_button_press_cb
 
@@ -910,7 +910,7 @@ class G90Alarm(G90NotificationProtocol):
         """
         RFID keypad callback, which is invoked when RFID keypad event occurs.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._rfid_keypad_cb
 
@@ -953,7 +953,7 @@ class G90Alarm(G90NotificationProtocol):
         Door open when arming callback, which is invoked when sensor reports
         the condition.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._door_open_when_arming_cb
 
@@ -1009,7 +1009,7 @@ class G90Alarm(G90NotificationProtocol):
         Sensor list change callback, which is invoked when sensor list
         changes.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._sensor_list_change_cb
 
@@ -1046,7 +1046,7 @@ class G90Alarm(G90NotificationProtocol):
         Device list change callback, which is invoked when device list
         changes.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._device_list_change_cb
 
