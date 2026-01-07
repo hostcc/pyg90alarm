@@ -20,6 +20,7 @@ from pyg90alarm.local.user_data_crc import (
 )
 from pyg90alarm.const import (
     G90RemoteButtonStates,
+    G90RFIDKeypadStates,
 )
 from .device_mock import DeviceMock
 
@@ -624,7 +625,7 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
         b'ISTART[117,[256]]IEND\0',
     ],
     notification_data=[
-        b'[208,[4,11,10,0,"Remote","GA18018B3001021",1734176900,0,[""]]]\0',
+        b'[208,[4,11,10,0,"Remote","DUMMYGUID",1734176900,0,[""]]]\0',
     ]
 )
 async def test_remote_button_callback(mock_device: DeviceMock) -> None:
@@ -652,6 +653,46 @@ async def test_remote_button_callback(mock_device: DeviceMock) -> None:
     sensor_cb.assert_called_once_with(11, 'Remote', True)
     button_cb.assert_called_once_with(
         11, 'Remote', G90RemoteButtonStates.ARM_AWAY
+    )
+
+    await g90.close_notifications()
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[102,'
+        b'[[1,1,1],["Keypad-",15,0,11,1,0,32,0,0,16,1,0,""]]]IEND\0',
+        b'ISTART[117,[256]]IEND\0',
+    ],
+    notification_data=[
+        b'[208,[4,15,11,7,"Keypad-","DUMMYGUID",1734176900,0,[""]]]\0',
+    ]
+)
+async def test_rfid_callback(mock_device: DeviceMock) -> None:
+    """
+    Tests for RFID keypad callback.
+    """
+    future_sensor = asyncio.get_running_loop().create_future()
+    future_keypad = asyncio.get_running_loop().create_future()
+    sensor_cb = MagicMock()
+    sensor_cb.side_effect = lambda *args: future_sensor.set_result(True)
+    keypad_cb = MagicMock()
+    keypad_cb.side_effect = lambda *args: future_keypad.set_result(True)
+
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    await g90.use_local_notifications(
+        notifications_local_host=mock_device.notification_host,
+        notifications_local_port=mock_device.notification_port
+    )
+    g90.sensor_callback = sensor_cb
+    g90.rfid_keypad_callback = keypad_cb
+
+    await g90.listen_notifications()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future_sensor, future_keypad], timeout=0.1)
+    sensor_cb.assert_called_once_with(15, 'Keypad-', True)
+    keypad_cb.assert_called_once_with(
+        15, 'Keypad-', G90RFIDKeypadStates.CARD_1
     )
 
     await g90.close_notifications()
