@@ -42,8 +42,8 @@ class G90SpeechLanguage(IntEnum):
     SPANISH_MALE = 8
     DUTCH_FEMALE = 9
     DUTCH_MALE = 10
-    SWEDEN_FEMALE = 11
-    SWEDEN_MALE = 12
+    SWEDISH_FEMALE = 11
+    SWEDISH_MALE = 12
     FRENCH_FEMALE = 13
     FRENCH_MALE = 14
     TURKISH_FEMALE = 15
@@ -70,16 +70,27 @@ class G90HostConfig(DataclassLoadSave):
     LOAD_COMMAND = G90Commands.GETHOSTCONFIG
     SAVE_COMMAND = G90Commands.SETHOSTCONFIG
 
+    # Duration of the alarm siren when triggered, in seconds
     alarm_siren_duration: int
+    # Delay before arming the panel, in seconds
     arm_delay: int
+    # Delay before the alarm is triggered, in seconds
     alarm_delay: int
+    # Duration of the backlight, in seconds
     backlight_duration: int
+    # Alarm volume level, applies to panel's built-in speaker
     _alarm_volume_level: int
+    # Speech volume level
     _speech_volume_level: int
+    # Duration of the ring for the incoming call, in seconds
     ring_duration: int
+    # Speech language
     _speech_language: int
+    # Key tone volume level
     _key_tone_volume_level: int
+    # Timezone offset, in minutes
     timezone_offset_m: int
+    # Ring volume level for incoming calls
     _ring_volume_level: int
 
     @property

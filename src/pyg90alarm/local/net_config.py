@@ -47,14 +47,26 @@ class G90NetConfig(DataclassLoadSave):
     LOAD_COMMAND = G90Commands.GETAPINFO
     SAVE_COMMAND = G90Commands.SETAPINFO
 
+    # Whether the access point is enabled, so that the device can be accessed
+    # via WiFi
     _ap_enabled: int
+    # Access point password
     ap_password: str
+    # Whether WiFi is enabled, so that the device can connect to WiFi network
     _wifi_enabled: int
+    # Whether GPRS is enabled, so that the device can connect via cellular
+    # network
     _gprs_enabled: int
+    # Access Point Name (APN) for GPRS connection, as provided by the cellular
+    # operator
     apn_name: str
+    # User name for APN authentication, as provided by the cellular operator
     apn_user: str
+    # Password for APN authentication, as provided by the cellular operator
     apn_password: str
+    # APN authentication method, as provided by the cellular operator
     _apn_auth: int
+    # GSM operator code
     gsm_operator: str
 
     @property
