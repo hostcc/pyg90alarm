@@ -40,6 +40,7 @@ from ..const import (
     G90AlertSources,
     G90AlertStates,
     G90RemoteButtonStates,
+    G90RFIDKeypadStates,
 )
 from .protocol import G90NotificationProtocol
 
@@ -214,6 +215,17 @@ class G90NotificationsBase:
                 self._protocol.on_remote_button_press,
                 alert.event_id, alert.zone_name,
                 G90RemoteButtonStates(alert.state)
+            )
+
+            return True
+
+        if alert.source == G90AlertSources.RFID:
+            _LOGGER.debug('RFID keypad alert: %s', alert)
+            # Invoke the callback specific to RFID keypad events
+            G90Callback.invoke(
+                self._protocol.on_rfid_keypad,
+                alert.event_id, alert.zone_name,
+                G90RFIDKeypadStates(alert.state)
             )
 
             return True

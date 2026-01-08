@@ -25,6 +25,7 @@ Defines notification protocol for `NotificationBase` class.
 from ..const import (
     G90ArmDisarmTypes,
     G90RemoteButtonStates,
+    G90RFIDKeypadStates,
 )
 
 
@@ -124,4 +125,15 @@ class G90NotificationProtocol:
         :param sensor_idx: Index of the sensor.
         :param sensor_name: Name of the sensor.
         :param added: True if the sensor was added.
+        """
+
+    async def on_rfid_keypad(
+        self, event_id: int, zone_name: str, state: G90RFIDKeypadStates
+    ) -> None:
+        """
+        Invoked when an RFID keypad event occurs.
+
+        :param event_id: Index of the RFID keypad.
+        :param zone_name: Name of the RFID keypad.
+        :param state: State of the RFID keypad.
         """

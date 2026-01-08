@@ -73,6 +73,7 @@ from .const import (
     ROOM_ID,
     G90ArmDisarmTypes,
     G90RemoteButtonStates,
+    G90RFIDKeypadStates,
 )
 from .local.base_cmd import (G90BaseCommand, G90BaseCommandData)
 from .local.paginated_result import G90PaginatedResult, G90PaginatedResponse
@@ -146,6 +147,10 @@ if TYPE_CHECKING:
         Callable[[int, str], None],
         Callable[[int, str], Coroutine[None, None, None]]
     ]
+    RFIDKeypadCallback = Union[
+        Callable[[int, str, G90RFIDKeypadStates], None],
+        Callable[[int, str, G90RFIDKeypadStates], Coroutine[None, None, None]]
+    ]
     # Sensor-related callbacks for `G90Sensor` class - despite that class
     # stores them, the invocation is done by the `G90Alarm` class hence these
     # are defined here
@@ -216,6 +221,9 @@ class G90Alarm(G90NotificationProtocol):
         self._sos_cb: G90CallbackList[SosCallback] = G90CallbackList()
         self._remote_button_press_cb: G90CallbackList[
             RemoteButtonPressCallback
+        ] = G90CallbackList()
+        self._rfid_keypad_cb: G90CallbackList[
+            RFIDKeypadCallback
         ] = G90CallbackList()
         self._door_open_when_arming_cb: G90CallbackList[
             DoorOpenWhenArmingCallback
@@ -646,7 +654,7 @@ class G90Alarm(G90NotificationProtocol):
         is opened or closed (if corresponding alert is configured on the
         device).
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._door_open_close_cb
 
@@ -689,7 +697,7 @@ class G90Alarm(G90NotificationProtocol):
         The device arm/disarm callback, which is invoked when device state
         changes.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._armdisarm_cb
 
@@ -743,7 +751,7 @@ class G90Alarm(G90NotificationProtocol):
         """
         The device alarm callback, which is invoked when device alarm triggers.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._alarm_cb
 
@@ -779,7 +787,7 @@ class G90Alarm(G90NotificationProtocol):
         Low battery callback, which is invoked when sensor reports the
         condition.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._low_battery_cb
 
@@ -824,7 +832,7 @@ class G90Alarm(G90NotificationProtocol):
         """
         SOS callback, which is invoked when SOS alert is triggered.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._sos_cb
 
@@ -862,7 +870,7 @@ class G90Alarm(G90NotificationProtocol):
         Remote button press callback, which is invoked when remote button is
         pressed.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._remote_button_press_cb
 
@@ -871,6 +879,53 @@ class G90Alarm(G90NotificationProtocol):
         self, value: RemoteButtonPressCallback
     ) -> None:
         self._remote_button_press_cb.add(value)
+
+    async def on_rfid_keypad(
+        self, event_id: int, zone_name: str,
+        state: G90RFIDKeypadStates
+    ) -> None:
+        """
+        Invoked when RFID keypad event occurs. Fires corresponding callback if
+        set by the user with :attr:`.rfid_keypad_callback`.
+
+        Please note the method is for internal use by the class.
+
+        :param event_id: Index of the RFID keypad (sensor associated with the
+         RFID keypad)
+        :param zone_name: Sensor name
+        :param state: The RFID keypad state
+        """
+        _LOGGER.debug(
+            'on_rfid_keypad: %s %s %s', event_id, zone_name, state
+        )
+        self._rfid_keypad_cb.invoke(event_id, zone_name, state)
+
+        # Invoke corresponding low battery callback for unification with
+        # regular sensors. Note that on_sensor_activity callback is not
+        # invoked, since it will reset the low battery flag
+        if state == G90RFIDKeypadStates.LOW_BATTERY:
+            await self.on_low_battery(event_id, zone_name)
+        else:
+            # Similar to remote button press, also report the event as sensor
+            # activity for unification
+            await self.on_sensor_activity(event_id, zone_name, True)
+
+    @property
+    def rfid_keypad_callback(
+        self
+    ) -> G90CallbackList[RFIDKeypadCallback]:
+        """
+        RFID keypad callback, which is invoked when RFID keypad event occurs.
+
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
+        """
+        return self._rfid_keypad_cb
+
+    @rfid_keypad_callback.setter
+    def rfid_keypad_callback(
+        self, value: RFIDKeypadCallback
+    ) -> None:
+        self._rfid_keypad_cb.add(value)
 
     async def on_door_open_when_arming(
         self, event_id: int, zone_name: str
@@ -905,7 +960,7 @@ class G90Alarm(G90NotificationProtocol):
         Door open when arming callback, which is invoked when sensor reports
         the condition.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._door_open_when_arming_cb
 
@@ -961,7 +1016,7 @@ class G90Alarm(G90NotificationProtocol):
         Sensor list change callback, which is invoked when sensor list
         changes.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._sensor_list_change_cb
 
@@ -998,7 +1053,7 @@ class G90Alarm(G90NotificationProtocol):
         Device list change callback, which is invoked when device list
         changes.
 
-        .. seealso:: :attr:`.sensor_callback` for compatiblity notes
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._device_list_change_cb
 
