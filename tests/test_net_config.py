@@ -13,7 +13,7 @@ from .device_mock import DeviceMock
 
 @pytest.mark.g90device(sent_data=[
     b'ISTART[212,'
-    b'[0,"123456789",1,1,"apn.a.net","user","pwd",44,"54321"]'
+    b'[0,"123456789",1,1,"apn.a.net","user","pwd",3,"54321"]'
     b']IEND\0',
     b'ISTARTIEND\0'
 ])
@@ -47,6 +47,6 @@ async def test_net_config(mock_device: DeviceMock) -> None:
     assert await mock_device.recv_data == [
         b'ISTART[212,212,""]IEND\0',
         b'ISTART[213,213,[213,'
-        b'[1,"123456789",1,1,"apn.a.net","user","pwd",44,"54321"]'
+        b'[1,"123456789",1,1,"apn.a.net","user","pwd",3,"54321"]'
         b']]IEND\0'
     ]

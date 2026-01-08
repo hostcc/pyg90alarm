@@ -32,10 +32,10 @@ class G90APNAuth(IntEnum):
     """
     Supported APN authentication methods.
     """
-    NONE = 41
-    PAP = 42
-    CHAP = 43
-    PAP_OR_CHAP = 44
+    NONE = 0
+    PAP = 1
+    CHAP = 2
+    PAP_OR_CHAP = 3
 
 
 @dataclass
