@@ -890,7 +890,8 @@ class G90Alarm(G90NotificationProtocol):
 
         Please note the method is for internal use by the class.
 
-        :param event_id: Index of the RFID keypad (sensor associated with the RFID keypad)
+        :param event_id: Index of the RFID keypad (sensor associated with the
+         RFID keypad)
         :param zone_name: Sensor name
         :param state: The RFID keypad state
         """
