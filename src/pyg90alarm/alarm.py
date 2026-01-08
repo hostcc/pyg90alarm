@@ -899,9 +899,15 @@ class G90Alarm(G90NotificationProtocol):
         )
         self._rfid_keypad_cb.invoke(event_id, zone_name, state)
 
-        # Similar to remote button press, also report the event as sensor
-        # activity for unification
-        await self.on_sensor_activity(event_id, zone_name, True)
+        # Invoke corresponding low battery callback for unification with
+        # regular sensors. Note that on_sensor_activity callback is not
+        # invoked, since it will reset the low battery flag
+        if state == G90RFIDKeypadStates.LOW_BATTERY:
+            await self.on_low_battery(event_id, zone_name)
+        else:
+            # Similar to remote button press, also report the event as sensor
+            # activity for unification
+            await self.on_sensor_activity(event_id, zone_name, True)
 
     @property
     def rfid_keypad_callback(

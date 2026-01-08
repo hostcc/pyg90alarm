@@ -219,21 +219,9 @@ class G90NotificationsBase:
 
             return True
 
-        # Regular and RFID sensors could both emit the low battery alert
-        if (
-            alert.source in [G90AlertSources.SENSOR, G90AlertSources.RFID]
-            and alert.state == G90AlertStates.LOW_BATTERY  # noqa: W503
-        ):
-            _LOGGER.debug('Low battery alert: %s', alert)
-            G90Callback.invoke(
-                self._protocol.on_low_battery,
-                alert.event_id, alert.zone_name
-            )
-
-            return True
-
         if alert.source == G90AlertSources.RFID:
             _LOGGER.debug('RFID keypad alert: %s', alert)
+            # Invoke the callback specific to RFID keypad events
             G90Callback.invoke(
                 self._protocol.on_rfid_keypad,
                 alert.event_id, alert.zone_name,
@@ -254,6 +242,18 @@ class G90NotificationsBase:
             G90Callback.invoke(
                 self._protocol.on_door_open_close,
                 alert.event_id, alert.zone_name, is_open
+            )
+
+            return True
+
+        if (
+            alert.source == G90AlertSources.SENSOR
+            and alert.state == G90AlertStates.LOW_BATTERY  # noqa: W503
+        ):
+            _LOGGER.debug('Low battery alert: %s', alert)
+            G90Callback.invoke(
+                self._protocol.on_low_battery,
+                alert.event_id, alert.zone_name
             )
 
             return True
