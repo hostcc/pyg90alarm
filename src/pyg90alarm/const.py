@@ -262,6 +262,14 @@ class G90HistoryStates(IntEnum):
     REMOTE_BUTTON_ARM_HOME = 14
     REMOTE_BUTTON_DISARM = 15
     REMOTE_BUTTON_SOS = 16
+    RFID_KEY_ARM_AWAY = 17
+    RFID_KEY_ARM_HOME = 18
+    RFID_KEY_DISARM = 19
+    RFID_CARD_0 = 20
+    RFID_CARD_1 = 21
+    RFID_CARD_2 = 22
+    RFID_CARD_3 = 23
+    RFID_CARD_4 = 24
 
 
 class G90RemoteButtonStates(IntEnum):
@@ -272,3 +280,18 @@ class G90RemoteButtonStates(IntEnum):
     ARM_HOME = 1
     DISARM = 2
     SOS = 3
+
+
+class G90RFIDKeypadStates(IntEnum):
+    """
+    Defines possible states for RFID keypads.
+    """
+    ARM_AWAY = 0
+    ARM_HOME = 1
+    DISARM = 2
+    LOW_BATTERY = 5
+    CARD_0 = 6
+    CARD_1 = 7
+    CARD_2 = 8
+    CARD_3 = 9
+    CARD_4 = 10

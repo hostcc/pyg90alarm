@@ -25,14 +25,15 @@ from .device_mock import DeviceMock
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[200,[[50,1,7],'
+    b'ISTART[200,[[50,1,8],'
     b'[3,33,1,1,"Sensor 1",1630147285,""],'
     b'[2,3,0,0,"",1630142877,""],'
     b'[2,5,0,0,"",1630142871,""],'
     b'[2,4,0,0,"",1630142757,""],'
     b'[3,100,1,1,"Sensor 2",1630142297,""],'
     b'[3,1,10,3,"Remote",1734177048,""],'
-    b'[1,1,0,0,"",1734175049,""]'
+    b'[1,1,0,0,"",1734175049,""],'
+    b'[4,15,11,7,"Keypad-",1767525505,""]'
     b']]IEND\0',
 ])
 async def test_history(mock_device: DeviceMock) -> None:
@@ -40,14 +41,22 @@ async def test_history(mock_device: DeviceMock) -> None:
     Tests for retrieving history from the device.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    history = await g90.history(count=7)
-    assert len(history) == 7
+    history = await g90.history(count=8)
+    assert len(history) == 8
     assert isinstance(history[0], G90History)
     assert await mock_device.recv_data == [
-        b'ISTART[200,200,[200,[1,7]]]IEND\0',
+        b'ISTART[200,200,[200,[1,8]]]IEND\0',
     ]
     assert all(isinstance(h._asdict(), dict) for h in history)
     assert [h._asdict() for h in history] == [
+        {
+            'type': G90AlertTypes.SENSOR_ACTIVITY,
+            'source': G90AlertSources.RFID,
+            'state': G90HistoryStates.RFID_CARD_1,
+            'sensor_name': 'Keypad-',
+            'sensor_idx': 15,
+            'datetime': ANY,
+        },
         {
             'datetime': ANY,
             'sensor_idx': None,

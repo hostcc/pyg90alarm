@@ -33,6 +33,7 @@ from ..const import (
     G90AlertStateChangeTypes,
     G90HistoryStates,
     G90RemoteButtonStates,
+    G90RFIDKeypadStates,
 )
 from ..notifications.base import G90DeviceAlert
 
@@ -84,6 +85,27 @@ states_mapping_remote_buttons = {
         G90HistoryStates.REMOTE_BUTTON_DISARM,
     G90RemoteButtonStates.SOS:
         G90HistoryStates.REMOTE_BUTTON_SOS,
+}
+
+states_mapping_rfid = {
+    G90RFIDKeypadStates.ARM_AWAY:
+        G90HistoryStates.RFID_KEY_ARM_AWAY,
+    G90RFIDKeypadStates.ARM_HOME:
+        G90HistoryStates.RFID_KEY_ARM_HOME,
+    G90RFIDKeypadStates.DISARM:
+        G90HistoryStates.RFID_KEY_DISARM,
+    G90RFIDKeypadStates.LOW_BATTERY:
+        G90HistoryStates.LOW_BATTERY,
+    G90RFIDKeypadStates.CARD_0:
+        G90HistoryStates.RFID_CARD_0,
+    G90RFIDKeypadStates.CARD_1:
+        G90HistoryStates.RFID_CARD_1,
+    G90RFIDKeypadStates.CARD_2:
+        G90HistoryStates.RFID_CARD_2,
+    G90RFIDKeypadStates.CARD_3:
+        G90HistoryStates.RFID_CARD_3,
+    G90RFIDKeypadStates.CARD_4:
+        G90HistoryStates.RFID_CARD_4,
 }
 
 
@@ -140,21 +162,28 @@ class G90History:
         """
         State for the history entry.
         """
+        # pylint: disable=too-many-return-statements
         # No meaningful state for SOS alerts initiated by the panel itself
         # (host)
         if self.type == G90AlertTypes.HOST_SOS:
             return None
 
         try:
-            # State of the remote indicate which button has been pressed
-            if (
-                self.type in [
-                    G90AlertTypes.SENSOR_ACTIVITY, G90AlertTypes.ALARM
-                ] and self.source == G90AlertSources.REMOTE
-            ):
-                return states_mapping_remote_buttons[
-                    G90RemoteButtonStates(self._protocol_data.state)
-                ]
+            # Remote button pressed or RFID keypad event occurred
+            if self.type in [
+                G90AlertTypes.SENSOR_ACTIVITY, G90AlertTypes.ALARM
+            ]:
+                # State of the remote indicate which button has been pressed
+                if self.source == G90AlertSources.REMOTE:
+                    return states_mapping_remote_buttons[
+                        G90RemoteButtonStates(self._protocol_data.state)
+                    ]
+
+                # State of the RFID keypad indicate which action has occurred
+                if self.source == G90AlertSources.RFID:
+                    return states_mapping_rfid[
+                        G90RFIDKeypadStates(self._protocol_data.state)
+                    ]
 
             # Door open/close or alert types, mapped against `G90AlertStates`
             # using `state` incoming field
@@ -228,8 +257,9 @@ class G90History:
         ID of the sensor related to the history entry, might be empty if none
         associated.
         """
-        # Sensor ID will only be available if entry source is a sensor
-        if self.source == G90AlertSources.SENSOR:
+        # Sensor ID will only be available if entry source is a sensor or RFID
+        # keypad
+        if self.source in [G90AlertSources.SENSOR, G90AlertSources.RFID]:
             return self._protocol_data.event_id
 
         return None
