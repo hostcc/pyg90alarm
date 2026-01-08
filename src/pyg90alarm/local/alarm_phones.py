@@ -36,15 +36,27 @@ class G90AlarmPhones(DataclassLoadSave):
     LOAD_COMMAND = G90Commands.GETALMPHONE
     SAVE_COMMAND = G90Commands.SETALMPHONE
 
+    # Password to operate the panel via SMS or incoming call.
     panel_password: str
+    # Phone number of the alarm panel's SIM card.
     panel_phone_number: str
+    # Alarm phone number to be called on alarm.
+    # Should be in country code + number format.
     phone_number_1: str
+    # Same, but for second alarm phone number.
     phone_number_2: str
+    # Same, but for third alarm phone number.
     phone_number_3: str
+    # Same, but for fourth alarm phone number.
     phone_number_4: str
+    # Same, but for fifth alarm phone number.
     phone_number_5: str
+    # Same, but for sixth alarm phone number.
     phone_number_6: str
+    # Phone number to send SMS notifications on alarm.
+    # Should be in country code + number format.
     sms_push_number_1: str
+    # Same, but for second SMS notification phone number.
     sms_push_number_2: str
 
     def _asdict(self) -> Dict[str, Any]:
