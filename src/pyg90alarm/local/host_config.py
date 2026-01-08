@@ -76,11 +76,11 @@ class G90HostConfig(DataclassLoadSave):
     backlight_duration: int
     _alarm_volume_level: int
     _speech_volume_level: int
-    call_in_ring_duration: int
+    ring_duration: int
     _speech_language: int
     _key_tone_volume_level: int
     timezone_offset_m: int
-    _gsm_volume_level: int
+    _ring_volume_level: int
 
     @property
     def speech_language(self) -> G90SpeechLanguage:
@@ -127,15 +127,15 @@ class G90HostConfig(DataclassLoadSave):
         self._key_tone_volume_level = value.value
 
     @property
-    def gsm_volume_level(self) -> G90VolumeLevel:
+    def ring_volume_level(self) -> G90VolumeLevel:
         """
-        Returns the GSM volume level as an enum.
+        Returns the ring volume level as an enum.
         """
-        return G90VolumeLevel(self._gsm_volume_level)
+        return G90VolumeLevel(self._ring_volume_level)
 
-    @gsm_volume_level.setter
-    def gsm_volume_level(self, value: G90VolumeLevel) -> None:
-        self._gsm_volume_level = value.value
+    @ring_volume_level.setter
+    def ring_volume_level(self, value: G90VolumeLevel) -> None:
+        self._ring_volume_level = value.value
 
     def _asdict(self) -> Dict[str, Any]:
         """
@@ -148,9 +148,9 @@ class G90HostConfig(DataclassLoadSave):
             'backlight_duration': self.backlight_duration,
             'alarm_volume_level': self.alarm_volume_level.name,
             'speech_volume_level': self.speech_volume_level.name,
-            'call_in_ring_duration': self.call_in_ring_duration,
+            'ring_duration': self.ring_duration,
             'speech_language': self.speech_language.name,
             'key_tone_volume_level': self.key_tone_volume_level.name,
             'timezone_offset_m': self.timezone_offset_m,
-            'gsm_volume_level': self.gsm_volume_level.name,
+            'ring_volume_level': self.ring_volume_level.name,
         }

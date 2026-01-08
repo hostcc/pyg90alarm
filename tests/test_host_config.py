@@ -33,9 +33,9 @@ async def test_host_config(mock_device: DeviceMock) -> None:
     assert cfg.speech_language == G90SpeechLanguage.ENGLISH_MALE
     assert cfg.speech_volume_level == G90VolumeLevel.HIGH
     assert cfg.timezone_offset_m == 60
-    assert cfg.gsm_volume_level == G90VolumeLevel.HIGH
+    assert cfg.ring_volume_level == G90VolumeLevel.HIGH
     assert cfg.key_tone_volume_level == G90VolumeLevel.MUTE
-    assert cfg.call_in_ring_duration == 60
+    assert cfg.ring_duration == 60
     assert cfg.alarm_delay == 0
     assert cfg.arm_delay == 0
     assert cfg.backlight_duration == 1
