@@ -197,6 +197,8 @@ async def test_find_sensor(mock_device: DeviceMock) -> None:
             b'ISTART[102,'
             b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
             b'ISTART[117,[256]]IEND\0',
+            # Simulate wrong response retrieving alert configuration flags, so
+            # that previously cached value is used
             b'ISTART[200,[256]]IEND\0',
         ],
         notification_data=[
@@ -207,6 +209,8 @@ async def test_find_sensor(mock_device: DeviceMock) -> None:
         sent_data=[
             b'ISTART[102,'
             b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            # Simulate wrong response retrieving alert configuration flags with
+            # no previously cached data available
             b'ISTART[200,[256]]IEND\0',
         ],
         notification_data=[
@@ -238,8 +242,8 @@ async def test_sensor_callback(
     state_cb.side_effect = lambda *args: future.set_result(True)
     sensor[0].state_callback = state_cb
 
+    # Cache the alert flags if requested by the test
     if cache_alert_flags:
-        # Cache the alert flags if requested by the test
         await g90.alert_config.flags
 
     await g90.listen_notifications()
