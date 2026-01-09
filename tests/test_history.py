@@ -25,7 +25,7 @@ from .device_mock import DeviceMock
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[200,[[50,1,9],'
+    b'ISTART[200,[[50,1,10],'
     b'[3,33,1,1,"Sensor 1",1630147285,""],'
     b'[2,3,0,0,"",1630142877,""],'
     b'[2,5,0,0,"",1630142871,""],'
@@ -34,7 +34,8 @@ from .device_mock import DeviceMock
     b'[3,1,10,3,"Remote",1734177048,""],'
     b'[1,1,0,0,"",1734175049,""],'
     b'[4,15,11,7,"Keypad-",1767525505,""],'
-    b'[3,34,8,1,"Infrared sensor 1",1767902427,""]'
+    b'[3,34,8,1,"Infrared sensor 1",1767902427,""],'
+    b'[3,34,8,0,"Infrared sensor 1",1767902428,""]'
     b']]IEND\0',
 ])
 async def test_history(mock_device: DeviceMock) -> None:
@@ -42,14 +43,22 @@ async def test_history(mock_device: DeviceMock) -> None:
     Tests for retrieving history from the device.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    history = await g90.history(count=9)
-    assert len(history) == 9
+    history = await g90.history(count=10)
+    assert len(history) == 10
     assert isinstance(history[0], G90History)
     assert await mock_device.recv_data == [
-        b'ISTART[200,200,[200,[1,9]]]IEND\0',
+        b'ISTART[200,200,[200,[1,10]]]IEND\0',
     ]
     assert all(isinstance(h._asdict(), dict) for h in history)
     assert [h._asdict() for h in history] == [
+        {
+            'sensor_idx': 34,
+            'sensor_name': 'Infrared sensor 1',
+            'source': G90AlertSources.INFRARED,
+            'state': G90HistoryStates.MOTION_DETECTED,
+            'type': G90AlertTypes.ALARM,
+            'datetime': ANY,
+        },
         {
             'sensor_idx': 34,
             'sensor_name': 'Infrared sensor 1',
