@@ -491,7 +491,7 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     # Simulate callback is called with no data
     alarm_cb.assert_called_once_with(102, 'No Room', None)
 
-    # Simulate alarm for infraread sensor
+    # Simulate alarm for infrared sensor
     alarm_cb.reset_mock()
     future = asyncio.get_running_loop().create_future()
     await mock_device.send_next_notification()
