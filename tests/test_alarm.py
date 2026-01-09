@@ -181,17 +181,42 @@ async def test_find_sensor(mock_device: DeviceMock) -> None:
     assert sensor is not None
 
 
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-        b'ISTART[117,[256]]IEND\0',
-    ],
-    notification_data=[
-        b'[170,[5,[10,"Remote"]]]\0',
-    ]
-)
-async def test_sensor_callback(mock_device: DeviceMock) -> None:
+@pytest.mark.parametrize('cache_alert_flags', [
+    pytest.param(False, marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            b'ISTART[117,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[170,[5,[10,"Remote"]]]\0',
+        ]
+    ), id='Sensor activity callback'),
+    pytest.param(True, marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            b'ISTART[117,[256]]IEND\0',
+            b'ISTART[200,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[170,[5,[10,"Remote"]]]\0',
+        ]
+    ), id='Sensor activity callback with cached alert flags'),
+    pytest.param(False, marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            b'ISTART[200,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[170,[5,[10,"Remote"]]]\0',
+        ]
+    ), id='Sensor activity callback with alert flags resulting in error'),
+])
+async def test_sensor_callback(
+    cache_alert_flags: bool, mock_device: DeviceMock
+) -> None:
     """
     Tests for sensor callback.
     """
@@ -212,6 +237,10 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
     state_cb = MagicMock()
     state_cb.side_effect = lambda *args: future.set_result(True)
     sensor[0].state_callback = state_cb
+
+    if cache_alert_flags:
+        # Cache the alert flags if requested by the test
+        await g90.alert_config.flags
 
     await g90.listen_notifications()
     await mock_device.send_next_notification()

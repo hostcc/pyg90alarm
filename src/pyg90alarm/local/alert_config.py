@@ -22,10 +22,12 @@
 Represents various configuration aspects of the alarm panel.
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import logging
 from dataclasses import dataclass
 from enum import IntFlag
+
+from pyg90alarm.exceptions import G90Error
 from ..const import G90Commands
 if TYPE_CHECKING:
     from ..alarm import G90Alarm
@@ -80,6 +82,7 @@ class G90AlertConfig:
     """
     def __init__(self, parent: G90Alarm) -> None:
         self.parent = parent
+        self._cached_data: G90AlertConfigData | None = None
 
     async def _get(self) -> G90AlertConfigData:
         """
@@ -94,6 +97,10 @@ class G90AlertConfig:
             'Alert configuration: %s, flags: %s', data,
             repr(data.flags)
         )
+
+        # Cache the retrieved data for `flags_with_fallback` property
+        self._cached_data = data
+
         return data
 
     async def set(self, flags: G90AlertConfigFlags) -> None:
@@ -155,3 +162,29 @@ class G90AlertConfig:
         :return: Symbolic names for corresponding flag bits
         """
         return (await self._get()).flags
+
+    @property
+    async def flags_with_fallback(self) -> Optional[G90AlertConfigFlags]:
+        """
+        :return: Symbolic names for corresponding flag bits, falling back to
+         cached data if device communication fails
+        """
+        result = None
+
+        try:
+            result = (await self._get()).flags
+        except G90Error as exc:
+            _LOGGER.debug(
+                'Retrieving alert config flags resulted in error %s',
+                repr(exc)
+            )
+            if self._cached_data is not None:
+                _LOGGER.debug(
+                    'Falling back to cached alert configuration flags: %s',
+                    repr(self._cached_data.flags)
+                )
+                result = self._cached_data.flags
+            else:
+                _LOGGER.debug('No cached alert configuration flags available')
+
+        return result

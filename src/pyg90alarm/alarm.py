@@ -601,12 +601,18 @@ class G90Alarm(G90NotificationProtocol):
                 sensor._set_occupancy(False)
                 sensor.state_callback.invoke(sensor.occupancy)
 
-            alert_config_flags = await self.alert_config.flags
-            # Determine if door close notifications are available for the given
-            # sensor
-            door_close_alert_enabled = (
-                G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags
-            )
+            # Determine if door close notifications are available for the
+            # given sensor
+            alert_config_flags = await self.alert_config.flags_with_fallback
+            if alert_config_flags is None:
+                # No alert configuration available, assume door close alerts
+                # are disabled
+                door_close_alert_enabled = False
+            else:
+                door_close_alert_enabled = (
+                    G90AlertConfigFlags.DOOR_CLOSE in alert_config_flags
+                )
+
             # The condition intentionally doesn't account for cord sensors of
             # subtype door, since those won't send door open/close alerts, only
             # notifications
@@ -623,7 +629,7 @@ class G90Alarm(G90NotificationProtocol):
                               ' closing event will be emulated upon'
                               ' %s seconds',
                               name, sensor.type,
-                              alert_config_flags,
+                              alert_config_flags or 'N/A',
                               self._reset_occupancy_interval)
                 G90Callback.invoke_delayed(
                     self._reset_occupancy_interval,
