@@ -82,7 +82,7 @@ class G90AlertConfig:
     """
     def __init__(self, parent: G90Alarm) -> None:
         self.parent = parent
-        self._cached_data: G90AlertConfigData | None = None
+        self._cached_data: Optional[G90AlertConfigData] = None
 
     async def _get(self) -> G90AlertConfigData:
         """
