@@ -244,7 +244,7 @@ class G90AlertStates(IntEnum):
     sensors.
 
     By a reason the infrared sensors use different codes for their alert
-    states, this enum consolidates them into a single set of for unification.
+    states, this enum consolidates them into a single set for unification.
     """
     DOOR_CLOSE = 0
     DOOR_OPEN = 1

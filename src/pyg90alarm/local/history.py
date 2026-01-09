@@ -264,7 +264,7 @@ class G90History:
         ID of the sensor related to the history entry, might be empty if none
         associated.
         """
-        # Sensor ID will only be available if entry source is a infrared, RFID
+        # Sensor ID will only be available if entry source is an infrared, RFID
         # keypad or other sensor
         if self.source in [
             G90AlertSources.SENSOR, G90AlertSources.RFID,
