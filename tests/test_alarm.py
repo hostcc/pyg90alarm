@@ -426,12 +426,14 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
     sent_data=[
         # Simulate panel with two sensors
         b'ISTART[102,'
-        b'[[2,1,2],'
+        b'[[3,1,3],'
         b'["Hall",100,0,1,1,0,32,0,0,16,1,0,""],'
-        b'["Room",101,0,1,1,0,32,0,0,16,1,0,""]'
+        b'["Room",101,0,1,1,0,32,0,0,16,1,0,""],'
+        b'["Infrared",103,0,8,1,0,32,0,0,16,1,0,""]'
         b']]IEND\0',
         # Alert configuration, used by sensor activity callback invoked when
         # handling alarm
+        b'ISTART[117,[256]]IEND\0',
         b'ISTART[117,[256]]IEND\0',
         b'ISTART[117,[256]]IEND\0',
     ],
@@ -439,6 +441,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
         b'[208,[3,100,1,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
         b'[208,[3,101,1,1,"Room","DUMMYGUID",1630876128,0,[""]]]\0',
         b'[208,[3,102,1,1,"No Room","DUMMYGUID",1630876128,0,[""]]]\0',
+        b'[208,[3,103,8,0,"Infrared","DUMMYGUID",1630876128,0,[""]]]\0',
     ]
 )
 async def test_alarm_callback(mock_device: DeviceMock) -> None:
@@ -488,22 +491,46 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     # Simulate callback is called with no data
     alarm_cb.assert_called_once_with(102, 'No Room', None)
 
+    # Simulate alarm for infrared sensor
+    alarm_cb.reset_mock()
+    future = asyncio.get_running_loop().create_future()
+    await mock_device.send_next_notification()
+    await asyncio.wait([future], timeout=0.1)
+    # Simulate callback is called with no data
+    alarm_cb.assert_called_once_with(103, 'Infrared', None)
+    # Verify the triggering sensor is set to active
+    assert sensors[2].occupancy is True
+
     await g90.close_notifications()
 
 
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Hall",100,0,1,1,0,32,0,0,16,1,0,""]]]IEND\0',
-        # Alert configuration, used by sensor activity callback invoked when
-        # handling alarm
-        b'ISTART[117,[256]]IEND\0',
-    ],
-    notification_data=[
-        b'[208,[3,100,1,3,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
-        b'[170,[1,[3]]]\0',
-    ]
-)
+@pytest.mark.parametrize([], [
+    pytest.param(marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Hall",100,0,1,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            # Alert configuration, used by sensor activity callback invoked
+            # when handling alarm
+            b'ISTART[117,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[208,[3,100,1,3,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+            b'[170,[1,[3]]]\0',
+        ]
+    ), id='Regular sensor tamper alert'),
+    pytest.param(marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Hall",100,0,8,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            # Same as above
+            b'ISTART[117,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[208,[3,100,8,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+            b'[170,[1,[3]]]\0',
+        ]
+    ), id='Infrared sensor tamper alert'),
+])
 async def test_sensor_tamper_callback(
     mock_device: DeviceMock
 ) -> None:

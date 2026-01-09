@@ -42,6 +42,7 @@ from ..const import (
     G90RemoteButtonStates,
     G90RFIDKeypadStates,
 )
+from ..event_mapping import map_alert_state
 from .protocol import G90NotificationProtocol
 
 _LOGGER = logging.getLogger(__name__)
@@ -320,7 +321,11 @@ class G90NotificationsBase:
                 )
             # Regular alarm
             else:
-                is_tampered = alert.state == G90AlertStates.TAMPER
+                # Determine the state depending on alert source
+                alert_state = map_alert_state(
+                    G90AlertSources(alert.source), alert.state
+                )
+                is_tampered = alert_state == G90AlertStates.TAMPER
                 _LOGGER.debug(
                     'Alarm: %s, is tampered: %s', alert.zone_name, is_tampered
                 )

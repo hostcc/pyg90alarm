@@ -210,21 +210,48 @@ class G90AlertSources(IntEnum):
     DEVICE = 0
     SENSOR = 1
     TAMPER = 3
+    INFRARED = 8
     REMOTE = 10
     RFID = 11
     DOORBELL = 12
     FINGERPRINT = 15
 
 
-class G90AlertStates(IntEnum):
+class G90CommonSensorAlertStates(IntEnum):
     """
-    Defines possible states of the alert sent by the panel.
+    Defines possible states of the alert sent by most sensors.
     """
     DOOR_CLOSE = 0
     DOOR_OPEN = 1
     SOS = 2
     TAMPER = 3
     LOW_BATTERY = 4
+    ALARM = 254
+
+
+class G90InfraredAlertStates(IntEnum):
+    """
+    Defines possible states of the alerts sent by infrared sensors.
+    """
+    MOTION_DETECTED = 0
+    TAMPER = 1
+    LOW_BATTERY = 2
+
+
+class G90AlertStates(IntEnum):
+    """
+    Defines consolidated states of the alert sent by infrared and other
+    sensors.
+
+    By a reason the infrared sensors use different codes for their alert
+    states, this enum consolidates them into a single set for unification.
+    """
+    DOOR_CLOSE = 0
+    DOOR_OPEN = 1
+    SOS = 2
+    TAMPER = 3
+    LOW_BATTERY = 4
+    MOTION_DETECTED = 5
     ALARM = 254
 
 
@@ -270,6 +297,7 @@ class G90HistoryStates(IntEnum):
     RFID_CARD_2 = 22
     RFID_CARD_3 = 23
     RFID_CARD_4 = 24
+    MOTION_DETECTED = 25
 
 
 class G90RemoteButtonStates(IntEnum):
