@@ -35,6 +35,7 @@ from ..const import (
     G90RemoteButtonStates,
     G90RFIDKeypadStates,
 )
+from ..event_mapping import map_alert_state
 from ..notifications.base import G90DeviceAlert
 
 _LOGGER = logging.getLogger(__name__)
@@ -191,8 +192,14 @@ class G90History:
                 G90AlertTypes.SENSOR_ACTIVITY, G90AlertTypes.ALARM
             ]:
                 return G90HistoryStates(
+                    # Map to history state via consolidated alert state
                     states_mapping_alerts[
-                        G90AlertStates(self._protocol_data.state)
+                        # Map to consolidated alert state first
+                        map_alert_state(
+                            # Defaults to sensor source if none available
+                            self.source or G90AlertSources.SENSOR,
+                            self._protocol_data.state
+                        )
                     ]
                 )
         except (ValueError, KeyError):
@@ -257,9 +264,12 @@ class G90History:
         ID of the sensor related to the history entry, might be empty if none
         associated.
         """
-        # Sensor ID will only be available if entry source is a sensor or RFID
-        # keypad
-        if self.source in [G90AlertSources.SENSOR, G90AlertSources.RFID]:
+        # Sensor ID will only be available if entry source is a infrared, RFID
+        # keypad or other sensor
+        if self.source in [
+            G90AlertSources.SENSOR, G90AlertSources.RFID,
+            G90AlertSources.INFRARED
+        ]:
             return self._protocol_data.event_id
 
         return None

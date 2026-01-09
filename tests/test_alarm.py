@@ -491,19 +491,33 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     await g90.close_notifications()
 
 
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Hall",100,0,1,1,0,32,0,0,16,1,0,""]]]IEND\0',
-        # Alert configuration, used by sensor activity callback invoked when
-        # handling alarm
-        b'ISTART[117,[256]]IEND\0',
-    ],
-    notification_data=[
-        b'[208,[3,100,1,3,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
-        b'[170,[1,[3]]]\0',
-    ]
-)
+@pytest.mark.parametrize([], [
+    pytest.param(marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Hall",100,0,1,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            # Alert configuration, used by sensor activity callback invoked
+            # when handling alarm
+            b'ISTART[117,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[208,[3,100,1,3,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+            b'[170,[1,[3]]]\0',
+        ]
+    ), id='Regular sensor tamper alert'),
+    pytest.param(marks=pytest.mark.g90device(
+        sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Hall",100,0,8,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            # Same as above
+            b'ISTART[117,[256]]IEND\0',
+        ],
+        notification_data=[
+            b'[208,[3,100,8,1,"Hall","DUMMYGUID",1630876128,0,[""]]]\0',
+            b'[170,[1,[3]]]\0',
+        ]
+    ), id='Infrared sensor tamper alert'),
+])
 async def test_sensor_tamper_callback(
     mock_device: DeviceMock
 ) -> None:
