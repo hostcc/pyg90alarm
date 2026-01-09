@@ -56,6 +56,8 @@ states_mapping_alerts = {
         G90HistoryStates.LOW_BATTERY,
     G90AlertStates.ALARM:
         G90HistoryStates.ALARM,
+    G90AlertStates.MOTION_DETECTED:
+        G90HistoryStates.MOTION_DETECTED,
 }
 
 states_mapping_state_changes = {
