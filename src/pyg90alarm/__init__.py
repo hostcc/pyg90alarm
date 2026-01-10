@@ -88,9 +88,9 @@ __all__ = [
     # Definitions
     'G90SensorDefinitions', 'G90DeviceDefinitions',
     # Host Configuration
-    'G90HostConfig', 'G90VolumeLevel', 'G90SpeechLanguage', 'G90APNAuth',
+    'G90HostConfig', 'G90VolumeLevel', 'G90SpeechLanguage',
     # Network Configuration
-    'G90NetConfig',
+    'G90NetConfig', 'G90APNAuth',
     # Alarm Phones
     'G90AlarmPhones',
     # History
