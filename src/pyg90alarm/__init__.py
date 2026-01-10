@@ -46,6 +46,12 @@ from .definitions.base import (
 )
 from .local.alert_config import G90AlertConfigFlags
 from .local.host_status import G90HostStatus
+from .local.host_config import (
+    G90HostConfig, G90VolumeLevel, G90SpeechLanguage
+)
+from .local.alarm_phones import G90AlarmPhones
+from .local.net_config import G90NetConfig, G90APNAuth
+from .local.history import G90History
 from .const import (
     G90MessageTypes,
     G90NotificationTypes,
@@ -80,5 +86,13 @@ __all__ = [
     'G90TimeoutError', 'G90CommandError', 'G90CommandFailure',
     'G90EntityRegistrationError', 'G90PeripheralDefinitionNotFound',
     # Definitions
-    'G90SensorDefinitions', 'G90DeviceDefinitions'
+    'G90SensorDefinitions', 'G90DeviceDefinitions',
+    # Host Configuration
+    'G90HostConfig', 'G90VolumeLevel', 'G90SpeechLanguage', 'G90APNAuth',
+    # Network Configuration
+    'G90NetConfig',
+    # Alarm Phones
+    'G90AlarmPhones',
+    # History
+    'G90History',
 ]
