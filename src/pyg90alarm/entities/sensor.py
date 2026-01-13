@@ -460,7 +460,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :return: Support for updates
         """
         if not self.definition:
-            _LOGGER.warning(
+            _LOGGER.debug(
                 'Manipulating with user flags for sensor index=%s'
                 ' is unsupported - no sensor definition for'
                 ' type=%s, subtype=%s, protocol=%s',
@@ -595,7 +595,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             return
 
         if value & ~G90SensorUserFlags.USER_SETTABLE:
-            _LOGGER.warning(
+            _LOGGER.debug(
                 'User flags for sensor index=%s contain non-user settable'
                 ' flags, those will be ignored: %s',
                 self.index, repr(value & ~G90SensorUserFlags.USER_SETTABLE)
