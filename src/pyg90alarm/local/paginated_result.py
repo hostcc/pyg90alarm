@@ -95,9 +95,11 @@ class G90PaginatedResult:
             # The supplied end record number is higher than total records
             # available, reset to the latter
             if self._end > cmd.total:
-                _LOGGER.debug('Requested record range (%i) exceeds number of'
-                                ' available records (%i), setting to the'
-                                ' latter', self._end, cmd.total)
+                _LOGGER.debug(
+                    'Requested record range (%i) exceeds number of available'
+                    ' records (%i), setting to the latter',
+                    self._end, cmd.total
+                )
                 self._end = cmd.total
 
             _LOGGER.debug('Retrieved %i records in the iteration,'
