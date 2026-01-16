@@ -22,10 +22,10 @@ Interprets network configuration data fields of GETAPINFO/SETAPINFO commands.
 """
 from __future__ import annotations
 from enum import IntEnum
-from dataclasses import dataclass
-from typing import Any, Dict
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 from ..const import G90Commands
-from .dataclass_load_save import DataclassLoadSave
+from .dataclass_load_save import DataclassLoadSave, Metadata
 
 
 class G90APNAuth(IntEnum):
@@ -66,8 +66,12 @@ class G90NetConfig(DataclassLoadSave):
     apn_password: str
     # APN authentication method, as provided by the cellular operator
     _apn_auth: int
-    # GSM operator code
-    gsm_operator: str
+    # GSM operator code, optional for devices lacking cellular module.
+    # The field is always skipped when saving to device.
+    gsm_operator: Optional[str] = field(
+        metadata={Metadata.NO_SERIALIZE: True},
+        default=None
+    )
 
     @property
     def ap_enabled(self) -> bool:
