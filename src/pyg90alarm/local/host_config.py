@@ -92,7 +92,7 @@ class G90HostConfig(DataclassLoadSave):
     _key_tone_volume_level: int
     # Timezone offset, in minutes
     timezone_offset_m: int
-    # Ring volume level for incoming calls, could only be modified the
+    # Ring volume level for incoming calls, could only be modified if the
     # device has sent a value for it when loading the data (i.e. has a cellular
     # module) otherwise it is read-only and None
     _ring_volume_level: Optional[int] = field_readonly_if_not_provided(
