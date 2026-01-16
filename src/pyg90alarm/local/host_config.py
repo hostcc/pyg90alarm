@@ -21,10 +21,12 @@
 Protocol entity for G90 alarm panel config.
 """
 from __future__ import annotations
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from enum import IntEnum
-from .dataclass_load_save import DataclassLoadSave
+from .dataclass_load_save import (
+    DataclassLoadSave, field_readonly_if_not_provided,
+)
 from ..const import G90Commands
 
 
@@ -90,8 +92,12 @@ class G90HostConfig(DataclassLoadSave):
     _key_tone_volume_level: int
     # Timezone offset, in minutes
     timezone_offset_m: int
-    # Ring volume level for incoming calls
-    _ring_volume_level: int
+    # Ring volume level for incoming calls, could only be modified if the
+    # device has sent a value for it when loading the data (i.e. has a cellular
+    # module) otherwise it is read-only and None
+    _ring_volume_level: Optional[int] = field_readonly_if_not_provided(
+        default=None
+    )
 
     @property
     def speech_language(self) -> G90SpeechLanguage:
@@ -138,10 +144,16 @@ class G90HostConfig(DataclassLoadSave):
         self._key_tone_volume_level = value.value
 
     @property
-    def ring_volume_level(self) -> G90VolumeLevel:
+    def ring_volume_level(self) -> Optional[G90VolumeLevel]:
         """
         Returns the ring volume level as an enum.
+
+        :return: Ring volume level, or `None` if the device does not have
+         cellular module.
         """
+        if self._ring_volume_level is None:
+            return None
+
         return G90VolumeLevel(self._ring_volume_level)
 
     @ring_volume_level.setter
@@ -163,5 +175,6 @@ class G90HostConfig(DataclassLoadSave):
             'speech_language': self.speech_language.name,
             'key_tone_volume_level': self.key_tone_volume_level.name,
             'timezone_offset_m': self.timezone_offset_m,
-            'ring_volume_level': self.ring_volume_level.name,
+            # The field is optional
+            'ring_volume_level': getattr(self.ring_volume_level, 'name', None)
         }
