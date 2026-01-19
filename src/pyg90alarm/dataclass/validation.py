@@ -37,7 +37,7 @@ Example usage:
         count: int = validated_int_field(min=0, max=100)
 
         # String field with length validation
-        name: str = validated_string_field(min=1, max=50)
+        name: str = validated_string_field(min_length=1, max_length=50)
 """
 from __future__ import annotations
 from typing import (
