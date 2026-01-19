@@ -23,11 +23,11 @@ Base class for loading/saving dataclasses to a device.
 """
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING, Type, TypeVar, Optional, ClassVar, Any, Dict, List, Generic,
-    cast,
+    TYPE_CHECKING, Type, TypeVar, Optional, ClassVar, Any, Dict, List, cast
 )
 import logging
 from dataclasses import dataclass, asdict, field, fields
+from .validation import ValidatorBase
 from ..const import G90Commands
 if TYPE_CHECKING:
     from ..alarm import G90Alarm
@@ -47,7 +47,7 @@ class Metadata:
     SKIP_NONE = 'skip_none'
 
 
-class ReadOnlyIfNotProvided(Generic[T]):
+class ReadOnlyIfNotProvided(ValidatorBase[T]):
     """
     Descriptor for dataclass fields to be read-only if not provided during
     initialization.
@@ -77,47 +77,23 @@ class ReadOnlyIfNotProvided(Generic[T]):
     :param default: Default value to return upon read if not provided during
      initialization.
     """
-    def __init__(self, default: Optional[T] = None) -> None:
-        self._name: Optional[str] = None
-        self._default = default
+    # pylint: disable=too-few-public-methods
 
-    def __set_name__(self, owner: type, name: str) -> None:
-        # Store the name of the attribute this descriptor is assigned to
-        # Prepending underscore is required to avoid recursion between
-        # __get__() and __set__(), since those aren't called for such attribute
-        self._name = "_" + name
-
-    def __get__(self, obj: Any, objtype: Optional[type] = None) -> Optional[T]:
-        # Dataclass is requesting the default value
-        if obj is None:
-            return self._default
-
+    def __validate__(self, obj: Any, value: T) -> bool:
+        """
+        Validation method.
+        """
         assert self._name is not None, 'Descriptor not initialized properly'
-
-        # Value being `self` indicates that it was not provided during
-        # initialization of the dataclass - supply the default value instead
-        value = getattr(obj, self._name, self._default)
-        if value is self:
-            value = self._default
-        return value
-
-    def __set__(self, obj: Any, value: T) -> None:
-        assert self._name is not None, 'Descriptor not initialized properly'
-
         # Prevent setting the value if it was not provided during
         # initialization. The condition is determined by checking if the
         # current value is `self` - i.e. the descriptor instance hasn't been
         # replaced with an actual value
         if getattr(obj, self._name, self._default) is self:
             raise AttributeError(
-                # `_name[1:]` converts to the actual field name, see
-                # __set_name__()
-                f'Field {self._name[1:]} is read-only because it was not'
-                ' provided during initialization'
+                f'Field {self.__unmangled_name__} is read-only because'
+                ' it was not provided during initialization'
             )
-
-        # Set the value otherwise
-        setattr(obj, self._name, value)
+        return True
 
 
 def field_readonly_if_not_provided(

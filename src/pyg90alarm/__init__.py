@@ -52,6 +52,10 @@ from .local.host_config import (
 from .local.alarm_phones import G90AlarmPhones
 from .local.net_config import G90NetConfig, G90APNAuth
 from .local.history import G90History
+
+from .dataclass.validation import (
+    get_field_validation_constraints,
+)
 from .const import (
     G90MessageTypes,
     G90NotificationTypes,
@@ -95,4 +99,6 @@ __all__ = [
     'G90AlarmPhones',
     # History
     'G90History',
+    # Dataclass validation
+    'get_field_validation_constraints',
 ]

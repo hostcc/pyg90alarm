@@ -24,7 +24,8 @@ from __future__ import annotations
 from typing import Dict, Any
 from dataclasses import dataclass
 from ..const import G90Commands
-from .dataclass_load_save import DataclassLoadSave
+from ..dataclass.load_save import DataclassLoadSave
+from ..dataclass.validation import validated_string_field
 
 
 @dataclass
@@ -36,28 +37,52 @@ class G90AlarmPhones(DataclassLoadSave):
     LOAD_COMMAND = G90Commands.GETALMPHONE
     SAVE_COMMAND = G90Commands.SETALMPHONE
 
+    # The field constraints below have been determined experimentally by
+    # entering various values into panel configuration manually. All values
+    # received from the panel remotely are trusted (i.e. bypass validation)
+
     # Password to operate the panel via SMS or incoming call.
-    panel_password: str
+    panel_password: str = validated_string_field(
+        min_length=4, max_length=4, trust_initial_value=True
+    )
     # Phone number of the alarm panel's SIM card.
-    panel_phone_number: str
+    panel_phone_number: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Alarm phone number to be called on alarm.
-    # Should be in country code + number format.
-    phone_number_1: str
+    # Should be in country code + number format, or empty to disable.
+    phone_number_1: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Same, but for second alarm phone number.
-    phone_number_2: str
+    phone_number_2: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Same, but for third alarm phone number.
-    phone_number_3: str
+    phone_number_3: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Same, but for fourth alarm phone number.
-    phone_number_4: str
+    phone_number_4: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Same, but for fifth alarm phone number.
-    phone_number_5: str
+    phone_number_5: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Same, but for sixth alarm phone number.
-    phone_number_6: str
+    phone_number_6: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Phone number to send SMS notifications on alarm.
     # Should be in country code + number format.
-    sms_push_number_1: str
+    sms_push_number_1: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
     # Same, but for second SMS notification phone number.
-    sms_push_number_2: str
+    sms_push_number_2: str = validated_string_field(
+        max_length=14, trust_initial_value=True
+    )
 
     def _asdict(self) -> Dict[str, Any]:
         """
