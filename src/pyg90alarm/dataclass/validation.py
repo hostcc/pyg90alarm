@@ -34,7 +34,7 @@ Example usage:
     @dataclass
     class Config:
         # Integer field with range validation
-        count: int = validated_int_field(min=0, max=100)
+        count: int = validated_int_field(min_value=0, max_value=100)
 
         # String field with length validation
         name: str = validated_string_field(min_length=1, max_length=50)
@@ -257,7 +257,7 @@ class IntRangeValidator(ValidatorBase[int]):
 
         @dataclass
         class Example:
-            value: int = validated_int_field(min=0, max=100)
+            value: int = validated_int_field(min_value=0, max_value=100)
 
         ex = Example(value=50)  # OK
         ex.value = 100  # OK
@@ -311,7 +311,7 @@ class StringLengthValidator(ValidatorBase[str]):
 
         @dataclass
         class Example:
-            name: str = validated_string_field(min=1, max=50)
+            name: str = validated_string_field(min_length=1, max_length=50)
 
         ex = Example(name="hello")  # OK
         ex.name = "a"  # OK
