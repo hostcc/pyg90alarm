@@ -46,6 +46,8 @@ class G90AlarmPhones(DataclassLoadSave):
         min_length=4, max_length=4, trust_initial_value=True
     )
     # Phone number of the alarm panel's SIM card.
+    # Might be empty, the panel will then presumably refuse handling SMS/calls
+    # with remote commands.
     panel_phone_number: str = validated_string_field(
         max_length=14, trust_initial_value=True
     )
