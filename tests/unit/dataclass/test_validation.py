@@ -200,7 +200,7 @@ def test_str_validator(
     # Invalid value during construction should raise ValueError
     if init_should_fail:
         with pytest.raises(ValueError):
-            config = Config(name=initial_value)
+            Config(name=initial_value)
     else:
         config = Config(name=initial_value)
         assert config.name == initial_value
