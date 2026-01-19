@@ -26,7 +26,7 @@ supporting integer range validation and string length validation.
 Example usage:
 
     from dataclasses import dataclass
-    from pyg90alarm.validation import (
+    from pyg90alarm.dataclass.validation import (
         validated_int_field,
         validated_string_field,
     )
