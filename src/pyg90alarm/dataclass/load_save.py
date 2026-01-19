@@ -83,12 +83,11 @@ class ReadOnlyIfNotProvided(ValidatorBase[T]):
         """
         Validation method.
         """
-        assert self._name is not None, 'Descriptor not initialized properly'
         # Prevent setting the value if it was not provided during
         # initialization. The condition is determined by checking if the
         # current value is `self` - i.e. the descriptor instance hasn't been
         # replaced with an actual value
-        if getattr(obj, self._name, self._default) is self:
+        if getattr(obj, self.__field_name__, self._default) is self:
             raise ValueError(
                 f'Field {self.__unmangled_name__} is read-only because'
                 ' it was not provided during initialization'
