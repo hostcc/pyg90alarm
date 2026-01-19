@@ -55,7 +55,7 @@ class G90NetConfig(DataclassLoadSave):
     # Whether the access point is enabled, so that the device can be accessed
     # via WiFi
     _ap_enabled: int = validated_int_field(
-        min_value=False, max_value=True, trust_initial_value=True
+        min_value=0, max_value=1, trust_initial_value=True
     )
     # Access point password
     ap_password: str = validated_string_field(
@@ -63,12 +63,12 @@ class G90NetConfig(DataclassLoadSave):
     )
     # Whether WiFi is enabled, so that the device can connect to WiFi network
     _wifi_enabled: int = validated_int_field(
-        min_value=False, max_value=True, trust_initial_value=True
+        min_value=0, max_value=1, trust_initial_value=True
     )
     # Whether GPRS is enabled, so that the device can connect via cellular
     # network
     _gprs_enabled: int = validated_int_field(
-        min_value=False, max_value=True, trust_initial_value=True
+        min_value=0, max_value=1, trust_initial_value=True
     )
     # Access Point Name (APN) for GPRS connection, as provided by the cellular
     # operator
