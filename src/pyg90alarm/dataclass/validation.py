@@ -190,7 +190,7 @@ class ValidatorBase(Generic[T]):
         """
         # Default value assignment, e.g. when field not provided during
         # initialization thus being assigned the descriptor instance itself
-        if isinstance(value, ValidatorBase) and self._default is not None:
+        if value is self and self._default is not None:
             _LOGGER.debug(
                 "%s: Assigning default value '%s'",
                 self.__unmangled_name__, self._default
