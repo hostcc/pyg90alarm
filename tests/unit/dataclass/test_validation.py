@@ -108,7 +108,7 @@ def test_int_validator(
     # Invalid value during construction should raise ValueError
     if init_should_fail:
         with pytest.raises(ValueError):
-            config = Config(value=initial_value)
+            Config(value=initial_value)
     else:
         config = Config(value=initial_value)
         assert config.value == initial_value
