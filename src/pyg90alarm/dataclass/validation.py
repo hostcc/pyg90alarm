@@ -267,7 +267,7 @@ class IntRangeValidator(ValidatorBase[int]):
     :param min_value: Minimum allowed value (inclusive), or None for no
      minimum.
     :param max_value: Maximum allowed value (inclusive), or None for no
-     maximum.:
+     maximum.
     :param *: Rest of the params are passed to base class.
     """
     def __init__(
