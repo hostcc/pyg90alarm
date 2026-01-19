@@ -197,7 +197,7 @@ class ValidatorBase(Generic[T]):
             )
             value = self._default
 
-        # First time setting the value during dataclass initialization and it's
+        # First time setting the value during dataclass initialization and its
         # value should be trusted if `trust_initial_value` is True
         trusted_init_value = (
             not hasattr(obj, self.__field_name__)
