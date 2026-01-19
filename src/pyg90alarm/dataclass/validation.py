@@ -231,7 +231,8 @@ class ValidatorBase(Generic[T]):
                 raise exc
 
             # Log a warning about the validation failure during trusted init,
-            # so that constraints can be revised
+            # so that constraints can be revised. The value will still be set,
+            # since it is trusted.
             _LOGGER.warning(
                 "%s: Validation failed during initialization for trusted value"
                 " '%s' (%s). Please create bug report at %s if you see this"
