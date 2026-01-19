@@ -56,7 +56,10 @@ _LOGGER = logging.getLogger(__name__)
 # pylint: disable=too-few-public-methods
 class ValidationConstraintsAbsent:
     """
-    Base class for validation constraints containers.
+    Sentinel/marker type indicating that no validation constraints are defined.
+
+    This is used in type annotations and metadata to distinguish the absence
+    of constraints from an explicit constraints container.
     """
 
 
