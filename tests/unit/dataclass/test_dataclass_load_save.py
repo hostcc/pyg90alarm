@@ -28,7 +28,7 @@ from unittest.mock import AsyncMock, call
 import pytest
 
 from pyg90alarm.const import G90Commands
-from pyg90alarm.local.dataclass_load_save import (
+from pyg90alarm.dataclass.load_save import (
     DataclassLoadSave,
     Metadata,
     field_readonly_if_not_provided,

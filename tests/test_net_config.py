@@ -1,6 +1,8 @@
 """
 Tests for network configuration retrieval and modification.
 """
+from __future__ import annotations
+from typing import Union, Optional
 import pytest
 from pyg90alarm.alarm import (
     G90Alarm,
@@ -73,3 +75,79 @@ async def test_net_config(
         b'[1,"123456789",1,1,"apn.a.net","user","pwd",3]'
         b']]IEND\0'
     ]
+
+
+@pytest.mark.parametrize(
+    'field_name,invalid_value_low,invalid_value_high,valid_value', [
+        pytest.param(
+            'apn_name', '', 'a' * 101, 'valid.apn.net',
+            id='apn_name'
+        ),
+        pytest.param(
+            'apn_user', None, 'a' * 65, 'valid_user',
+            id='apn_user'
+        ),
+        pytest.param(
+            'apn_password', None, 'a' * 65, 'valid_password',
+            id='apn_password'
+        ),
+        pytest.param(
+            'ap_enabled', -1, 2, 1,
+            id='ap_enabled'
+        ),
+        pytest.param(
+            'wifi_enabled', -1, 2, 0,
+            id='wifi_enabled'
+        ),
+        pytest.param(
+            'gprs_enabled', -1, 2, 1,
+            id='gprs_enabled'
+        ),
+        pytest.param(
+            'ap_password', 'a' * 8, 'a' * 65, 'valid_password',
+            id='ap_password'
+        ),
+        # Feeding invalid values to enums will not get to the validation, hence
+        # underlying integer field is tested directly
+        pytest.param(
+            '_apn_auth', min(G90APNAuth) - 1, max(G90APNAuth) + 1,
+            G90APNAuth.NONE,
+            id='apn_auth'
+        ),
+    ]
+)
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"apn.a.net","user","pwd",3,"54321"]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_net_config_constraints(
+    field_name: str,
+    invalid_value_low: Optional[Union[int, str]],
+    invalid_value_high: Union[int, str],
+    valid_value: Union[int, str],
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for network configuration field validation constraints.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Retrieve configuration
+    cfg = await g90.net_config()
+    assert isinstance(cfg, G90NetConfig)
+
+    # Test setting invalid low value for the fields having minimum length
+    # constraint
+    if invalid_value_low is not None:
+        with pytest.raises(ValueError):
+            setattr(cfg, field_name, invalid_value_low)
+
+    # Test setting invalid high value
+    with pytest.raises(ValueError):
+        setattr(cfg, field_name, invalid_value_high)
+
+    # Test setting valid value
+    setattr(cfg, field_name, valid_value)
+    assert getattr(cfg, field_name) == valid_value

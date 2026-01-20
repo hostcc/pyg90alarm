@@ -27,7 +27,7 @@ from typing import Any, Optional
 
 import pytest
 
-from pyg90alarm.local.dataclass_load_save import (
+from pyg90alarm.dataclass.load_save import (
     DataclassLoadSave,
     Metadata,
     field_readonly_if_not_provided,
@@ -97,11 +97,11 @@ def test_readonly_descriptor_read_provided(
 
 def test_readonly_descriptor_write_not_provided_raises_error() -> None:
     """
-    Test that writing to a non-provided read-only field raises AttributeError.
+    Test that writing to a non-provided read-only field raises ValueError.
     """
     obj = SimpleReadOnlyConfig()
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         obj.read_only_field = 100
 
 
@@ -149,7 +149,7 @@ def test_readonly_descriptor_multiple_instances_independent() -> None:
     assert obj1.read_only_field == 20
 
     # obj2 should raise on write
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         obj2.read_only_field = 30
 
     # Values should be independent
@@ -159,11 +159,11 @@ def test_readonly_descriptor_multiple_instances_independent() -> None:
 
 def test_readonly_descriptor_error_message_includes_field_name() -> None:
     """
-    Test that AttributeError message includes the correct field name.
+    Test that ValueError message includes the correct field name.
     """
     obj = SimpleReadOnlyConfig()
 
-    with pytest.raises(AttributeError) as exc_info:
+    with pytest.raises(ValueError) as exc_info:
         obj.read_only_field = 100
 
     assert "read_only_field" in str(exc_info.value)

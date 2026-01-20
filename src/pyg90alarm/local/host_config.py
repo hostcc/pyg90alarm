@@ -24,9 +24,10 @@ from __future__ import annotations
 from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from enum import IntEnum
-from .dataclass_load_save import (
+from ..dataclass.load_save import (
     DataclassLoadSave, field_readonly_if_not_provided,
 )
+from ..dataclass.validation import validated_int_field
 from ..const import G90Commands
 
 
@@ -72,26 +73,54 @@ class G90HostConfig(DataclassLoadSave):
     LOAD_COMMAND = G90Commands.GETHOSTCONFIG
     SAVE_COMMAND = G90Commands.SETHOSTCONFIG
 
+    # The field constraints below have been determined experimentally by
+    # entering various values into panel configuration manually. All values
+    # received from the panel remotely are trusted (i.e. bypass validation)
+
     # Duration of the alarm siren when triggered, in seconds
-    alarm_siren_duration: int
+    alarm_siren_duration: int = validated_int_field(
+        min_value=0, max_value=999, trust_initial_value=True
+    )
     # Delay before arming the panel, in seconds
-    arm_delay: int
+    arm_delay: int = validated_int_field(
+        min_value=0, max_value=255, trust_initial_value=True
+    )
     # Delay before the alarm is triggered, in seconds
-    alarm_delay: int
+    alarm_delay: int = validated_int_field(
+        min_value=0, max_value=255, trust_initial_value=True
+    )
     # Duration of the backlight, in seconds
-    backlight_duration: int
+    backlight_duration: int = validated_int_field(
+        min_value=0, max_value=255, trust_initial_value=True
+    )
     # Alarm volume level, applies to panel's built-in speaker
-    _alarm_volume_level: int
+    _alarm_volume_level: int = validated_int_field(
+        min_value=min(G90VolumeLevel), max_value=max(G90VolumeLevel),
+        trust_initial_value=True
+    )
     # Speech volume level
-    _speech_volume_level: int
+    _speech_volume_level: int = validated_int_field(
+        min_value=min(G90VolumeLevel), max_value=max(G90VolumeLevel),
+        trust_initial_value=True
+    )
     # Duration of the ring for the incoming call, in seconds
-    ring_duration: int
+    ring_duration: int = validated_int_field(
+        min_value=0, max_value=255, trust_initial_value=True
+    )
     # Speech language
-    _speech_language: int
+    _speech_language: int = validated_int_field(
+        min_value=min(G90SpeechLanguage), max_value=max(G90SpeechLanguage),
+        trust_initial_value=True
+    )
     # Key tone volume level
-    _key_tone_volume_level: int
+    _key_tone_volume_level: int = validated_int_field(
+        min_value=min(G90VolumeLevel), max_value=max(G90VolumeLevel),
+        trust_initial_value=True
+    )
     # Timezone offset, in minutes
-    timezone_offset_m: int
+    timezone_offset_m: int = validated_int_field(
+        min_value=-720, max_value=720, trust_initial_value=True
+    )
     # Ring volume level for incoming calls, could only be modified if the
     # device has sent a value for it when loading the data (i.e. has a cellular
     # module) otherwise it is read-only and None

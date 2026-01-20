@@ -39,6 +39,8 @@ ROOM_ID = 0
 
 CMD_PAGE_SIZE = 10
 
+BUG_REPORT_URL = 'https://github.com/hostcc/pyg90alarm/issues'
+
 
 class G90Commands(IntEnum):
     """

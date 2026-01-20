@@ -26,7 +26,7 @@ from typing import Any, Optional
 
 import pytest
 
-from pyg90alarm.local.dataclass_load_save import (
+from pyg90alarm.dataclass.load_save import (
     DataclassLoadSave,
     Metadata,
     field_readonly_if_not_provided,

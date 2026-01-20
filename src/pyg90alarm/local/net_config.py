@@ -25,7 +25,8 @@ from enum import IntEnum
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 from ..const import G90Commands
-from .dataclass_load_save import DataclassLoadSave, Metadata
+from ..dataclass.load_save import DataclassLoadSave, Metadata
+from ..dataclass.validation import validated_int_field, validated_string_field
 
 
 class G90APNAuth(IntEnum):
@@ -47,25 +48,46 @@ class G90NetConfig(DataclassLoadSave):
     LOAD_COMMAND = G90Commands.GETAPINFO
     SAVE_COMMAND = G90Commands.SETAPINFO
 
+    # The field constraints below have been determined experimentally by
+    # entering various values into panel configuration manually. All values
+    # received from the panel remotely are trusted (i.e. bypass validation)
+
     # Whether the access point is enabled, so that the device can be accessed
     # via WiFi
-    _ap_enabled: int
+    _ap_enabled: int = validated_int_field(
+        min_value=0, max_value=1, trust_initial_value=True
+    )
     # Access point password
-    ap_password: str
+    ap_password: str = validated_string_field(
+        min_length=9, max_length=64, trust_initial_value=True
+    )
     # Whether WiFi is enabled, so that the device can connect to WiFi network
-    _wifi_enabled: int
+    _wifi_enabled: int = validated_int_field(
+        min_value=0, max_value=1, trust_initial_value=True
+    )
     # Whether GPRS is enabled, so that the device can connect via cellular
     # network
-    _gprs_enabled: int
+    _gprs_enabled: int = validated_int_field(
+        min_value=0, max_value=1, trust_initial_value=True
+    )
     # Access Point Name (APN) for GPRS connection, as provided by the cellular
     # operator
-    apn_name: str
+    apn_name: str = validated_string_field(
+        min_length=1, max_length=100, trust_initial_value=True
+    )
     # User name for APN authentication, as provided by the cellular operator
-    apn_user: str
+    apn_user: str = validated_string_field(
+        min_length=0, max_length=64, trust_initial_value=True
+    )
     # Password for APN authentication, as provided by the cellular operator
-    apn_password: str
+    apn_password: str = validated_string_field(
+        min_length=0, max_length=64, trust_initial_value=True
+    )
     # APN authentication method, as provided by the cellular operator
-    _apn_auth: int
+    _apn_auth: int = validated_int_field(
+        min_value=min(G90APNAuth), max_value=max(G90APNAuth),
+        trust_initial_value=True
+    )
     # GSM operator code, optional for devices lacking cellular module.
     # The field is always skipped when saving to device.
     gsm_operator: Optional[str] = field(
