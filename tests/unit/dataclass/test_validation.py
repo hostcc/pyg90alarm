@@ -88,6 +88,14 @@ from pyg90alarm.dataclass.validation import (
             False, False, False, 1, 10, 5, 7,
             id="Valid mid range"
         ),
+        pytest.param(
+            False, True, False, 0, 10, None, 7,
+            id="Invalid initial None"
+        ),
+        pytest.param(
+            False, False, True, 0, 10, 7, None,
+            id="Invalid None"
+        ),
     ]
 )
 def test_int_validator(
@@ -179,6 +187,14 @@ def test_int_validator(
         pytest.param(
             False, False, False, 1, 10, "hello", "abc",
             id="Valid mid range"
+        ),
+        pytest.param(
+            False, True, False, 1, 10, None, "abc",
+            id="Invalid initial None"
+        ),
+        pytest.param(
+            False, False, True, 1, 10, "abc", None,
+            id="Invalid None"
         ),
     ]
 )

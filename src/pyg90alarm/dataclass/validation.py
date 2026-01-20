@@ -282,6 +282,13 @@ class IntRangeValidator(ValidatorBase[int]):
 
     def __validate__(self, obj: Any, value: int) -> bool:
         # Validate the value before setting
+        if value is None:
+            msg = (
+                f'{self.__unmangled_name__}: None value is not allowed'
+            )
+            _LOGGER.debug(msg)
+            raise ValueError(msg)
+
         if self._min_value is not None and value < self._min_value:
             msg = (
                 f'{self.__unmangled_name__}: Value {value} is below minimum'
@@ -336,6 +343,13 @@ class StringLengthValidator(ValidatorBase[str]):
         self._max_length = max_length
 
     def __validate__(self, obj: Any, value: str) -> bool:
+        if value is None:
+            msg = (
+                f'{self.__unmangled_name__}: None value is not allowed'
+            )
+            _LOGGER.debug(msg)
+            raise ValueError(msg)
+
         length = len(value)
 
         # Validate the length before setting
