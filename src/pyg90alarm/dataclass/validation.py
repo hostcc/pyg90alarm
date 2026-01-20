@@ -394,6 +394,9 @@ def validated_int_field(
     # Store validation constraints in metadata
     if 'metadata' not in kwargs:
         kwargs['metadata'] = {}
+    else:
+        # Avoid modifying caller's dict
+        kwargs['metadata'] = dict(kwargs['metadata'])
 
     metadata = IntValidationConstraints(min_value, max_value)
     kwargs['metadata'][METADATA_KEY] = metadata
@@ -447,6 +450,9 @@ def validated_string_field(
     # Store validation constraints in metadata
     if 'metadata' not in kwargs:
         kwargs['metadata'] = {}
+    else:
+        # Avoid modifying caller's dict
+        kwargs['metadata'] = dict(kwargs['metadata'])
 
     metadata = StrValidationConstraints(min_length, max_length)
     kwargs['metadata'][METADATA_KEY] = metadata
@@ -490,6 +496,7 @@ def get_field_validation_constraints(
     ...
 
 
+# `get_field_validation_constraints` overload when non-dataclass is given
 @overload
 def get_field_validation_constraints(
     dataclass_type: Any,
