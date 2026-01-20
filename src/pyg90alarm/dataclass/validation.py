@@ -112,11 +112,9 @@ class ValidatorBase(Generic[T]):
 
         :param obj: The dataclass instance.
         :param value: The value to validate.
-        :raises ValueError: Optional exception to raise if the value is
-         invalid.
+        :raises ValueError: Exception to raise if the value is invalid.
         :return: True if the value is valid, False otherwise. Only returned if
-         no exception is raised, which will have invalid value being silently
-         ignored.
+         no exception is raised.
         """
         raise NotImplementedError(
             'Subclasses must implement __validate__() method'
@@ -220,7 +218,7 @@ class ValidatorBase(Generic[T]):
                     f"Invalid value '{value}' for field"
                     f' {self.__unmangled_name__}'
                 )
-        except Exception as exc:  # pylint: disable=broad-exception-caught
+        except ValueError as exc:
             # Validation failed for the value not being trusted during initial
             # assignment, re-raise the exception
             if not trusted_init_value:
