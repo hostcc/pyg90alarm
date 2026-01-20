@@ -49,3 +49,80 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
         b'["5678","11111111","","","","","","","87654321","12345678"]'
         b']]IEND\0'
     ]
+
+
+@pytest.mark.parametrize(
+    'field_name,invalid_value_low,valid_value_high,valid_value', [
+        pytest.param(
+            'panel_password', 'a' * 3, 'a' * 9, '1234',
+            id='panel_password'
+        ),
+        pytest.param(
+            'panel_phone_number', '1' * 16, '1' * 16, '1234567890',
+            id='panel_phone_number'
+        ),
+        pytest.param(
+            'phone_number_1', '1' * 16, '1' * 16, '1234567890',
+            id='phone_number_1'
+        ),
+        pytest.param(
+            'phone_number_2', '1' * 16, '1' * 16, '1234567890',
+            id='phone_number_2'
+        ),
+        pytest.param(
+            'phone_number_3', '1' * 16, '1' * 16, '1234567890',
+            id='phone_number_3'
+        ),
+        pytest.param(
+            'phone_number_4', '1' * 16, '1' * 16, '1234567890',
+            id='phone_number_4'
+        ),
+        pytest.param(
+            'phone_number_5', '1' * 16, '1' * 16, '1234567890',
+            id='phone_number_5'
+        ),
+        pytest.param(
+            'phone_number_6', '1' * 16, '1' * 16, '1234567890',
+            id='phone_number_6'
+        ),
+        pytest.param(
+            'sms_push_number_1', '1' * 16, '1' * 16, '1234567890',
+            id='sms_push_number_1'
+        ),
+        pytest.param(
+            'sms_push_number_2', '1' * 16, '1' * 16, '1234567890',
+            id='sms_push_number_2'
+        ),
+    ]
+)
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[114,'
+    b'["1234", "11111111", "", "", "", "", "", "", "87654321", "12345678"]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_alarm_phones_constraints(
+    field_name: str, invalid_value_low: str,
+    valid_value_high: str, valid_value: str,
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for alarm phones configuration field constraints.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Retrieve alarm phones configuration
+    phones = await g90.alarm_phones()
+    assert isinstance(phones, G90AlarmPhones)
+
+    # Test setting invalid low value
+    with pytest.raises(ValueError):
+        setattr(phones, field_name, invalid_value_low)
+
+    # Test setting invalid high value
+    with pytest.raises(ValueError):
+        setattr(phones, field_name, valid_value_high)
+
+    # Test setting valid value
+    setattr(phones, field_name, valid_value)
+    assert getattr(phones, field_name) == valid_value
