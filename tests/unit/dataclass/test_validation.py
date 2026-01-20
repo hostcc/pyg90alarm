@@ -29,6 +29,7 @@ from pyg90alarm.dataclass.validation import (
     validated_string_field,
     get_field_validation_constraints,
     ValidationConstraintsAbsent,
+    IntValidationConstraints,
 )
 
 
@@ -292,7 +293,7 @@ def test_metadata_for_field_without_validation() -> None:
         value: int = 0
 
     constraints = get_field_validation_constraints(Config, 'value', int)
-    assert isinstance(constraints, ValidationConstraintsAbsent)
+    assert isinstance(constraints, IntValidationConstraints)
 
 
 def test_multiple_int_fields() -> None:

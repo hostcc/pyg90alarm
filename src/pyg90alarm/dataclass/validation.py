@@ -490,6 +490,14 @@ def get_field_validation_constraints(
     ...
 
 
+@overload
+def get_field_validation_constraints(
+    dataclass_type: Any,
+    field_name: str, expected_type: None = None
+) -> ValidationConstraintsAbsent:
+    ...
+
+
 def get_field_validation_constraints(
     dataclass_type: DataclassInstance | type[DataclassInstance],
     field_name: str, expected_type: Optional[type] = None
@@ -516,25 +524,30 @@ def get_field_validation_constraints(
 
     fields_list = fields(dataclass_type)
     for f in fields_list:
-        # Find the field by name and check if validation metadata exists
-        if (
-            f.name == field_name
-            and METADATA_KEY in getattr(f, 'metadata', {})
+        # Find the field by name
+        if f.name != field_name:
+            continue
+
+        # Retrieve validation constraints from metadata per expected type
+        for typ, klass in (
+            # Constraints for `int` field
+            (int, IntValidationConstraints),
+            # Constraints for `str` field
+            (str, StrValidationConstraints),
         ):
-            for typ, klass in (
-                # Constraints for `int` field
-                (int, IntValidationConstraints),
-                # Constraints for `str` field
-                (str, StrValidationConstraints),
-            ):
-                if expected_type is typ:
-                    # Return stored constraints if available
-                    if isinstance(
-                        f.metadata[METADATA_KEY], klass
-                    ):
-                        return f.metadata[METADATA_KEY]
-                    # Otherwise return empty constraints
-                    return klass()
+            if expected_type is not typ:
+                continue
+
+            constraints = (
+                getattr(f, 'metadata', {}).get(METADATA_KEY, None)
+            )
+
+            # Return stored constraints if available
+            if isinstance(constraints, klass):
+                return constraints
+
+            # Otherwise return empty constraints
+            return klass()
 
     # No validation constraints found, return absent indicator
     return ValidationConstraintsAbsent()
