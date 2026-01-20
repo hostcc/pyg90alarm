@@ -52,7 +52,7 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.parametrize(
-    'field_name,invalid_value_low,valid_value_high,valid_value', [
+    'field_name,invalid_value_low,invalid_value_high,valid_value', [
         pytest.param(
             'panel_password', 'a' * 3, 'a' * 9, '1234',
             id='panel_password'
@@ -103,7 +103,7 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
 ])
 async def test_alarm_phones_constraints(
     field_name: str, invalid_value_low: str,
-    valid_value_high: str, valid_value: str,
+    invalid_value_high: str, valid_value: str,
     mock_device: DeviceMock
 ) -> None:
     """
@@ -121,7 +121,7 @@ async def test_alarm_phones_constraints(
 
     # Test setting invalid high value
     with pytest.raises(ValueError):
-        setattr(phones, field_name, valid_value_high)
+        setattr(phones, field_name, invalid_value_high)
 
     # Test setting valid value
     setattr(phones, field_name, valid_value)
