@@ -52,8 +52,8 @@ class ReadOnlyIfNotProvided(ValidatorBase[T]):
     Descriptor for dataclass fields to be read-only if not provided during
     initialization.
 
-    The field can be read, but attempts to modify it will raise an
-    AttributeError if the field was not provided during initialization. In
+    The field can be read, but attempts to modify it will raise a
+    ValueError if the field was not provided during initialization. In
     other words, the only way to set the value is during object creation.
 
     Example usage:
@@ -69,10 +69,10 @@ class ReadOnlyIfNotProvided(ValidatorBase[T]):
         print(ex.read_only_field)  # Outputs: 42
         ex.read_only_field = 100  # Works ok
 
-        # Raises AttributeError
+        # Raises ValueError
         ex2 = Example()
         print(ex2.read_only_field)  # Outputs: None
-        ex2.read_only_field = 100  # Raises AttributeError
+        ex2.read_only_field = 100  # Raises ValueError
 
     :param default: Default value to return upon read if not provided during
      initialization.
