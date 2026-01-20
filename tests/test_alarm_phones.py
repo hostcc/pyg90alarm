@@ -1,6 +1,8 @@
 """
 Tests for alarm phone numbers retrieval and configuration.
 """
+from __future__ import annotations
+from typing import Optional
 import pytest
 from pyg90alarm.alarm import (
     G90Alarm,
@@ -58,39 +60,39 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
             id='panel_password'
         ),
         pytest.param(
-            'panel_phone_number', '1' * 16, '1' * 16, '1234567890',
+            'panel_phone_number', None, '1' * 16, '1234567890',
             id='panel_phone_number'
         ),
         pytest.param(
-            'phone_number_1', '1' * 16, '1' * 16, '1234567890',
+            'phone_number_1', None, '1' * 16, '1234567890',
             id='phone_number_1'
         ),
         pytest.param(
-            'phone_number_2', '1' * 16, '1' * 16, '1234567890',
+            'phone_number_2', None, '1' * 16, '1234567890',
             id='phone_number_2'
         ),
         pytest.param(
-            'phone_number_3', '1' * 16, '1' * 16, '1234567890',
+            'phone_number_3', None, '1' * 16, '1234567890',
             id='phone_number_3'
         ),
         pytest.param(
-            'phone_number_4', '1' * 16, '1' * 16, '1234567890',
+            'phone_number_4', None, '1' * 16, '1234567890',
             id='phone_number_4'
         ),
         pytest.param(
-            'phone_number_5', '1' * 16, '1' * 16, '1234567890',
+            'phone_number_5', None, '1' * 16, '1234567890',
             id='phone_number_5'
         ),
         pytest.param(
-            'phone_number_6', '1' * 16, '1' * 16, '1234567890',
+            'phone_number_6', None, '1' * 16, '1234567890',
             id='phone_number_6'
         ),
         pytest.param(
-            'sms_push_number_1', '1' * 16, '1' * 16, '1234567890',
+            'sms_push_number_1', None, '1' * 16, '1234567890',
             id='sms_push_number_1'
         ),
         pytest.param(
-            'sms_push_number_2', '1' * 16, '1' * 16, '1234567890',
+            'sms_push_number_2', None, '1' * 16, '1234567890',
             id='sms_push_number_2'
         ),
     ]
@@ -102,7 +104,7 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
     b'ISTARTIEND\0'
 ])
 async def test_alarm_phones_constraints(
-    field_name: str, invalid_value_low: str,
+    field_name: str, invalid_value_low: Optional[str],
     invalid_value_high: str, valid_value: str,
     mock_device: DeviceMock
 ) -> None:
@@ -115,9 +117,11 @@ async def test_alarm_phones_constraints(
     phones = await g90.alarm_phones()
     assert isinstance(phones, G90AlarmPhones)
 
-    # Test setting invalid low value
-    with pytest.raises(ValueError):
-        setattr(phones, field_name, invalid_value_low)
+    # Test setting invalid low value for the fields having minimum length
+    # constraint
+    if invalid_value_low is not None:
+        with pytest.raises(ValueError):
+            setattr(phones, field_name, invalid_value_low)
 
     # Test setting invalid high value
     with pytest.raises(ValueError):

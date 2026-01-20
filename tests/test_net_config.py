@@ -2,7 +2,7 @@
 Tests for network configuration retrieval and modification.
 """
 from __future__ import annotations
-from typing import Union
+from typing import Union, Optional
 import pytest
 from pyg90alarm.alarm import (
     G90Alarm,
@@ -124,7 +124,8 @@ async def test_net_config(
 ])
 async def test_net_config_constraints(
     field_name: str,
-    invalid_value_low: Union[int, str], invalid_value_high: Union[int, str],
+    invalid_value_low: Optional[Union[int, str]],
+    invalid_value_high: Union[int, str],
     valid_value: Union[int, str],
     mock_device: DeviceMock
 ) -> None:
@@ -137,9 +138,11 @@ async def test_net_config_constraints(
     cfg = await g90.net_config()
     assert isinstance(cfg, G90NetConfig)
 
-    # Test setting invalid low value
-    with pytest.raises(ValueError):
-        setattr(cfg, field_name, invalid_value_low)
+    # Test setting invalid low value for the fields having minimum length
+    # constraint
+    if invalid_value_low is not None:
+        with pytest.raises(ValueError):
+            setattr(cfg, field_name, invalid_value_low)
 
     # Test setting invalid high value
     with pytest.raises(ValueError):
