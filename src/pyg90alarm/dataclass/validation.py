@@ -183,7 +183,10 @@ class ValidatorBase(Generic[T]):
 
     def __set__(self, obj: Any, value: T) -> None:
         """
-        Sets the field value after validating it.
+        Sets the field value after validating it
+
+        The validation is skipped if `trust_initial_value` is True and this is
+        the first time setting the value during dataclass initialization.
 
         :param obj: The dataclass instance.
         :param value: The value to set.
@@ -210,14 +213,7 @@ class ValidatorBase(Generic[T]):
         )
 
         try:
-            if (
-                not self.__validate__(obj, value)
-                and not trusted_init_value
-            ):
-                _LOGGER.debug(
-                    "%s: Validation failed for value '%s'",
-                    self.__unmangled_name__, value
-                )
+            if not self.__validate__(obj, value):
                 # For unification, raise ValueError if validation fails if the
                 # validation method just returned False
                 raise ValueError(
@@ -228,7 +224,11 @@ class ValidatorBase(Generic[T]):
             # Validation failed for the value not being trusted during initial
             # assignment, re-raise the exception
             if not trusted_init_value:
-                raise exc
+                _LOGGER.debug(
+                    "%s: Validation failed for value '%s'",
+                    self.__unmangled_name__, value
+                )
+                raise
 
             # Log a warning about the validation failure during trusted init,
             # so that constraints can be revised. The value will still be set,
