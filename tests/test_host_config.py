@@ -138,7 +138,7 @@ async def test_host_config(
     b']IEND\0',
     b'ISTARTIEND\0'
 ])
-async def test_host_config_constrants(
+async def test_host_config_constraints(
     field_name: str,
     invalid_value_low: int,
     invalid_value_high: int,
