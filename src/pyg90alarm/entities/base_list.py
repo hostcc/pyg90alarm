@@ -68,7 +68,7 @@ class G90BaseList(Generic[T], ABC):
 
         :return: Async generator of entities
         """
-        yield cast(T, None)  # pragma: no cover
+        yield cast(T, None)
 
     @property
     async def entities(self) -> List[T]:
@@ -121,7 +121,8 @@ class G90BaseList(Generic[T], ABC):
                         try:
                             non_existing_entities.remove(existing_entity)
                         except ValueError:
-                            # Already been removed
+                            # Already been removed if there are duplicate
+                            # entities from the `_fetch` method
                             pass
 
                         # Invoke the list change callback for the existing

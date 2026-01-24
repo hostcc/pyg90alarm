@@ -32,7 +32,7 @@ class G90Error(Exception):
     """
 
 
-class G90TimeoutError(asyncio.TimeoutError, G90Error):  # pylint:disable=R0903
+class G90TimeoutError(asyncio.TimeoutError, G90Error):
     """
     Raised when particular package class to report an operation (typically
     device command) has timed out.

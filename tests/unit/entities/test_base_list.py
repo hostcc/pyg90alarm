@@ -18,8 +18,7 @@ class TestBaseList(G90BaseList[MagicMock]):
 
     async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
         """Mock _fetch method."""
-        if False:  # pragma: no cover
-            yield MagicMock()
+        yield MagicMock()
 
 
 async def test_find_free_idx_empty_list() -> None:
@@ -190,3 +189,33 @@ async def test_find_entity_with_subindex() -> None:
     )
 
     assert result == entity
+
+
+async def test_duplicate_entities() -> None:
+    """
+    Tests that duplicate entities are handled correctly during update.
+    """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Provides duplicate entities.
+            """
+            new_entity = MagicMock()
+            new_entity.index = 0
+            new_entity.subindex = 0
+            new_entity.name = "Test entity"
+            new_entity.is_unavailable = False
+            # Yield duplicate entities
+            for x in [new_entity, new_entity]:
+                yield x
+
+    base_list = TestClass(parent=MagicMock())
+
+    result = await base_list.update()
+
+    assert len(result) == 1
+    assert result[0].name == "Test entity"
+    assert result[0].is_unavailable is False
