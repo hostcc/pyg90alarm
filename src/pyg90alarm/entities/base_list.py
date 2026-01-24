@@ -119,12 +119,11 @@ class G90BaseList(Generic[T], ABC):
                         )
 
                         existing_entity.update(entity)
-                        try:
+                        # The entity might have already been removed if there
+                        # are duplicate entities from the `_fetch` method,
+                        # protect against that
+                        if existing_entity in non_existing_entities:
                             non_existing_entities.remove(existing_entity)
-                        except ValueError:
-                            # Already been removed if there are duplicate
-                            # entities from the `_fetch` method
-                            pass
 
                         # Invoke the list change callback for the existing
                         # entity to notify about the update
