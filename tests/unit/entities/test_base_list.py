@@ -261,27 +261,46 @@ async def test_duplicate_entities() -> None:
     """
     Tests that duplicate entities are handled correctly during update.
     """
+    existing_entity = MagicMock()
+    existing_entity.index = 1
+    existing_entity.subindex = 0
+    existing_entity.name = "Existing entity"
+    existing_entity.is_unavailable = False
+
+    new_entity = MagicMock()
+    new_entity.index = 1
+    new_entity.subindex = 0
+    new_entity.name = "Test entity"
+    new_entity.is_unavailable = False
+
+    mock_entities = iter([
+        # Initial fetch returns one existing entity
+        [existing_entity],
+        # Second fetch returns duplicate new entities
+        [new_entity, new_entity],
+    ])
+
     class TestClass(G90BaseList[MagicMock]):
         """
         Mock subclass for testing G90BaseList.
         """
         async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
             """
-            Mock duplicate entities.
+            Mock test list entities.
             """
-            new_entity = MagicMock()
-            new_entity.index = 0
-            new_entity.subindex = 0
-            new_entity.name = "Test entity"
-            new_entity.is_unavailable = False
-            # Yield duplicate entities
-            for x in [new_entity, new_entity]:
+            # Yield entities under test
+            for x in next(mock_entities):
                 yield x
 
     base_list = TestClass(parent=MagicMock())
-
+    # Initial update to simulate the existing entity
+    await base_list.update()
+    # Second update to test handling of duplicates, should not raise
     result = await base_list.update()
 
-    assert len(result) == 1
-    assert result[0].name == "Test entity"
-    assert result[0].is_unavailable is False
+    assert len(result) == 2
+    # Initial entities not present in second update result should be marked
+    # unavailable
+    assert result[0] == existing_entity
+    assert result[0].is_unavailable is True
+    assert result[1] == new_entity
