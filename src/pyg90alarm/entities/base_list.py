@@ -68,6 +68,7 @@ class G90BaseList(Generic[T], ABC):
 
         :return: Async generator of entities
         """
+        # Placeholder to satisfy the abstractmethod
         yield cast(T, None)  # pragma: no cover
 
     @property
@@ -118,7 +119,11 @@ class G90BaseList(Generic[T], ABC):
                         )
 
                         existing_entity.update(entity)
-                        non_existing_entities.remove(existing_entity)
+                        # The entity might have already been removed if there
+                        # are duplicate entities from the `_fetch` method,
+                        # protect against that
+                        if existing_entity in non_existing_entities:
+                            non_existing_entities.remove(existing_entity)
 
                         # Invoke the list change callback for the existing
                         # entity to notify about the update

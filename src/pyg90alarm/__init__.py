@@ -53,6 +53,7 @@ from .local.alarm_phones import G90AlarmPhones
 from .local.net_config import G90NetConfig, G90APNAuth
 from .local.history import G90History
 
+from .dataclass.load_save import DataclassLoadSave
 from .dataclass.validation import (
     get_field_validation_constraints,
 )
@@ -101,4 +102,6 @@ __all__ = [
     'G90History',
     # Dataclass validation
     'get_field_validation_constraints',
+    # Dataclass load/save
+    'DataclassLoadSave',
 ]
