@@ -8,28 +8,23 @@ from unittest.mock import MagicMock
 from pyg90alarm.entities.base_list import G90BaseList
 
 
-class TestBaseList(G90BaseList[MagicMock]):
-    """
-    Mock subclass for testing G90BaseList.
-    """
-
-    # Prevent pytest from collecting this class as a test case
-    __test__ = False
-
-    async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
-        """Mock _fetch method."""
-        yield MagicMock()
-
-
 async def test_find_free_idx_empty_list() -> None:
     """
     Tests find_free_idx with empty entities list.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock no entities.
+            """
+            x: MagicMock
+            for x in []:
+                yield x
 
-    parent = MagicMock()
-    base_list = TestBaseList(parent)
-    base_list._entities = []
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find_free_idx()
 
     assert result == 0
@@ -39,10 +34,18 @@ async def test_find_free_idx_one_entity_at_zero() -> None:
     """
     Tests find_free_idx with one entity at index 0.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock one entity at index 0.
+            """
+            for x in [MagicMock(index=0)]:
+                yield x
 
-    base_list = TestBaseList(parent=MagicMock())
-    base_list._entities = [MagicMock(index=0)]
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find_free_idx()
 
     assert result == 1
@@ -52,10 +55,18 @@ async def test_find_free_idx_returns_lowest_available_index() -> None:
     """
     Tests find_free_idx with two entities at indexes 10 and 11.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock entities at indexes 10 and 11.
+            """
+            for x in [MagicMock(index=10), MagicMock(index=11)]:
+                yield x
 
-    base_list = TestBaseList(parent=MagicMock())
-    base_list._entities = [MagicMock(index=10), MagicMock(index=11)]
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find_free_idx()
 
     assert result == 0
@@ -65,12 +76,20 @@ async def test_find_free_idx_returns_lowest_available_index_over_gap() -> None:
     """
     Tests find_free_idx with two entities at indexes 10 and 11.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock entities at indexes 0, 10 and 11.
+            """
+            for x in [
+                MagicMock(index=0), MagicMock(index=10), MagicMock(index=11)
+            ]:
+                yield x
 
-    base_list = TestBaseList(parent=MagicMock())
-    base_list._entities = [
-        MagicMock(index=0), MagicMock(index=10), MagicMock(index=11)
-    ]
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find_free_idx()
 
     assert result == 1
@@ -80,15 +99,23 @@ async def test_find_entity_by_idx_and_name() -> None:
     """
     Tests find with matching index, subindex, and name.
     """
-
-    base_list = TestBaseList(parent=MagicMock())
     entity = MagicMock()
     entity.index = 0
     entity.subindex = 0
     entity.name = "Test Entity"
     entity.is_unavailable = False
-    base_list._entities = [entity]
 
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock one entity.
+            """
+            yield entity
+
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find(
         idx=0, name="Test Entity", exclude_unavailable=False
     )
@@ -100,15 +127,22 @@ async def test_find_entity_name_mismatch() -> None:
     """
     Tests find with matching index but mismatched name.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock one entity.
+            """
+            entity = MagicMock()
+            entity.index = 0
+            entity.subindex = 0
+            entity.name = "Test Entity"
+            entity.is_unavailable = False
+            yield entity
 
-    base_list = TestBaseList(parent=MagicMock())
-    entity = MagicMock()
-    entity.index = 0
-    entity.subindex = 0
-    entity.name = "Test Entity"
-    entity.is_unavailable = False
-    base_list._entities = [entity]
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find(
         idx=0, name="Wrong Name", exclude_unavailable=False
     )
@@ -120,10 +154,19 @@ async def test_find_entity_not_found() -> None:
     """
     Tests find with non-existing index.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock no entities.
+            """
+            x: MagicMock
+            for x in []:
+                yield x
 
-    base_list = TestBaseList(parent=MagicMock())
-    base_list._entities = []
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find(
         idx=0, name="Test Entity", exclude_unavailable=False
     )
@@ -135,15 +178,22 @@ async def test_find_entity_unavailable_excluded() -> None:
     """
     Tests find with unavailable entity and exclude_unavailable=True.
     """
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock one entity.
+            """
+            entity = MagicMock()
+            entity.index = 0
+            entity.subindex = 0
+            entity.name = "Test Entity"
+            entity.is_unavailable = True
+            yield entity
 
-    base_list = TestBaseList(parent=MagicMock())
-    entity = MagicMock()
-    entity.index = 0
-    entity.subindex = 0
-    entity.name = "Test Entity"
-    entity.is_unavailable = True
-    base_list._entities = [entity]
-
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find(
         idx=0, name="Test Entity", exclude_unavailable=True
     )
@@ -155,15 +205,23 @@ async def test_find_entity_unavailable_not_excluded() -> None:
     """
     Tests find with unavailable entity and exclude_unavailable=False.
     """
-
-    base_list = TestBaseList(parent=MagicMock())
     entity = MagicMock()
     entity.index = 0
     entity.subindex = 0
     entity.name = "Test Entity"
     entity.is_unavailable = True
-    base_list._entities = [entity]
 
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock one entity.
+            """
+            yield entity
+
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find(
         idx=0, name="Test Entity", exclude_unavailable=False
     )
@@ -175,15 +233,23 @@ async def test_find_entity_with_subindex() -> None:
     """
     Tests find with specific subindex.
     """
-
-    base_list = TestBaseList(parent=MagicMock())
     entity = MagicMock()
     entity.index = 0
     entity.subindex = 1
     entity.name = "Test Entity"
     entity.is_unavailable = False
-    base_list._entities = [entity]
 
+    class TestClass(G90BaseList[MagicMock]):
+        """
+        Mock subclass for testing G90BaseList.
+        """
+        async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
+            """
+            Mock one entity.
+            """
+            yield entity
+
+    base_list = TestClass(parent=MagicMock())
     result = await base_list.find(
         idx=0, name="Test Entity", exclude_unavailable=False, subindex=1
     )
@@ -201,7 +267,7 @@ async def test_duplicate_entities() -> None:
         """
         async def _fetch(self) -> AsyncGenerator[MagicMock, None]:
             """
-            Provides duplicate entities.
+            Mock duplicate entities.
             """
             new_entity = MagicMock()
             new_entity.index = 0

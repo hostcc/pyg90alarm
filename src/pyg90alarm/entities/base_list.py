@@ -68,7 +68,8 @@ class G90BaseList(Generic[T], ABC):
 
         :return: Async generator of entities
         """
-        yield cast(T, None)
+        # Placeholder to satisfy the abstractmethod
+        yield cast(T, None)  # pragma: no cover
 
     @property
     async def entities(self) -> List[T]:
