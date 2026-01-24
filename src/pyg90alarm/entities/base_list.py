@@ -118,7 +118,11 @@ class G90BaseList(Generic[T], ABC):
                         )
 
                         existing_entity.update(entity)
-                        non_existing_entities.remove(existing_entity)
+                        try:
+                            non_existing_entities.remove(existing_entity)
+                        except ValueError:
+                            # Already been removed
+                            pass
 
                         # Invoke the list change callback for the existing
                         # entity to notify about the update
