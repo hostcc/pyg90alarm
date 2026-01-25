@@ -35,6 +35,7 @@ class G90SpeechLanguage(IntEnum):
     """
     Supported speech languages.
     """
+    NONE = 0  # Some panels send the value, exact meaning is unknown
     ENGLISH_FEMALE = 1
     ENGLISH_MALE = 2
     CHINESE_FEMALE = 3
