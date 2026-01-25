@@ -186,3 +186,13 @@ async def test_host_config_speech_language_zero(
 
     # Verify retrieved values
     assert cfg.speech_language == G90SpeechLanguage.NONE
+
+    # Verify zero value is allowed to be sent back to the panel
+    await cfg.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[106,106,""]IEND\0',
+        b'ISTART[107,107,[107,'
+        b'[900,0,0,1,2,2,60,0,0,60,2]'
+        b']]IEND\0'
+    ]

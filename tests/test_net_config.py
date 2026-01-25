@@ -171,9 +171,22 @@ async def test_net_config_apn_name_empty(
     cfg = await g90.net_config()
     assert isinstance(cfg, G90NetConfig)
 
+    # Verify retrieved values
+    assert cfg.apn_name == ''
+
     # Ensure that no validation error was logged for empty APN name, the value
-    # of the field as recevied from the panel is trusted, so no exception will
+    # of the field as received from the panel is trusted, so no exception will
     # be raised only error logged
     assert (
         'apn_name: Validation failed during initialization for trusted value'
     ) not in ''.join(caplog.messages)
+
+    # Verify empty APN name is allowed to be sent back to the panel
+    await cfg.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[212,212,""]IEND\0',
+        b'ISTART[213,213,[213,'
+        b'[0,"123456789",1,1,"","user","pwd",3]'
+        b']]IEND\0'
+    ]
