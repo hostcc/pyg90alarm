@@ -80,7 +80,7 @@ async def test_net_config(
 @pytest.mark.parametrize(
     'field_name,invalid_value_low,invalid_value_high,valid_value', [
         pytest.param(
-            'apn_name', '', 'a' * 101, 'valid.apn.net',
+            'apn_name', None, 'a' * 101, 'valid.apn.net',
             id='apn_name'
         ),
         pytest.param(
