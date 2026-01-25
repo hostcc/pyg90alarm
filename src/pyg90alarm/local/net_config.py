@@ -73,7 +73,7 @@ class G90NetConfig(DataclassLoadSave):
     # Access Point Name (APN) for GPRS connection, as provided by the cellular
     # operator
     apn_name: str = validated_string_field(
-        min_length=1, max_length=100, trust_initial_value=True
+        min_length=0, max_length=100, trust_initial_value=True
     )
     # User name for APN authentication, as provided by the cellular operator
     apn_user: str = validated_string_field(

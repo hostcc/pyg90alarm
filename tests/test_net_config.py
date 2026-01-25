@@ -151,3 +151,29 @@ async def test_net_config_constraints(
     # Test setting valid value
     setattr(cfg, field_name, valid_value)
     assert getattr(cfg, field_name) == valid_value
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"","user","pwd",3,"54321"]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_net_config_apn_name_empty(
+    mock_device: DeviceMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """
+    Tests for handling network configuration with empty APN name.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Retrieve configuration
+    cfg = await g90.net_config()
+    assert isinstance(cfg, G90NetConfig)
+
+    # Ensure that no validation error was logged for empty APN name, the value
+    # of the field as recevied from the panel is trusted, so no exception will
+    # be raised only error logged
+    assert (
+        'apn_name: Validation failed during initialization for trusted value'
+    ) not in ''.join(caplog.messages)
