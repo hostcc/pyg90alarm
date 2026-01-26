@@ -190,3 +190,26 @@ async def test_net_config_apn_name_empty(
         b'[0,"123456789",1,1,"","user","pwd",3]'
         b']]IEND\0'
     ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"","user","pwd",333,"54321"]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_net_config_apn_auth_invalid(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for handling network configuration with invalid APN authentication
+    method value.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+
+    # Retrieve configuration
+    cfg = await g90.net_config()
+    assert isinstance(cfg, G90NetConfig)
+
+    # Verify retrieved values
+    assert cfg.apn_auth == G90APNAuth.NONE
