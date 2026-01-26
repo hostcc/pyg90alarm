@@ -132,8 +132,22 @@ class G90NetConfig(DataclassLoadSave):
     def apn_auth(self) -> G90APNAuth:
         """
         Returns the APN authentication method as an enum.
+
+        Some panels might send values outside of the defined enum range,
+        presumably when SIM card is absent. In such cases, returns
+        `G90APNAuth.NONE`.
+
+        No attempt is made to correct the invalid value in the underlying
+        data field, since the panel is trusted - unless the value is modified
+        and saved back to the device.
+
+        :return: APN authentication method, or G90APNAuth.NONE if the received
+         value is invalid.
         """
-        return G90APNAuth(self._apn_auth)
+        try:
+            return G90APNAuth(self._apn_auth)
+        except ValueError:
+            return G90APNAuth.NONE
 
     @apn_auth.setter
     def apn_auth(self, value: G90APNAuth) -> None:
