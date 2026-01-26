@@ -136,6 +136,11 @@ class G90NetConfig(DataclassLoadSave):
         Some panels might send values outside of the defined enum range,
         presumably when SIM card is absent. In such cases, returns
         `G90APNAuth.NONE`.
+
+        No attempt is made to correct the invalid value in the underlying
+        data field, since the panel is trusted - unless the value is modified
+        and saved back to the device.
+
         :return: APN authentication method, or G90APNAuth.NONE if the received
          value is invalid.
         """

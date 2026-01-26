@@ -192,6 +192,27 @@ async def test_net_config_apn_name_empty(
     ]
 
 
+@pytest.mark.parametrize('new_apn_auth_value,expected_recv_data', [
+    # Verify the invalid value is retained, since the panel is trusted, if no
+    # modifications to the value is made
+    pytest.param(
+        None, [
+            b'ISTART[212,212,""]IEND\0',
+            b'ISTART[213,213,[213,'
+            b'[0,"123456789",1,1,"","user","pwd",333]'
+            b']]IEND\0'
+        ], id='Device with invalid APN auth value unmodified'
+    ),
+    # Verify the invalid value is replaced with valid one when modified
+    pytest.param(
+        G90APNAuth.PAP, [
+            b'ISTART[212,212,""]IEND\0',
+            b'ISTART[213,213,[213,'
+            b'[0,"123456789",1,1,"","user","pwd",1]'
+            b']]IEND\0'
+        ], id='Device with invalid APN auth value modified to valid value'
+    ),
+])
 @pytest.mark.g90device(sent_data=[
     b'ISTART[212,'
     b'[0,"123456789",1,1,"","user","pwd",333,"54321"]'
@@ -199,6 +220,8 @@ async def test_net_config_apn_name_empty(
     b'ISTARTIEND\0'
 ])
 async def test_net_config_apn_auth_invalid(
+    new_apn_auth_value: Optional[G90APNAuth],
+    expected_recv_data: list[bytes],
     mock_device: DeviceMock
 ) -> None:
     """
@@ -211,5 +234,14 @@ async def test_net_config_apn_auth_invalid(
     cfg = await g90.net_config()
     assert isinstance(cfg, G90NetConfig)
 
-    # Verify retrieved values
+    # Verify retrieved value is mapped to NONE enum value
     assert cfg.apn_auth == G90APNAuth.NONE
+
+    # Modify the value if requested
+    if new_apn_auth_value is not None:
+        cfg.apn_auth = new_apn_auth_value
+    # Save the configuration
+    await cfg.save()
+
+    # Verify data sent to the device
+    assert await mock_device.recv_data == expected_recv_data
