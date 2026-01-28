@@ -11,6 +11,7 @@ from pyg90alarm.alarm import (
 )
 from pyg90alarm.local.host_info import (
     G90HostInfo, G90HostInfoGsmStatus, G90HostInfoWifiStatus,
+    G90HostInfoWifiSetupProgress,
 )
 from pyg90alarm.local.host_status import (
     G90HostStatus,
@@ -63,6 +64,12 @@ async def test_host_info(mock_device: DeviceMock) -> None:
     assert res.product_name == 'DUMMYPRODUCT'
     assert res.gsm_status == G90HostInfoGsmStatus.OPERATIONAL
     assert res.wifi_status == G90HostInfoWifiStatus.OPERATIONAL
+    assert res.wifi_setup_progress == G90HostInfoWifiSetupProgress.OK
+    assert res.gprs_3g_active is False
+    assert res.battery_voltage == '4242'
+    assert res.gsm_signal_level == 50
+    assert res.wifi_signal_level == 100
+
     assert isinstance(res._asdict(), dict)
 
 

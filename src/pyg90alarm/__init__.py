@@ -33,7 +33,8 @@ from .entities.sensor import (
 )
 from .entities.device import G90Device
 from .local.host_info import (
-    G90HostInfo, G90HostInfoWifiStatus, G90HostInfoGsmStatus
+    G90HostInfo, G90HostInfoWifiStatus, G90HostInfoGsmStatus,
+    G90HostInfoWifiSetupProgress,
 )
 from .definitions.sensors import (
     G90SensorDefinitions
@@ -81,7 +82,7 @@ __all__ = [
     'G90Device',
     # Panel information and status
     'G90HostInfo', 'G90HostInfoWifiStatus', 'G90HostInfoGsmStatus',
-    'G90HostStatus',
+    'G90HostStatus', 'G90HostInfoWifiSetupProgress',
     # Types for alerts and notifications
     'G90MessageTypes', 'G90NotificationTypes', 'G90ArmDisarmTypes',
     'G90AlertTypes', 'G90AlertSources', 'G90AlertStates',
