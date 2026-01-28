@@ -12,3 +12,4 @@ include setup.py
 recursive-include src *.py py.typed
 
 exclude requirements_dev.txt
+exclude .releaserc.yaml

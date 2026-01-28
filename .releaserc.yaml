@@ -1,0 +1,18 @@
+---
+branches:
+  - main
+  - master
+
+# Use bare tag names, e.g., 1.2.3
+tagFormat: ${version}
+
+plugins:
+  - - '@semantic-release/commit-analyzer'
+    - preset: conventionalcommits
+  - - '@semantic-release/release-notes-generator'
+    - preset: conventionalcommits
+  - - '@semantic-release/github'
+    # yamllint disable rule:line-length
+    - successComment: |
+        :tada: This ${issue.pull_request ? 'pull request' : 'issue'} has been included in version [${nextRelease.version}](${releases[0]?.url})
+    # yamllint enable rule:line-length
