@@ -43,8 +43,21 @@ class G90HostInfoWifiStatus(IntEnum):
     """
     POWERED_OFF = 0
     NOT_CONNECTED = 1
-    NO_SIGNAL = 2
+    SERVER_NOT_CONNECTED = 2
     OPERATIONAL = 3
+
+
+class G90HostInfoWifiSetupProgress(IntEnum):
+    """
+    Defines possible values of Wifi connection progress.
+    """
+    IDLE = 0
+    CONNECTING = 1
+    OK = 2
+    WRONG_SSID = 3
+    WRONG_PASSWORD = 4
+    CONNECTION_ERROR = 5
+    WIFI_ERROR = 6
 
 
 @dataclass
@@ -60,11 +73,11 @@ class G90HostInfo:  # pylint: disable=too-many-instance-attributes
     wifi_hw_version: str
     gsm_status_data: int
     wifi_status_data: int
-    reserved1: int
-    reserved2: int
-    band_frequency: str
-    gsm_signal_level: int
-    wifi_signal_level: int
+    gprs_3g_active_data: int
+    wifi_setup_progress_data: int
+    battery_voltage: str  # in mV
+    gsm_signal_level: int  # percentage 0-100
+    wifi_signal_level: int  # percentage 0-100
 
     @property
     def gsm_status(self) -> G90HostInfoGsmStatus:
@@ -81,6 +94,21 @@ class G90HostInfo:  # pylint: disable=too-many-instance-attributes
         corresponding enum.
         """
         return G90HostInfoWifiStatus(self.wifi_status_data)
+
+    @property
+    def wifi_setup_progress(self) -> G90HostInfoWifiSetupProgress:
+        """
+        Translates the Wifi connection progress received from the device into
+        corresponding enum.
+        """
+        return G90HostInfoWifiSetupProgress(self.wifi_setup_progress_data)
+
+    @property
+    def gprs_3g_active(self) -> bool:
+        """
+        Indicates whether GPRS/3G is enabled.
+        """
+        return bool(self.gprs_3g_active_data)
 
     def _asdict(self) -> Dict[str, Any]:
         """
