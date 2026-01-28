@@ -41,6 +41,5 @@ jobs:
         run: |
           npx -y \
             -p semantic-release@25.0.2 \
-            -p @semantic-release/git@10.0.1 \
             -p conventional-changelog-conventionalcommits@9.1.0 \
             semantic-release
