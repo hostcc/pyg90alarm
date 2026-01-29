@@ -3,8 +3,6 @@ name: main
 
 on:
   pull_request:
-  release:
-    types: [published]
   push:
     branches:
       - main
@@ -68,10 +66,32 @@ jobs:
             -Dsonar.projectVersion=${{ steps.package-version.outputs.VALUE }}
           # yamllint enable rule:line-length
 
+  release:
+    name: Release with semantic-release
+    runs-on: ubuntu-latest
+    needs: [tests]
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    outputs:
+      new_release_published: ${{ steps.semantic.outputs.new_release_published }}
+    steps:
+      - name: Checkout code (SSH)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run semantic release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v6
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
   pypi-publish:
     name: Publish to PyPi
     runs-on: ubuntu-latest
-    needs: [tests]
+    needs: [tests, release]
     permissions:
       id-token: write  # Required for trusted publishing
     steps:
@@ -90,7 +110,7 @@ jobs:
       - name: Publish the package to Test PyPi
         # Skip publishing to test PyPI if we're performing release, there might
         # be already the version of the package from the merge to master branch
-        if: github.event_name != 'release'
+        if: needs.release.outputs.new_release_published != 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
@@ -98,11 +118,7 @@ jobs:
       - name: Publish the release to PyPi
         # Publish to production PyPi only happens when a release published out
         # of the main branch
-        if: >-
-          github.event_name == 'release'
-          && github.event.action == 'published'
-          && (github.event.release.target_commitish == 'main'
-             || github.event.release.target_commitish == 'master')
+        if: needs.release.outputs.new_release_published == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           attestations: true
