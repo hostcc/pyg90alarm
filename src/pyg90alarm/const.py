@@ -30,9 +30,8 @@ REMOTE_TARGETED_DISCOVERY_PORT = 12900
 LOCAL_TARGETED_DISCOVERY_PORT = 12901
 LOCAL_NOTIFICATIONS_HOST = '0.0.0.0'
 LOCAL_NOTIFICATIONS_PORT = 12901
-CLOUD_NOTIFICATIONS_HOST = '0.0.0.0'
-CLOUD_NOTIFICATIONS_PORT = 5678
-REMOTE_CLOUD_HOST = '47.88.7.61'
+LOCAL_CLOUD_NOTIFICATIONS_HOST = '0.0.0.0'
+LOCAL_CLOUD_NOTIFICATIONS_PORT = 5678
 REMOTE_CLOUD_PORT = 5678
 DEVICE_REGISTRATION_TIMEOUT = 30
 ROOM_ID = 0
@@ -42,7 +41,14 @@ CMD_PAGE_SIZE = 10
 BUG_REPORT_URL = 'https://github.com/hostcc/pyg90alarm/issues'
 
 
-class G90Commands(IntEnum):
+class G90CommandsBase(IntEnum):
+    """
+    Base class for G90Commands and G90SystemCommands to allow proper typing
+    with subclasses of `G90BaseCommand`.
+    """
+
+
+class G90Commands(G90CommandsBase):
     """
     Defines the alarm panel commands and their codes.
 
@@ -161,6 +167,27 @@ class G90Commands(IntEnum):
     SETAPINFO = 213
     PINGBYGPRS = 218
     PING = 219
+
+
+class G90SystemCommands(G90CommandsBase):
+    """
+    Defines system commands for the G90 alarm panel.
+    """
+    GET_CONFIGURATION = 0
+    SET_CONFIGURATION = 1
+    GSM_REBOOT = 1129
+    MCU_REBOOT = 1123
+    WIFI_REBOOT = 1006
+
+
+class G90SystemConfigurationCommands(IntEnum):
+    """
+    Defines sub-commands for getting/setting system configuration.
+
+    Applicable only to `G90SystemCommands.GET_CONFIGURATION` and
+    `G90SystemCommands.SET_CONFIGURATION` commands above.
+    """
+    SERVER_ADDRESS = 78
 
 
 class G90MessageTypes(IntEnum):

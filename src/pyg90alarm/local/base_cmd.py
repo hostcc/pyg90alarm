@@ -28,40 +28,34 @@ import asyncio
 from asyncio import Future
 from asyncio.protocols import DatagramProtocol
 from asyncio.transports import DatagramTransport, BaseTransport
-from typing import Optional, Tuple, List, Any
+from typing import Optional, Tuple, List, Any, TypeVar, Generic
 from dataclasses import dataclass
+# `Self` is available in `typing` module only starting from Python 3.11, for
+# older versions need to use typing_extensions`
+from typing_extensions import Self
 from ..exceptions import (
     G90Error, G90TimeoutError, G90CommandFailure, G90CommandError
 )
-from ..const import G90Commands
+from ..const import G90Commands, G90CommandsBase
 
 
 _LOGGER = logging.getLogger(__name__)
-G90BaseCommandData = List[Any]
+
+CommandT = TypeVar('CommandT', bound=G90CommandsBase)
+CommandDataT = TypeVar('CommandDataT')
 
 
-@dataclass
-class G90Header:
+class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
     """
-    Represents JSON structure of the header used in alarm panel commands.
-
-    :meta private:
-    """
-    code: Optional[int] = None
-    data: Optional[G90BaseCommandData] = None
-
-
-class G90BaseCommand(DatagramProtocol):
-    """
-    Implements basic command handling for alarm panel protocol.
+    Base class for command handling for alarm panel protocol.
     """
     # pylint: disable=too-many-instance-attributes
     # Lock need to be shared across all of the class instances
     _sk_lock = asyncio.Lock()
 
     # pylint: disable=too-many-positional-arguments,too-many-arguments
-    def __init__(self, host: str, port: int, code: G90Commands,
-                 data: Optional[G90BaseCommandData] = None,
+    def __init__(self, host: str, port: int, code: CommandT,
+                 data: Optional[CommandDataT] = None,
                  local_port: Optional[int] = None,
                  timeout: float = 3.0, retries: int = 3) -> None:
         self._remote_host = host
@@ -70,18 +64,11 @@ class G90BaseCommand(DatagramProtocol):
         self._code = code
         self._timeout = timeout
         self._retries = retries
-        self._data = '""'
-        self._result: G90BaseCommandData = []
+        self._result: Optional[CommandDataT] = None
         self._connection_result: Optional[
             Future[Tuple[str, int, bytes]]
         ] = None
-        if data:
-            self._data = json.dumps([code, data],
-                                    # No newlines to be inserted
-                                    indent=None,
-                                    # No whitespace around entities
-                                    separators=(',', ':'))
-        self._resp = G90Header()
+        self._data = self.encode_data(data)
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
@@ -139,51 +126,157 @@ class G90BaseCommand(DatagramProtocol):
 
         return (transport, protocol)
 
+    def encode_data(self, data: Optional[CommandDataT]) -> str:
+        """
+        Encodes the command data to JSON string.
+        """
+        raise NotImplementedError()
+
+    def decode_data(self, payload: Optional[str]) -> CommandDataT:
+        """
+        Decodes the command data from JSON string.
+        """
+        raise NotImplementedError()
+
     def to_wire(self) -> bytes:
         """
-        Returns the command in wire format.
+        Serializes the command to wire format.
         """
-        wire = bytes(f'ISTART[{self._code},{self._code},{self._data}]IEND\0',
-                     'utf-8')
-        _LOGGER.debug('Encoded to wire format %s', wire)
-        return wire
+        raise NotImplementedError()
 
-    def from_wire(self, data: bytes) -> G90BaseCommandData:
+    def from_wire(self, data: bytes) -> Optional[CommandDataT]:
         """
-        Parses the response from the alarm panel.
+        Deserializes the command from wire format.
         """
-        _LOGGER.debug('To be decoded from wire format %s', data)
-        try:
-            self._parse(data.decode('utf-8'))
-        except UnicodeDecodeError as exc:
-            raise G90Error(
-                'Unable to decode response from UTF-8'
-            ) from exc
-        return self._resp.data or []
+        raise NotImplementedError()
 
-    def _parse(self, data: str) -> None:
+    @property
+    def result(self) -> CommandDataT:
         """
-        Processes the response from the alarm panel.
+        The result of the command.
         """
-        if not data.startswith('ISTART'):
-            raise G90Error('Missing start marker in data')
-        if not data.endswith('IEND\0'):
-            raise G90Error('Missing end marker in data')
-        payload = data[6:-5]
-        _LOGGER.debug("Decoded from wire: string '%s'", payload)
+        raise NotImplementedError()
 
-        if not payload:
-            return
+    @property
+    def host(self) -> str:
+        """
+        The hostname/IP address of the alarm panel.
+        """
+        return self._remote_host
 
-        # Panel may report the last command has failed
-        if payload == 'fail':
-            raise G90CommandFailure(
-                f"Command {self._code.name}"
-                f" (code={self._code.value}) failed"
-            )
+    @property
+    def port(self) -> int:
+        """
+        The port of the alarm panel.
+        """
+        return self._remote_port
 
+    @property
+    def expects_response(self) -> bool:
+        """
+        Indicates whether the command expects a response.
+        """
+        return True
+
+    async def process(self) -> Self:  # G90Command[CommandT, CommandDataT]:
+        """
+        Processes the command.
+        """
+        # Disallow using `NONE` command, which is intended to use by inheriting
+        # classes overriding `process()` method
+        if self._code == G90Commands.NONE:
+            raise G90Error("'NONE' command code is disallowed")
+
+        transport, _ = await self._create_connection()
+        attempts = self._retries
+        while True:
+            attempts = attempts - 1
+            loop = asyncio.get_running_loop()
+            self._connection_result = loop.create_future()
+            async with self._sk_lock:
+                _LOGGER.debug('(code %s) Sending request to %s:%s',
+                              self._code, self.host, self.port)
+                transport.sendto(self.to_wire())
+                if not self.expects_response:
+                    self._result = None
+                    return self
+                done, _ = await asyncio.wait([self._connection_result],
+                                             timeout=self._timeout)
+            if self._connection_result in done:
+                break
+            # Cancel the future to signal protocol handler it is no longer
+            # valid, the future will be re-created on next retry
+            self._connection_result.cancel()
+            if not attempts:
+                transport.close()
+                raise G90TimeoutError()
+            _LOGGER.debug('Timed out, retrying')
+        transport.close()
+        (host, port, data) = self._connection_result.result()
+        _LOGGER.debug('Received response from %s:%s', host, port)
+        if self.host != '255.255.255.255':
+            if self.host != host or host == '255.255.255.255':
+                raise G90Error(f'Received response from wrong host {host},'
+                               f' expected from {self.host}')
+        if self.port != port:
+            raise G90Error(f'Received response from wrong port {port},'
+                           f' expected from {self.port}')
+
+        ret = self.from_wire(data)
+        self._result = ret
+        return self
+
+    def __repr__(self) -> str:
+        """
+        Returns string representation of the command.
+        """
+        return f'Command: {self._code}, request: {self._data},' \
+            f' response: {self.result}'
+
+
+BaseCommandsT = G90Commands
+BaseCommandsDataT = List[Any]
+
+
+@dataclass
+class G90Header:
+    """
+    Represents JSON structure of the header used in base panel commands.
+
+    :meta private:
+    """
+    code: Optional[int] = None
+    data: Optional[BaseCommandsDataT] = None
+
+
+class G90BaseCommand(G90Command[BaseCommandsT, BaseCommandsDataT]):
+    """
+    Class for handling base G90 panel commands.
+    """
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._resp = G90Header()
+
+    def encode_data(self, data: Optional[BaseCommandsDataT]) -> str:
+        """
+        Encodes the command data to JSON string.
+        """
+        if data is None:
+            return '""'
+        return json.dumps([self._code, data],
+                          # No newlines to be inserted
+                          indent=None,
+                          # No whitespace around entities
+                          separators=(',', ':'))
+
+    def decode_data(self, payload: Optional[str]) -> BaseCommandsDataT:
+        """
+        Decodes the command data from JSON string.
+        """
         # Also, panel may report an error supplying specific reason, e.g.
         # command and its arguments that have failed
+        if not payload:
+            return []
         if payload.startswith('error'):
             error = payload[5:]
             raise G90CommandError(
@@ -219,75 +312,52 @@ class G90BaseCommand(DatagramProtocol):
                     'Wrong response - received code '
                     f"{self._resp.code}, expected code {self._code}")
 
+        return self._resp.data or []
+
+    def to_wire(self) -> bytes:
+        """
+        Returns the command in wire format.
+        """
+        wire = bytes(f'ISTART[{self._code},{self._code},{self._data}]IEND\0',
+                     'utf-8')
+        _LOGGER.debug('Encoded to wire format %s', wire)
+        return wire
+
+    def from_wire(self, data: bytes) -> BaseCommandsDataT:
+        """
+        Parses the response from the alarm panel.
+        """
+        _LOGGER.debug('To be decoded from wire format %s', data)
+        try:
+            decoded_data = data.decode('utf-8')
+            if not decoded_data.startswith('ISTART'):
+                raise G90Error('Missing start marker in data')
+            if not decoded_data.endswith('IEND\0'):
+                raise G90Error('Missing end marker in data')
+            payload = decoded_data[6:-5]
+            _LOGGER.debug("Decoded from wire: string '%s'", payload)
+
+            if not payload:
+                return []
+
+            # Panel may report the last command has failed
+            if payload == 'fail':
+                raise G90CommandFailure(
+                    f"Command {self._code.name}"
+                    f" (code={self._code.value}) failed"
+                )
+
+            return self.decode_data(payload)
+        except UnicodeDecodeError as exc:
+            raise G90Error(
+                'Unable to decode response from UTF-8'
+            ) from exc
+
     @property
-    def result(self) -> G90BaseCommandData:
+    def result(self) -> BaseCommandsDataT:
         """
         The result of the command.
         """
+        if self._result is None:
+            return []
         return self._result
-
-    @property
-    def host(self) -> str:
-        """
-        The hostname/IP address of the alarm panel.
-        """
-        return self._remote_host
-
-    @property
-    def port(self) -> int:
-        """
-        The port of the alarm panel.
-        """
-        return self._remote_port
-
-    async def process(self) -> G90BaseCommand:
-        """
-        Processes the command.
-        """
-        # Disallow using `NONE` command, which is intended to use by inheriting
-        # classes overriding `process()` method
-        if self._code == G90Commands.NONE:
-            raise G90Error("'NONE' command code is disallowed")
-
-        transport, _ = await self._create_connection()
-        attempts = self._retries
-        while True:
-            attempts = attempts - 1
-            loop = asyncio.get_running_loop()
-            self._connection_result = loop.create_future()
-            async with self._sk_lock:
-                _LOGGER.debug('(code %s) Sending request to %s:%s',
-                              self._code, self.host, self.port)
-                transport.sendto(self.to_wire())
-                done, _ = await asyncio.wait([self._connection_result],
-                                             timeout=self._timeout)
-            if self._connection_result in done:
-                break
-            # Cancel the future to signal protocol handler it is no longer
-            # valid, the future will be re-created on next retry
-            self._connection_result.cancel()
-            if not attempts:
-                transport.close()
-                raise G90TimeoutError()
-            _LOGGER.debug('Timed out, retrying')
-        transport.close()
-        (host, port, data) = self._connection_result.result()
-        _LOGGER.debug('Received response from %s:%s', host, port)
-        if self.host != '255.255.255.255':
-            if self.host != host or host == '255.255.255.255':
-                raise G90Error(f'Received response from wrong host {host},'
-                               f' expected from {self.host}')
-        if self.port != port:
-            raise G90Error(f'Received response from wrong port {port},'
-                           f' expected from {self.port}')
-
-        ret = self.from_wire(data)
-        self._result = ret
-        return self
-
-    def __repr__(self) -> str:
-        """
-        Returns string representation of the command.
-        """
-        return f'Command: {self._code}, request: {self._data},' \
-            f' response: {self._resp.data}'

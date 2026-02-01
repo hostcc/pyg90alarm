@@ -23,9 +23,9 @@ Implements paginated command for G90 alarm panel protocol.
 """
 from __future__ import annotations
 import logging
-from typing import Any, cast
+from typing import Any, Optional
 from dataclasses import dataclass
-from .base_cmd import G90BaseCommand, G90BaseCommandData
+from .base_cmd import G90BaseCommand, BaseCommandsDataT
 from ..exceptions import G90Error
 from ..const import G90Commands
 
@@ -82,12 +82,11 @@ class G90PaginatedCommand(G90BaseCommand):
         """
         return self._nelems
 
-    def _parse(self, data: str) -> None:
+    def decode_data(self, payload: Optional[str]) -> BaseCommandsDataT:
         """
         Parses the response from the alarm panel.
         """
-        super()._parse(data)
-        resp_data: G90BaseCommandData = self._resp.data or []
+        resp_data = super().decode_data(payload)
         try:
             page_data = resp_data.pop(0)
             page_info = G90PaginationFields(*page_data)
@@ -125,8 +124,4 @@ class G90PaginatedCommand(G90BaseCommand):
                       'total records %s, start record %s, record count %s',
                       page_info.total, page_info.start, page_info.nelems)
 
-    async def process(self) -> G90PaginatedCommand:
-        """
-        Initiates the command processing.
-        """
-        return cast(G90PaginatedCommand, await super().process())
+        return resp_data

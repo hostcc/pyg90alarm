@@ -63,7 +63,9 @@ class MockDeviceProtocolBase:
     Base class for the mock device protocol.
     """
     def __init__(self, device_sent_data: Optional[List[bytes]] = None):
-        self._device_sent_data: Iterator[bytes] = iter(device_sent_data or [])
+        self._device_sent_data: Optional[Iterator[bytes]] = None
+        if device_sent_data is not None:
+            self._device_sent_data = iter(device_sent_data)
         self._device_recv_data: List[bytes] = []
         self._done = asyncio.get_running_loop().create_future()
         self.remote_addr: Optional[Tuple[str, int]] = None
@@ -87,12 +89,13 @@ class MockDeviceProtocolBase:
         :param addr: The address (host, port) tuple to send data to
         """
         try:
-            sent_data = next(self._device_sent_data)
+            sent_data = next(self._device_sent_data or iter([]))
         except StopIteration:
-            _LOGGER.info(
-                'No more data to send, the client will experience a timeout'
-                ' condition'
-            )
+            if self._device_sent_data:
+                _LOGGER.info(
+                    'No more data to send, the client will experience a'
+                    ' timeout condition'
+                )
             if not self._done.done():
                 self._done.set_result(True)
             return
@@ -154,7 +157,7 @@ class MockDeviceProtocol(DatagramProtocol, MockDeviceProtocolBase):
     :param device_sent_data: List of datagram payloads to simulate being sent
      from device as response to client requests
     """
-    def __init__(self, device_sent_data: List[bytes]):
+    def __init__(self, device_sent_data: Optional[List[bytes]]):
         super().__init__(device_sent_data)
         self._transport: Optional[DatagramTransport] = None
 
@@ -408,7 +411,7 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
     """
     # pylint:disable=too-many-positional-arguments,too-many-arguments
     def __init__(
-        self, data: List[bytes], notification_data: List[bytes],
+        self, data: Optional[List[bytes]], notification_data: List[bytes],
         device_port: int, notification_port: int,
         cloud_notification_data: Optional[List[bytes]] = None,
         cloud_upstream_data: Optional[List[bytes]] = None,

@@ -55,6 +55,8 @@ async def test_cloud_short_header(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -75,6 +77,8 @@ async def test_cloud_short_packet(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -98,6 +102,8 @@ async def test_cloud_ping(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -129,6 +135,8 @@ async def test_cloud_hello(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -164,6 +172,8 @@ async def test_cloud_hello_wrong_version(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -192,9 +202,12 @@ async def test_cloud_hello_discovery(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
+
     future = data_receive_awaitable(notifications)
 
     await notifications.listen()
@@ -202,9 +215,12 @@ async def test_cloud_hello_discovery(
     await asyncio.wait([future], timeout=0.1)
     await notifications.close()
     assert (
-        b'\x01\xd0\x00\x10\x2c\x00\x00\x00\x01\x00\x00\x00\x34\x37\x2e\x38'
-        b'\x38\x2e\x37\x2e\x36\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x2e\x16\x00\x00\x80\x85\x74\x67'
+        b'\x01\xd0\x00\x10\x2c\x00\x00\x00\x01\x00\x00\x00'
+        + mock_device.cloud_host.encode()
+        + b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        b'\x00\x00\x00\x00\x00'
+        + pack('<i', mock_device.cloud_port)
+        + b'\x80\x85\x74\x67'
     ) == bytes().join(await mock_device.cloud_recv_data)
 
 
@@ -229,6 +245,8 @@ async def test_cloud_notification(
     mock = MagicMock(spec=G90NotificationProtocol)
     notifications = G90CloudNotifications(
         protocol_factory=lambda: mock,
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -271,6 +289,8 @@ async def test_cloud_status_change_disarm(
     mock = MagicMock(spec=G90NotificationProtocol)
     notifications = G90CloudNotifications(
         protocol_factory=lambda: mock,
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -353,6 +373,8 @@ async def test_cloud_status_change_alarm_sensor(
     mock = MagicMock(spec=G90NotificationProtocol)
     notifications = G90CloudNotifications(
         protocol_factory=lambda: mock,
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -394,6 +416,8 @@ async def test_cloud_status_change_sensor_activity(
     mock = MagicMock(spec=G90NotificationProtocol)
     notifications = G90CloudNotifications(
         protocol_factory=lambda: mock,
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -425,6 +449,8 @@ async def test_cloud_command(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port
     )
@@ -480,6 +506,8 @@ async def test_upstream_cloud_hello(
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
+        cloud_host=mock_device.cloud_host,
+        cloud_port=mock_device.cloud_port,
         local_host=mock_device.cloud_host,
         local_port=mock_device.cloud_port,
         upstream_host=mock_device.cloud_upstream_host,
