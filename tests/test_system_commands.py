@@ -13,7 +13,7 @@ from .device_mock import DeviceMock
 
 async def test_system_command(mock_device: DeviceMock) -> None:
     """
-    Verifies that command error is handled properly.
+    Verifies that command has proper wire representation.
     """
     g90 = G90SystemCommand(
         host=mock_device.host, port=mock_device.port,
