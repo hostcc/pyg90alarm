@@ -253,7 +253,7 @@ class G90SetServerAddressCommand(
     G90SystemConfigurationCommand
 ):
     """
-    Sets the server address for the panel to comminicate with using the cloud
+    Sets the server address for the panel to communicate with using the cloud
     notifications protocol.
 
     :param cloud_ip: IP address of the cloud server

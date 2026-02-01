@@ -1422,7 +1422,7 @@ class G90Alarm(G90NotificationProtocol):
         :param cloud_local_host: Local host to bind cloud notifications
          listener to
         :param cloud_local_port: Local port to bind cloud notifications
-         listener to, should match `cloud_port` above in unless network setup
+         listener to, should match `cloud_port` above unless network setup
          dictates otherwise
         :param upstream_host: Optional upstream host to connect to cloud
          server through
