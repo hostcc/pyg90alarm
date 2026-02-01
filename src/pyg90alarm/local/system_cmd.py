@@ -175,7 +175,7 @@ class G90SystemCommand(
         :return: Empty string
         """
         # No response is expected for system commands
-        return ''  # pragma: no cover
+        return ''
 
 
 class G90SystemConfigurationCommand(
