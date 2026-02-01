@@ -241,7 +241,7 @@ BaseCommandsDataT = List[Any]
 @dataclass
 class G90Header:
     """
-    Represents JSON structure of the header used in alarm panel commands.
+    Represents JSON structure of the header used in base panel commands.
 
     :meta private:
     """
@@ -251,8 +251,7 @@ class G90Header:
 
 class G90BaseCommand(G90Command[BaseCommandsT, BaseCommandsDataT]):
     """
-    Base class for G90Commands and G90SystemCommands to allow proper typing
-    with subclasses of `G90BaseCommand`.
+    Class for handling base G90 panel commands.
     """
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
