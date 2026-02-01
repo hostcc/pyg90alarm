@@ -142,7 +142,7 @@ Cloud notifications
 The cloud protocol is native to the panel and is used to interact with mobile application. The package can mimic the cloud server and interpret the messages the panel sends to the cloud, allowing to receive the notifications and alerts.
 While the protocol also allows to send commands to the panel, it is not implemented and local protocol is used for that - i.e. when cloud notifications are in use the local protocol still utilized for sending commands to the panel.
 
-The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port (not customizable at panel side). To process the cloud notifications all the traffic from panel towards the cloud (IP address ``47.88.7.61`` and TCP port ``5678`` as of writing) needs to be diverted to the node where the package is running - depending on your network equipment it could be port forwarding, DNAT or other means. It is unclear whether the panel utilizes DNS to resolve the cloud service IP address, hence the documentation only mentions IP-based traffic redirection.
+The cloud protocol is TCP based and typically interacts with cloud service at known IP address and port, which could be customized. To process the cloud notifications all the traffic from panel towards the configured IP address service needs to be received by the node where the package is running.
 
 Please see
 `the section <docs/cloud-protocol.rst>`_ for further details on the protocol.
@@ -156,25 +156,6 @@ The package could act as:
 - Chained cloud server, where in addition to interpreting the notifications it
   will also forward all packets received from the panel to the cloud server, and pass its responses back to the panel. This allows to have notifications processed by the package and the mobile application working as well.
 
-  .. note:: Sending packets upstream to the known IP address and port of the cloud server might result in those looped back (since traffic from panel to cloud service has to be redirected to the host where package runs), if your network equipment can't account for source address in redirection rules (i.e. limiting the port redirection to the panel's IP address). In that case you'll need another redirection, from the host where the package runs to the cloud service using an IP from your network. That way those two redirection rules will coexist correctly. To illustrate:
-
-   Port forwarding rule 1:
-
-   - Source: panel IP address
-   - Destination: 47.88.7.61
-   - Port: 5678
-   - Redirect to host: host where package runs
-   - Redirect to port: 5678 (or other port if you want to use it)
-
-
-   Port forwarding rule 2 (optional):
-
-   - Source: host where package runs
-   - Destination: an IP address from your network
-   - Port: 5678 (or other port if you want to use it)
-   - Redirect to : 47.88.7.61
-   - Redirect to port: 5678
-
 The code fragments below demonstrate how to utilize both modes - please note those are incomplete, since no callbacks are set to process the notifications.
 
 **Standalone mode**
@@ -185,9 +166,18 @@ The code fragments below demonstrate how to utilize both modes - please note tho
 
    # Create an instance of the alarm panel
    alarm = G90Alarm(host='<panel IP address>')
+
+   # Configure cloud server address the panel should use - the host running the
+   # package.
+   await alarm.set_cloud_server_address(
+      cloud_ip='<host IP address running the package>', cloud_port=5678
+   )
+
    # Enable cloud notifications
    await alarm.use_cloud_notifications(
-      # Optional, see note above redirecting cloud traffic from panel
+      # The host/port the package will listen on for the cloud notifications,
+      # should match ones above.
+      cloud_host='<host IP address running the package>',
       local_port=5678,
       upstream_host=None
    )
@@ -203,11 +193,21 @@ The code fragments below demonstrate how to utilize both modes - please note tho
 
    # Create an instance of the alarm panel
    alarm = G90Alarm(host='<panel IP address>')
+
+   # Configure cloud server address the panel should use - the host running the
+   # package.
+   await alarm.set_cloud_server_address(
+      cloud_ip='<host IP address running the package>', cloud_port=5678
+   )
+
    # Enable cloud notifications
    await alarm.use_cloud_notifications(
-      # Optional, see note above redirecting cloud traffic from panel
+      # The host/port the package will listen on for the cloud notifications,
+      # should match ones above.
+      cloud_host='<host IP address running the package>',
       local_port=5678,
-      # See note above re: cloud service and sending packets to it
+      # Upstream cloud server address the package should forward the
+      # notifications to.
       upstream_host='47.88.7.61',
       upstream_port=5678
    )

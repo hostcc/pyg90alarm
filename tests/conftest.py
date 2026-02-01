@@ -57,7 +57,7 @@ async def mock_device(
         .get_closest_marker('g90device'),
         'kwargs', {}
     )
-    data = marker.get('sent_data', [])
+    data = marker.get('sent_data', None)
     notification_data = marker.get('notification_data', [])
     cloud_notification_data = marker.get('cloud_notification_data', [])
     cloud_upstream_data = marker.get('cloud_upstream_data', [])

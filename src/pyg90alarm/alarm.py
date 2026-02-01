@@ -60,14 +60,14 @@ from typing import (
     Callable, Coroutine, Union
 )
 from .const import (
-    G90Commands, REMOTE_PORT,
+    G90Commands, G90SystemCommands,
+    REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
     LOCAL_TARGETED_DISCOVERY_PORT,
     LOCAL_NOTIFICATIONS_HOST,
     LOCAL_NOTIFICATIONS_PORT,
-    CLOUD_NOTIFICATIONS_HOST,
-    CLOUD_NOTIFICATIONS_PORT,
-    REMOTE_CLOUD_HOST,
+    LOCAL_CLOUD_NOTIFICATIONS_HOST,
+    LOCAL_CLOUD_NOTIFICATIONS_PORT,
     REMOTE_CLOUD_PORT,
     DEVICE_REGISTRATION_TIMEOUT,
     ROOM_ID,
@@ -75,7 +75,8 @@ from .const import (
     G90RemoteButtonStates,
     G90RFIDKeypadStates,
 )
-from .local.base_cmd import (G90BaseCommand, G90BaseCommandData)
+from .local.base_cmd import G90BaseCommand, BaseCommandsDataT
+from .local.system_cmd import G90SystemCommand, G90SetServerAddressCommand
 from .local.paginated_result import G90PaginatedResult, G90PaginatedResponse
 from .entities.base_list import ListChangeCallback
 from .entities.sensor import G90Sensor
@@ -263,8 +264,8 @@ class G90Alarm(G90NotificationProtocol):
         return self._port
 
     async def command(
-        self, code: G90Commands, data: Optional[G90BaseCommandData] = None
-    ) -> G90BaseCommandData:
+        self, code: G90Commands, data: Optional[BaseCommandsDataT] = None
+    ) -> BaseCommandsDataT:
         """
         Invokes a command against the alarm panel.
 
@@ -272,7 +273,7 @@ class G90Alarm(G90NotificationProtocol):
         :param data: Command data
         :return: The result of command invocation
         """
-        cmd: G90BaseCommand = await G90BaseCommand(
+        cmd = await G90BaseCommand(
             self._host, self._port, code, data).process()
         return cmd.result
 
@@ -290,6 +291,81 @@ class G90Alarm(G90NotificationProtocol):
         """
         return G90PaginatedResult(
             self._host, self._port, code, start, end
+        ).process()
+
+    async def mcu_reboot(self) -> None:
+        """
+        Reboots the MCU of the alarm panel.
+
+        Note that underlying command doesn't return any result, so there is no
+        feedback from the panel upon execution.
+        """
+        await G90SystemCommand(
+            host=self._host, port=self._port,
+            code=G90SystemCommands.MCU_REBOOT
+        ).process()
+
+    async def gsm_reboot(self) -> None:
+        """
+        Reboots the GSM module of the alarm panel.
+
+        Note that underlying command doesn't return any result, so there is no
+        feedback from the panel upon execution.
+        """
+        await G90SystemCommand(
+            host=self._host, port=self._port,
+            code=G90SystemCommands.GSM_REBOOT
+        ).process()
+
+    async def wifi_reboot(self) -> None:
+        """
+        Reboots the WiFi module of the alarm panel.
+
+        Note that underlying command doesn't return any result, so there is no
+        feedback from the panel upon execution.
+        """
+        await G90SystemCommand(
+            host=self._host, port=self._port,
+            code=G90SystemCommands.WIFI_REBOOT
+        ).process()
+
+    async def reboot(self) -> None:
+        """
+        Reboots the entire alarm panel.
+
+        The system commands performing reboot of a panel's module don't return
+        anything so there is no feedback from the panel upon execution, hence
+        the commands are spaced with delays to allow the panel to process
+        them.
+
+        Please be aware that the delays are determined experimentally and might
+        be too long or too short.
+        """
+        await self.gsm_reboot()
+        await asyncio.sleep(1)
+        await self.mcu_reboot()
+        await asyncio.sleep(1)
+        await self.wifi_reboot()
+        # The MCU likely needs more than 1 second to reboot, but checking it
+        # completed the reboot should be done separately
+        await asyncio.sleep(1)
+
+    async def set_cloud_server_address(
+        self, cloud_ip: str, cloud_port: int
+    ) -> None:
+        """
+        Sets the cloud server address the alarm panel connects to.
+
+        :param cloud_ip: IP address of the server to receive cloud protocol
+         notifications, should be reachable from the panel. Typically it is the
+         IP address of the host running the package
+        :param cloud_port: Port number of the server to receive cloud protocol
+         notifications, should be reachable from the panel
+        """
+        await G90SetServerAddressCommand(
+            host=self._host, port=self._port,
+            cloud_ip=cloud_ip,
+            cloud_port=cloud_port
         ).process()
 
     @classmethod
@@ -1321,14 +1397,39 @@ class G90Alarm(G90NotificationProtocol):
 
     # pylint: disable=too-many-positional-arguments
     async def use_cloud_notifications(
-        self, cloud_local_host: str = CLOUD_NOTIFICATIONS_HOST,
-        cloud_local_port: int = CLOUD_NOTIFICATIONS_PORT,
-        upstream_host: Optional[str] = REMOTE_CLOUD_HOST,
+        self,
+        cloud_host: str,
+        cloud_port: int,
+        cloud_local_host: str = LOCAL_CLOUD_NOTIFICATIONS_HOST,
+        cloud_local_port: int = LOCAL_CLOUD_NOTIFICATIONS_PORT,
+        upstream_host: Optional[str] = None,
         upstream_port: Optional[int] = REMOTE_CLOUD_PORT,
         keep_single_connection: bool = True
     ) -> None:
         """
         Switches to use cloud notifications for device alerts.
+
+        Please note the method does not configure the panel for the host to
+        receive the notifications - please invoke
+        :meth:`G90Alarm.set_cloud_server_address` method to do that. The reason
+        of that is configuring cloud server address on the panel is one-time
+        operation, while the method will be called multiple times.
+
+        :param cloud_host: The cloud server host to connect to, should be
+         reachable from the panel
+        :param cloud_port: The cloud server port to connect to, should be
+         reachable from the panel
+        :param cloud_local_host: Local host to bind cloud notifications
+         listener to
+        :param cloud_local_port: Local port to bind cloud notifications
+         listener to, should match `cloud_port` above in unless network setup
+         dictates otherwise
+        :param upstream_host: Optional upstream host to connect to cloud
+         server through
+        :param upstream_port: Optional upstream port to connect to cloud
+         server through
+        :param keep_single_connection: If enabled, keeps a single connection
+         to the upstream cloud server for both sending and receiving data
         """
         await self.close_notifications()
 
@@ -1338,6 +1439,8 @@ class G90Alarm(G90NotificationProtocol):
             upstream_port=upstream_port,
             local_host=cloud_local_host,
             local_port=cloud_local_port,
+            cloud_host=cloud_host,
+            cloud_port=cloud_port,
             keep_single_connection=keep_single_connection
         )
 

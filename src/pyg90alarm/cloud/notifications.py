@@ -45,7 +45,6 @@ from .messages import (
 )
 from ..notifications.base import G90NotificationsBase
 from ..notifications.protocol import G90NotificationProtocol
-from ..const import (REMOTE_CLOUD_HOST, REMOTE_CLOUD_PORT)
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +74,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         self,
         protocol_factory: Callable[[], G90NotificationProtocol],
         local_host: str, local_port: int,
+        cloud_host: str, cloud_port: int,
         upstream_host: Optional[str] = None,
         upstream_port: Optional[int] = None,
         keep_single_connection: bool = True,
@@ -84,6 +84,8 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         self._server: Optional[asyncio.Server] = None
         self._local_host = local_host
         self._local_port = local_port
+        self._cloud_host = cloud_host
+        self._cloud_port = cloud_port
         self._upstream_host = upstream_host
         self._upstream_port = upstream_port
         self._keep_single_connection = keep_single_connection
@@ -164,8 +166,8 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
                     device_id=self.device_id,
                     local_host=self._local_host,
                     local_port=self._local_port,
-                    cloud_host=REMOTE_CLOUD_HOST,
-                    cloud_port=REMOTE_CLOUD_PORT,
+                    cloud_host=self._cloud_host,
+                    cloud_port=self._cloud_port,
                     upstream_host=self._upstream_host,
                     upstream_port=self._upstream_port,
                     remote_host=host,

@@ -37,7 +37,7 @@ from .protocol import (
 )
 from .const import G90CloudDirection, G90CloudCommand
 from ..const import (
-    G90AlertStateChangeTypes, REMOTE_CLOUD_HOST, REMOTE_CLOUD_PORT,
+    G90AlertStateChangeTypes,
     G90AlertTypes, G90AlertSources, G90AlertStates,
 )
 from ..definitions.base import G90PeripheralTypes
@@ -212,15 +212,11 @@ class G90CloudHelloDiscoveryRespMessage(G90CloudMessage):
     _source = G90CloudDirection.CLOUD_DISCOVERY
     _destination = G90CloudDirection.DEVICE
 
-    # Simulated cloud response always contains known IP address of the vendor's
-    # cloud service - that is, all interactions between alarm panel and
-    # simulated cloud service will use same IP address for unification (i.e.
-    # traffic redicrection will always be used to divert panel's cloud traffic
-    # to the simulated cloud service)
-    ip_addr: bytes = REMOTE_CLOUD_HOST.encode()
+    # The default values are set in `__post_init__()` method below
+    ip_addr: bytes = b''
     flag2: int = 0
     flag3: int = 0
-    port: int = REMOTE_CLOUD_PORT
+    port: int = 0
     _timestamp: int = 0  # unix timestamp
 
     def __post_init__(self, context: G90CloudMessageContext) -> None:

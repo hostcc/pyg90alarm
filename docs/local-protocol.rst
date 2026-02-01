@@ -158,3 +158,62 @@ uses ``utf-8`` encoding.
 
 Data varies across different notification and alert types, see
 `src/pyg90alarm/local/notifications.py <../../src/pyg90alarm/local/notifications.py>`_.
+
+System commands
+---------------
+
+In addition to regular commands, the local protocol also supports system commands that perform device maintenance operations. Unlike regular commands, system commands do not expect a response from the device and are invoked using a special wire format based on AT commands.
+
+.. note:: System commands are not exposed through regular command interface but have their own dedicated methods in the ``G90Alarm`` class.
+
+Wire Format
+^^^^^^^^^^^
+
+System commands use a different wire format compared to regular commands:
+
+:samp:`ISTART[0,100,"AT^IWT={command code}{command data},IWT"]IEND\\0`
+
+The command is wrapped in an AT command format (``AT^IWT=...``) within a regular command structure with fixed codes ``0`` and ``100``.
+
+Available System Commands
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The following system commands are available:
+
+- MCU Reboot (code ``1123``)
+  Reboots the Main Control Unit (MCU) of the alarm panel.
+
+  **Wire format example:**
+
+  :samp:`ISTART[0,100,"AT^IWT=1123,IWT"]IEND\\0`
+
+- GSM Reboot (code ``1129``)
+  Reboots the GSM module of the alarm panel.
+
+  **Wire format example:**
+
+  :samp:`ISTART[0,100,"AT^IWT=1129,IWT"]IEND\\0`
+
+- WiFi Reboot (code ``1006``)
+  Reboots the WiFi module of the alarm panel.
+
+  **Wire format example:**
+
+  :samp:`ISTART[0,100,"AT^IWT=1006,IWT"]IEND\\0`
+
+- Set Server Address (configuration command ``1`` with sub-command ``78``)
+  Configures the cloud server address that the alarm panel connects to.
+  The command requires three parameters separated by ``&``: cloud primary host,
+  cloud secondary host, and cloud port number.
+
+  There is no indication the panel will use DNS resolution, so both addresses should be IP ones. Also, it is unclear what 2nd address is used for - experiments revealed the panel always connects to the 1st one.
+
+  **Wire format example:**
+
+  :samp:`ISTART[0,100,"AT^IWT=1,78=192.168.1.100&192.168.1.100&5678,IWT"]IEND\\0`
+
+  Where:
+
+  - ``192.168.1.100`` is the primary IP address of the cloud server
+  - ``192.168.1.100`` is the secondary IP address of the cloud server (see above note)
+  - ``5678`` is the port number the cloud server listens on
