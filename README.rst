@@ -179,7 +179,7 @@ The code fragments below demonstrate how to utilize both modes - please note tho
       # should match ones above.
       cloud_host='<host IP address running the package>',
       cloud_port=5678,
-      local_port=5678,
+      cloud_local_port=5678,
       upstream_host=None
    )
    # Start listening for notifications
@@ -207,7 +207,7 @@ The code fragments below demonstrate how to utilize both modes - please note tho
       # should match ones above.
       cloud_host='<host IP address running the package>',
       cloud_port=5678,
-      local_port=5678,
+      cloud_local_port=5678,
       # Upstream cloud server address the package should forward the
       # notifications to.
       upstream_host='47.88.7.61',
