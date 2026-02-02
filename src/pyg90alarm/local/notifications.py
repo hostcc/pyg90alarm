@@ -52,7 +52,7 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
     :param host: The host on which the device is listening for notifications.
     :param local_port: The port on which the local host is listening for
      notifications.
-    :param local_ip: The host on which the local host is listening for
+    :param local_ip: The IP address on which the local host is listening for
      notifications.
     """
     # pylint:disable=too-many-positional-arguments,too-many-arguments

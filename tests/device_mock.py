@@ -534,9 +534,9 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
     @property
     def cloud_ip(self) -> str:
         """
-        Returns the host the simulated cloud endpoint listens on.
+        Returns the IP address the simulated cloud endpoint listens on.
 
-        :return: Host name or address
+        :return: IP address
         """
         return self._cloud_ip
 
