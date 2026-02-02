@@ -397,7 +397,7 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
     :param cloud_notification_data: List of TCP payloads to simulate being
      sent from cloud to the client, responses to requests from device
      typically
-    :param cloud_host: The host the simulated cloud endpoint listens on for
+    :param cloud_ip: The IP the simulated cloud endpoint listens on for
      client requests
     :param cloud_port: The port the simulated cloud endpoint listens on for
      client requests
@@ -417,7 +417,7 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         cloud_upstream_data: Optional[List[bytes]] = None,
         device_host: str = '127.0.0.1',
         notification_host: str = '127.0.0.1',
-        cloud_host: str = '127.0.0.1',
+        cloud_ip: str = '127.0.0.1',
         cloud_port: int = 5678,
         cloud_upstream_host: str = '127.0.0.1',
         cloud_upstream_port: int = 5678,
@@ -436,7 +436,7 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         ] = None
         self._cloud_data = cloud_notification_data or []
         self._cloud_recv_data: List[bytes] = []
-        self._cloud_host = cloud_host
+        self._cloud_ip = cloud_ip
         self._cloud_port = cloud_port
         self._cloud_upstream_data = cloud_upstream_data
         self._cloud_upstream_host = cloud_upstream_host
@@ -532,13 +532,13 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         return self._notification_data
 
     @property
-    def cloud_host(self) -> str:
+    def cloud_ip(self) -> str:
         """
-        Returns the host the simulated cloud endpoint listens on.
+        Returns the IP address the simulated cloud endpoint listens on.
 
-        :return: Host name or address
+        :return: IP address
         """
-        return self._cloud_host
+        return self._cloud_ip
 
     @property
     def cloud_port(self) -> int:
@@ -683,7 +683,7 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
         if not self._cloud_notification_protocol:
             _LOGGER.debug(
                 'Creating TCP cloud client to %s:%s',
-                self._cloud_host,
+                self._cloud_ip,
                 self._cloud_port
             )
 
@@ -693,11 +693,11 @@ class DeviceMock:  # pylint:disable=too-many-instance-attributes
                 self._cloud_notification_protocol
             ) = await loop.create_connection(
                 lambda: MockCloudProtocol(self._cloud_data),
-                host=self._cloud_host, port=self._cloud_port
+                host=self._cloud_ip, port=self._cloud_port
             )
 
         self._cloud_notification_protocol.send_data(
-            (self._cloud_host, self._cloud_port)
+            (self._cloud_ip, self._cloud_port)
         )
         await asyncio.wait(
             [self._cloud_notification_protocol.is_done]

@@ -73,11 +73,11 @@ class G90CloudMessageContext:  # pylint:disable=too-many-instance-attributes
     This class holds information about the local and remote hosts and ports,
     as well as the cloud server and upstream connection details.
     """
-    local_host: str
+    local_ip: str
     local_port: int
     remote_host: str
     remote_port: int
-    cloud_host: str
+    cloud_ip: str
     cloud_port: int
     upstream_host: Optional[str]
     upstream_port: Optional[int]

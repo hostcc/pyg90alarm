@@ -237,7 +237,7 @@ async def test_sensor_callback(
         reset_occupancy_interval=reset_interval
     )
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
 
@@ -287,7 +287,7 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
 
@@ -340,7 +340,7 @@ async def test_sensor_door_open_when_arming_callback(
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
 
@@ -399,7 +399,7 @@ async def test_armdisarm_callback(mock_device: DeviceMock) -> None:
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.armdisarm_callback = armdisarm_cb
@@ -434,7 +434,7 @@ async def test_door_open_close_callback(mock_device: DeviceMock) -> None:
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.door_open_close_callback = door_open_close_cb
@@ -494,7 +494,7 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     sensors = await g90.sensors
@@ -579,7 +579,7 @@ async def test_sensor_tamper_callback(
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
 
@@ -645,7 +645,7 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.sos_callback = sos_cb
@@ -708,7 +708,7 @@ async def test_remote_button_callback(mock_device: DeviceMock) -> None:
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.sensor_callback = sensor_cb
@@ -748,7 +748,7 @@ async def test_rfid_callback(mock_device: DeviceMock) -> None:
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.sensor_callback = sensor_cb
@@ -789,7 +789,7 @@ async def test_rfid_low_battery_callback(mock_device: DeviceMock) -> None:
 
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.sensor_callback = sensor_cb
@@ -879,7 +879,7 @@ async def test_sms_alert_when_armed(mock_device: DeviceMock) -> None:
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.armdisarm_callback = armdisarm_cb
@@ -919,7 +919,7 @@ async def test_sms_alert_when_disarmed(mock_device: DeviceMock) -> None:
     armdisarm_cb.side_effect = lambda *args: future.set_result(True)
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     g90.armdisarm_callback = armdisarm_cb

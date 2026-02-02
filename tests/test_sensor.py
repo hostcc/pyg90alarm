@@ -491,7 +491,7 @@ async def test_sensor_register(
     # Setup the notifications, since those are required to complete the
     # registration process
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     await g90.listen_notifications()

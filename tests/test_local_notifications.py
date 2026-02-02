@@ -31,7 +31,7 @@ async def test_device_notification_invalid_utf_data(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -60,7 +60,7 @@ async def test_device_notification_missing_header(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -93,7 +93,7 @@ async def test_device_notification_malformed_message(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -124,7 +124,7 @@ async def test_device_notification_missing_end_marker(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -151,7 +151,7 @@ async def test_wrong_device_notification_format(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -182,7 +182,7 @@ async def test_wrong_device_alert_format(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -215,7 +215,7 @@ async def test_unknown_device_notification(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -247,7 +247,7 @@ async def test_unknown_device_alert(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host=mock_device.host,
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -281,7 +281,7 @@ async def test_wrong_host(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
         host='1.2.3.4',
         port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -322,7 +322,7 @@ async def test_empty_device_guid(mock_device: DeviceMock) -> None:
         host=mock_device.host, port=mock_device.port
     )
     await g90.use_local_notifications(
-        notifications_local_host=mock_device.notification_host,
+        notifications_local_ip=mock_device.notification_host,
         notifications_local_port=mock_device.notification_port
     )
     # The command will fetch the host info and store the GIUD
@@ -346,7 +346,7 @@ async def test_wrong_device_guid(
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
     future = data_receive_awaitable(notifications)
@@ -378,7 +378,7 @@ async def test_sensor_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -411,7 +411,7 @@ async def test_armdisarm_notification_callback(
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -437,7 +437,7 @@ async def test_armdisarm_alert_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -463,7 +463,7 @@ async def test_door_open_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -489,7 +489,7 @@ async def test_door_close_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -517,7 +517,7 @@ async def test_doorbell_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -545,7 +545,7 @@ async def test_alarm_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -572,7 +572,7 @@ async def test_tamper_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -601,7 +601,7 @@ async def test_sos_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -637,7 +637,7 @@ async def test_low_battery_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
@@ -663,7 +663,7 @@ async def test_door_open_when_arming_callback(mock_device: DeviceMock) -> None:
     notifications = G90LocalNotifications(
         protocol_factory=lambda: mock,
         host=mock_device.host, port=mock_device.port,
-        local_host=mock_device.notification_host,
+        local_ip=mock_device.notification_host,
         local_port=mock_device.notification_port
     )
 
