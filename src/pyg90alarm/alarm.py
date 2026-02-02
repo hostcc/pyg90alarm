@@ -64,9 +64,9 @@ from .const import (
     REMOTE_PORT,
     REMOTE_TARGETED_DISCOVERY_PORT,
     LOCAL_TARGETED_DISCOVERY_PORT,
-    LOCAL_NOTIFICATIONS_HOST,
+    LOCAL_NOTIFICATIONS_IP,
     LOCAL_NOTIFICATIONS_PORT,
-    LOCAL_CLOUD_NOTIFICATIONS_HOST,
+    LOCAL_CLOUD_NOTIFICATIONS_IP,
     LOCAL_CLOUD_NOTIFICATIONS_PORT,
     REMOTE_CLOUD_PORT,
     DEVICE_REGISTRATION_TIMEOUT,
@@ -1379,7 +1379,7 @@ class G90Alarm(G90NotificationProtocol):
             await asyncio.sleep(interval)
 
     async def use_local_notifications(
-        self, notifications_local_host: str = LOCAL_NOTIFICATIONS_HOST,
+        self, notifications_local_ip: str = LOCAL_NOTIFICATIONS_IP,
         notifications_local_port: int = LOCAL_NOTIFICATIONS_PORT
     ) -> None:
         """
@@ -1391,16 +1391,16 @@ class G90Alarm(G90NotificationProtocol):
             protocol_factory=lambda: self,
             host=self._host,
             port=self._port,
-            local_host=notifications_local_host,
+            local_ip=notifications_local_ip,
             local_port=notifications_local_port
         )
 
     # pylint: disable=too-many-positional-arguments
     async def use_cloud_notifications(
         self,
-        cloud_host: str,
+        cloud_ip: str,
         cloud_port: int,
-        cloud_local_host: str = LOCAL_CLOUD_NOTIFICATIONS_HOST,
+        cloud_local_ip: str = LOCAL_CLOUD_NOTIFICATIONS_IP,
         cloud_local_port: int = LOCAL_CLOUD_NOTIFICATIONS_PORT,
         upstream_host: Optional[str] = None,
         upstream_port: Optional[int] = REMOTE_CLOUD_PORT,
@@ -1415,11 +1415,11 @@ class G90Alarm(G90NotificationProtocol):
         of that is configuring cloud server address on the panel is one-time
         operation, while the method will be called multiple times.
 
-        :param cloud_host: The cloud server host to connect to, should be
-         reachable from the panel
+        :param cloud_ip: The IP address of cloud server to connect to, should
+         be reachable from the panel
         :param cloud_port: The cloud server port to connect to, should be
          reachable from the panel
-        :param cloud_local_host: Local host to bind cloud notifications
+        :param cloud_local_ip: Local IP address to bind cloud notifications
          listener to
         :param cloud_local_port: Local port to bind cloud notifications
          listener to, should match `cloud_port` above unless network setup
@@ -1437,9 +1437,9 @@ class G90Alarm(G90NotificationProtocol):
             protocol_factory=lambda: self,
             upstream_host=upstream_host,
             upstream_port=upstream_port,
-            local_host=cloud_local_host,
+            local_ip=cloud_local_ip,
             local_port=cloud_local_port,
-            cloud_host=cloud_host,
+            cloud_ip=cloud_ip,
             cloud_port=cloud_port,
             keep_single_connection=keep_single_connection
         )

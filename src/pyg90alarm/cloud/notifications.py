@@ -61,7 +61,9 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
 
     :param protocol_factory: Factory function to create notification
      protocol handlers
-    :param local_host: Local host to bind the server to
+    :param cloud_ip: Cloud IP address to announce to the panel
+    :param cloud_port: Cloud port to announce to the panel
+    :param local_ip: Local IP to bind the server to
     :param local_port: Local port to bind the server to
     :param upstream_host: Optional upstream host to forward messages to
     :param upstream_port: Optional upstream port to forward messages to
@@ -73,8 +75,8 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
     def __init__(
         self,
         protocol_factory: Callable[[], G90NotificationProtocol],
-        local_host: str, local_port: int,
-        cloud_host: str, cloud_port: int,
+        local_ip: str, local_port: int,
+        cloud_ip: str, cloud_port: int,
         upstream_host: Optional[str] = None,
         upstream_port: Optional[int] = None,
         keep_single_connection: bool = True,
@@ -82,9 +84,9 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         super().__init__(protocol_factory)
         self._transport: Optional[Transport] = None
         self._server: Optional[asyncio.Server] = None
-        self._local_host = local_host
+        self._local_ip = local_ip
         self._local_port = local_port
-        self._cloud_host = cloud_host
+        self._cloud_ip = cloud_ip
         self._cloud_port = cloud_port
         self._upstream_host = upstream_host
         self._upstream_port = upstream_port
@@ -164,9 +166,9 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
                 # Instantiate a context for the messages
                 ctx = G90CloudMessageContext(
                     device_id=self.device_id,
-                    local_host=self._local_host,
+                    local_ip=self._local_ip,
                     local_port=self._local_port,
-                    cloud_host=self._cloud_host,
+                    cloud_ip=self._cloud_ip,
                     cloud_port=self._cloud_port,
                     upstream_host=self._upstream_host,
                     upstream_port=self._upstream_port,
@@ -373,11 +375,11 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         loop = asyncio.get_running_loop()
 
         _LOGGER.debug('Creating cloud endpoint for %s:%s',
-                      self._local_host,
+                      self._local_ip,
                       self._local_port)
         self._server = await loop.create_server(
             lambda: self,
-            self._local_host, self._local_port
+            self._local_ip, self._local_port
         )
 
     async def close(self) -> None:
@@ -406,7 +408,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
         if self._server:
             _LOGGER.debug(
                 'No longer listening for cloud connections on %s:%s',
-                self._local_host, self._local_port
+                self._local_ip, self._local_port
             )
             self._server.close()
             self._server = None

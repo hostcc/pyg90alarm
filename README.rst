@@ -177,7 +177,7 @@ The code fragments below demonstrate how to utilize both modes - please note tho
    await alarm.use_cloud_notifications(
       # The host/port the package will listen on for the cloud notifications,
       # should match ones above.
-      cloud_host='<host IP address running the package>',
+      cloud_ip='<host IP address running the package>',
       cloud_port=5678,
       cloud_local_port=5678,
       upstream_host=None
@@ -205,7 +205,7 @@ The code fragments below demonstrate how to utilize both modes - please note tho
    await alarm.use_cloud_notifications(
       # The host/port the package will listen on for the cloud notifications,
       # should match ones above.
-      cloud_host='<host IP address running the package>',
+      cloud_ip='<host IP address running the package>',
       cloud_port=5678,
       cloud_local_port=5678,
       # Upstream cloud server address the package should forward the

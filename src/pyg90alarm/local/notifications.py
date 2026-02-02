@@ -52,19 +52,19 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
     :param host: The host on which the device is listening for notifications.
     :param local_port: The port on which the local host is listening for
      notifications.
-    :param local_host: The host on which the local host is listening for
+    :param local_ip: The host on which the local host is listening for
      notifications.
     """
     # pylint:disable=too-many-positional-arguments,too-many-arguments
     def __init__(
         self, protocol_factory: Callable[[], G90NotificationProtocol],
-        port: int, host: str, local_port: int, local_host: str,
+        port: int, host: str, local_port: int, local_ip: str,
     ):
         super().__init__(protocol_factory)
 
         self._host = host
         self._port = port
-        self._notifications_local_host = local_host
+        self._notifications_local_ip = local_ip
         self._notifications_local_port = local_port
 
     # Implementation of datagram protocol,
@@ -107,11 +107,11 @@ class G90LocalNotifications(G90NotificationsBase, DatagramProtocol):
         loop = asyncio.get_running_loop()
 
         _LOGGER.debug('Creating UDP endpoint for %s:%s',
-                      self._notifications_local_host,
+                      self._notifications_local_ip,
                       self._notifications_local_port)
         (self._transport,
          _protocol) = await loop.create_datagram_endpoint(
             lambda: self,
             local_addr=(
-                self._notifications_local_host, self._notifications_local_port
+                self._notifications_local_ip, self._notifications_local_port
             ))

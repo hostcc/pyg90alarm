@@ -226,7 +226,7 @@ class G90CloudHelloDiscoveryRespMessage(G90CloudMessage):
         _LOGGER.debug(
             "%s: Timestamp added: %s", type(self).__name__, str(self)
         )
-        self.ip_addr = context.cloud_host.encode()
+        self.ip_addr = context.cloud_ip.encode()
         self.port = context.cloud_port
 
     @property
