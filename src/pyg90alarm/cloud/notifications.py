@@ -242,8 +242,11 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
 
                 # Advance to the next message
                 data = data[hdr.message_length:]
-        except G90CloudError as exc:
-            _LOGGER.error('Error processing data from device: %s', exc)
+        except (G90CloudError, ValueError, KeyError, IndexError) as exc:
+            _LOGGER.error(
+                "Error processing data from device: %s. Data: '%s'",
+                exc, data.hex(' ')
+            )
 
     def upstream_connection_made(self, transport: BaseTransport) -> None:
         """
