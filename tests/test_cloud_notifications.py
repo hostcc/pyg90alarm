@@ -5,8 +5,10 @@ import asyncio
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 from struct import pack
+import re
 
 import pytest
+from pytest import LogCaptureFixture
 from freezegun import freeze_time
 
 from pyg90alarm.notifications.protocol import G90NotificationProtocol
@@ -44,36 +46,45 @@ async def test_cloud_duplicate_message_defintion() -> None:
             _destination = G90CloudDirection.CLOUD
 
 
-@pytest.mark.g90device(cloud_notification_data=[
-    b'\x01\x10\x00\x00\x08',
+@pytest.mark.parametrize([], [
+    pytest.param(marks=pytest.mark.g90device(
+        cloud_notification_data=[
+            b'\x01\x10\x00\x00\x08',
+        ]
+    ), id="short_header"),
+    pytest.param(marks=pytest.mark.g90device(
+        cloud_notification_data=[
+            b'\x01\x10\x00\x00\x09\x00\x00\x00',
+        ]
+    ), id="short_packet"),
+    pytest.param(marks=pytest.mark.g90device(
+        cloud_notification_data=[
+            b'\x01\x10\x00\x20\x48\x00\x00\x00\x11\x00\x00\x00'
+            b'\x47\x41\x30\x30\x30\x30\x30\x41\x30\x30\x30\x30'
+            b'\x30\x30\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x02\x00\x00\x00\x00\x70\x00\x00\x32\x30\x37\x00'
+            b'\x58\xba\x00\x20\x30\x00\x00\x00\x00\x00\x00\x00'
+            b'\b07\x00\x00\x00\x1e\x00\x00\x00\x1e\x00',
+        ]
+    ), id="hello_wrong_version"),
+    pytest.param(marks=pytest.mark.g90device(
+        cloud_notification_data=[
+            b'\x21\x10\x00\x20\x78\x00\x00\x00\x01\x00\x00\x00\x04\x20\x01\x06'
+            b'\x43\x6f\x72\x64\x20\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\xb1\x30\xa2\x67\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00'
+        ]
+    ), id="status_change_sensor_wrong_state"),
 ])
-async def test_cloud_short_header(
-    mock_device: DeviceMock
+async def test_cloud_invalid_message(
+    mock_device: DeviceMock, caplog: LogCaptureFixture
 ) -> None:
     """
-    Tests handling of cloud packets with headers that are too short.
-    """
-    notifications = G90CloudNotifications(
-        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
-        cloud_ip=mock_device.cloud_ip,
-        cloud_port=mock_device.cloud_port,
-        local_ip=mock_device.cloud_ip,
-        local_port=mock_device.cloud_port
-    )
-    await notifications.listen()
-    await mock_device.send_next_cloud_packet()
-    await notifications.close()
-    assert await mock_device.cloud_recv_data == []
-
-
-@pytest.mark.g90device(cloud_notification_data=[
-    b'\x01\x10\x00\x00\x09\x00\x00\x00',
-])
-async def test_cloud_short_packet(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests handling of cloud packets that are shorter than expected length.
+    Tests proper processing of invalid cloud messages.
     """
     notifications = G90CloudNotifications(
         protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
@@ -88,7 +99,13 @@ async def test_cloud_short_packet(
     await mock_device.send_next_cloud_packet()
     await asyncio.wait([future], timeout=0.1)
     await notifications.close()
+    # Verify nothing is sent to the device
     assert await mock_device.cloud_recv_data == []
+    # Verify the error message is logged
+    assert re.search(
+        r"Error processing data from device: .+ Data: '.*'",
+        caplog.text
+    )
 
 
 @pytest.mark.g90device(cloud_notification_data=[
@@ -154,36 +171,6 @@ async def test_cloud_hello(
     ) == bytes().join(await mock_device.cloud_recv_data)
     # Verify the last packet from the device got tracked
     assert notifications.last_device_packet_time is not None
-
-
-@pytest.mark.g90device(cloud_notification_data=[
-    b'\x01\x10\x00\x20\x48\x00\x00\x00\x11\x00\x00\x00'
-    b'\x47\x41\x30\x30\x30\x30\x30\x41\x30\x30\x30\x30'
-    b'\x30\x30\x30\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-    b'\x02\x00\x00\x00\x00\x70\x00\x00\x32\x30\x37\x00'
-    b'\x58\xba\x00\x20\x30\x00\x00\x00\x00\x00\x00\x00'
-    b'\b07\x00\x00\x00\x1e\x00\x00\x00\x1e\x00'
-])
-async def test_cloud_hello_wrong_version(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests rejection of cloud hello messages with an incorrect version number.
-    """
-    notifications = G90CloudNotifications(
-        protocol_factory=lambda: MagicMock(spec=G90NotificationProtocol),
-        cloud_ip=mock_device.cloud_ip,
-        cloud_port=mock_device.cloud_port,
-        local_ip=mock_device.cloud_ip,
-        local_port=mock_device.cloud_port
-    )
-    future = data_receive_awaitable(notifications)
-
-    await notifications.listen()
-    await mock_device.send_next_cloud_packet()
-    await asyncio.wait([future], timeout=0.1)
-    await notifications.close()
-    assert await mock_device.cloud_recv_data == []
 
 
 @freeze_time("2025-01-01 00:00:00")
