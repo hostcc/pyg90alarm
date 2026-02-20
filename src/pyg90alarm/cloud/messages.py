@@ -25,7 +25,7 @@ This module provides concrete message classes for cloud communication with G90
 alarm systems, including ping messages, discovery messages, status change
 notifications, and alarm notifications.
 """
-from typing import List, Type, cast, ClassVar, Any, TypeVar
+from typing import List, Type, ClassVar, Any, TypeVar
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -38,7 +38,7 @@ from .protocol import (
 from .const import G90CloudDirection, G90CloudCommand
 from ..const import (
     G90AlertStateChangeTypes,
-    G90AlertTypes, G90AlertSources, G90AlertStates,
+    G90AlertTypes, G90AlertSources,
 )
 from ..definitions.base import G90PeripheralTypes
 from ..notifications.base import G90DeviceAlert
@@ -309,15 +309,6 @@ class G90CloudStatusChangeReqMessage(G90CloudStatusChangeReqMessageBase):
     _timestamp: int  # Unix timestamp
 
     @property
-    def state(self) -> G90AlertStateChangeTypes:
-        """
-        Get the state change type.
-
-        :return: The alert state change type
-        """
-        return G90AlertStateChangeTypes(self._state)
-
-    @property
     def as_device_alert(self) -> G90DeviceAlert:
         """
         Convert the message to a device alert object.
@@ -327,8 +318,8 @@ class G90CloudStatusChangeReqMessage(G90CloudStatusChangeReqMessageBase):
         """
         return G90DeviceAlert(
             device_id=self._context.device_id or '',
-            state=self.state,
-            event_id=self.state,
+            state=self._state,
+            event_id=self._state,
             zone_name='',
             type=self._type,
             source=G90AlertSources.DEVICE,
@@ -342,7 +333,7 @@ class G90CloudStatusChangeReqMessage(G90CloudStatusChangeReqMessageBase):
             f"{type(self).__name__}"
             f"({super().__str__()}"
             f", type={self.type}"
-            f", state={repr(self.state)}"
+            f", state={repr(self._state)}"
             f", timestamp={self.timestamp})"
         )
 
@@ -363,30 +354,12 @@ class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
     _destination = G90CloudDirection.CLOUD
     _type: ClassVar[G90AlertTypes] = G90AlertTypes.SENSOR_ACTIVITY
 
-    type: int
-    sensor_id: int
-    _sensor_type: G90PeripheralTypes
+    type: G90AlertTypes
+    sensor_id: G90AlertStateChangeTypes
+    _sensor_source: G90AlertSources
     _sensor_state: int
     _sensor: bytes
     _timestamp: int  # Unix timestamp
-
-    @property
-    def sensor_type(self) -> G90PeripheralTypes:
-        """
-        Get the sensor type.
-
-        :return: The type of the sensor that triggered the event
-        """
-        return G90PeripheralTypes(self._sensor_type)
-
-    @property
-    def sensor_state(self) -> G90AlertStates:
-        """
-        Get the sensor state.
-
-        :return: The state of the sensor that triggered the event
-        """
-        return G90AlertStates(self._sensor_state)
 
     @property
     def sensor(self) -> str:
@@ -408,11 +381,11 @@ class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
         """
         return G90DeviceAlert(
             device_id=self._context.device_id or '',
-            state=self.sensor_state,
-            event_id=cast(G90AlertStateChangeTypes, self.sensor_id),
+            state=self._sensor_state,
+            event_id=self.sensor_id,
             zone_name=self.sensor,
-            type=self._type,
-            source=G90AlertSources.SENSOR,
+            type=self.type,
+            source=self._sensor_source,
             unix_time=self._timestamp,
             resv4=0,
             other='',
@@ -425,8 +398,8 @@ class G90CloudStatusChangeSensorReqMessage(G90CloudStatusChangeReqMessageBase):
             f", type={self.type}"
             f", sensor={repr(self.sensor)}"
             f", sensor id ={self.sensor_id}"
-            f", sensor type={repr(self.sensor_type)}"
-            f", sensor state={repr(self.sensor_state)}"
+            f", sensor source={repr(self._sensor_source)}"
+            f", sensor state={repr(self._sensor_state)}"
             f", timestamp={self.timestamp})"
         )
 
@@ -447,21 +420,12 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
     _destination = G90CloudDirection.CLOUD
     _type: ClassVar[G90AlertTypes] = G90AlertTypes.ALARM
 
-    type: int
-    sensor_id: int
+    type: G90AlertTypes
+    sensor_id: G90AlertStateChangeTypes
     _sensor_type: G90PeripheralTypes
     _sensor_state: int
     _sensor: bytes
     _timestamp: int  # Unix timestamp
-
-    @property
-    def sensor_state(self) -> G90AlertStates:
-        """
-        Get the sensor state for the alarm event.
-
-        :return: The state of the sensor that triggered the alarm
-        """
-        return G90AlertStates(self._sensor_state)
 
     @property
     def sensor(self) -> str:
@@ -474,15 +438,6 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
         return self._sensor.decode().rstrip('\x00')
 
     @property
-    def sensor_type(self) -> G90PeripheralTypes:
-        """
-        Get the sensor type for the alarm event.
-
-        :return: The type of sensor that triggered the alarm
-        """
-        return G90PeripheralTypes(self._sensor_type)
-
-    @property
     def as_device_alert(self) -> G90DeviceAlert:
         """
         Convert the message to a device alert object.
@@ -492,10 +447,10 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
         """
         return G90DeviceAlert(
             device_id=self._context.device_id or '',
-            state=self.sensor_state,
-            event_id=cast(G90AlertStateChangeTypes, self.sensor_id),
+            state=self._sensor_state,
+            event_id=self.sensor_id,
             zone_name=self.sensor,
-            type=self._type,
+            type=self.type,
             source=G90AlertSources.DEVICE,
             unix_time=self._timestamp,
             resv4=0,
@@ -510,8 +465,8 @@ class G90CloudStatusChangeAlarmReqMessage(G90CloudStatusChangeReqMessageBase):
             f", _type={self._type}"
             f", sensor={repr(self.sensor)}"
             f", sensor id ={self.sensor_id}"
-            f", sensor type={repr(self.sensor_type)}"
-            f", sensor state={repr(self.sensor_state)}"
+            f", sensor type={repr(self._sensor_type)}"
+            f", sensor state={repr(self._sensor_state)}"
             f", timestamp={self.timestamp})"
         )
 

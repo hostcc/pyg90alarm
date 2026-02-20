@@ -44,6 +44,7 @@ from ..const import (
 )
 from ..event_mapping import map_alert_state
 from .protocol import G90NotificationProtocol
+from ..exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -202,9 +203,10 @@ class G90NotificationsBase:
             )
             return
 
-        _LOGGER.warning('Unknown notification received:'
-                        ' kind %s, data %s',
-                        notification.kind, notification.data)
+        raise G90Error(
+            f'Unknown notification received: kind {notification.kind},'
+            f' data {notification}'
+        )
 
     def _handle_alert_sensor_activity(self, alert: G90DeviceAlert) -> bool:
         """
@@ -348,9 +350,8 @@ class G90NotificationsBase:
             handled = True
 
         if not handled:
-            _LOGGER.warning(
-                'Unknown alert received: type %s, data %s',
-                alert.type, alert
+            raise G90Error(
+                f'Unknown alert received: type {alert.type}, data {alert}'
             )
 
     # pylint:disable=too-many-return-statements
@@ -385,20 +386,20 @@ class G90NotificationsBase:
         if g90_message.code == G90MessageTypes.NOTIFICATION:
             try:
                 notification_data = G90Notification(*g90_message.data)
-            except TypeError as exc:
-                _LOGGER.error('Bad notification received: %s', exc)
-                return
-            self.handle_notification(notification_data)
+                self.handle_notification(notification_data)
+            except (TypeError, G90Error) as exc:
+                _LOGGER.error('Invalid notification: %s', exc)
+
             return
 
         # Device alerts
         if g90_message.code == G90MessageTypes.ALERT:
             try:
                 alert_data = G90DeviceAlert(*g90_message.data)
-            except TypeError as exc:
-                _LOGGER.error('Bad alert received: %s', exc)
-                return
-            self.handle_alert(alert_data)
+                self.handle_alert(alert_data)
+            except (TypeError, G90Error) as exc:
+                _LOGGER.error('Invalid alert: %s', exc)
+
             return
 
         _LOGGER.warning('Unknown message received: %s', message)

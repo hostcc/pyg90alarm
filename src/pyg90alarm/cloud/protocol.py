@@ -38,6 +38,7 @@ import logging
 
 from .const import G90CloudDirection, G90CloudCommand
 from ..const import G90AlertTypes
+from ..exceptions import G90Error
 
 _LOGGER = logging.getLogger(__name__)
 CloudBaseT = TypeVar('CloudBaseT', bound='G90CloudBase')
@@ -47,7 +48,7 @@ CloudMessageT = TypeVar('CloudMessageT', bound='G90CloudMessage')
 PROTOCOL_VERSION = 1
 
 
-class G90CloudError(Exception):
+class G90CloudError(G90Error):
     """
     Base exception for G90 cloud protocol errors.
     """
