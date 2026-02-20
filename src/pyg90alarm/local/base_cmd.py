@@ -88,9 +88,10 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         """
         if asyncio.isfuture(self._connection_result):
             if self._connection_result.done():
-                _LOGGER.warning('Excessive packet received'
-                                ' from %s:%s: %s',
-                                addr[0], addr[1], data)
+                _LOGGER.debug(
+                    'Excessive packet received from %s:%s: %s',
+                    addr[0], addr[1], data
+                )
                 return
             self._connection_result.set_result((*addr, data))
 
