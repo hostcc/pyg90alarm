@@ -163,7 +163,7 @@ async def test_wrong_device_notification_format(
     await notifications.close()
 
     assert re.match(
-        'Bad notification received:'
+        'Invalid notification:'
         " .+ missing 1 required positional argument: 'data'",
         ''.join(caplog.messages)
     )
@@ -194,7 +194,7 @@ async def test_wrong_device_alert_format(
     await notifications.close()
 
     assert re.match(
-        'Bad alert received:'
+        'Invalid alert:'
         " .+ missing 9 required positional arguments: 'type',"
         " 'event_id', 'source', 'state', 'zone_name', 'device_id',"
         " 'unix_time', 'resv4', and 'other'",
@@ -227,8 +227,8 @@ async def test_unknown_device_notification(
     await notifications.close()
 
     assert re.match(
-        'Unknown notification received:'
-        r' kind 999, data \[1\]',
+        'Invalid notification: Unknown notification received: kind 999,'
+        r' data G90Notification\(kind=999, data=\[1\]\)',
         ''.join(caplog.messages)
     )
 
@@ -259,10 +259,10 @@ async def test_unknown_device_alert(
     await notifications.close()
 
     assert re.match(
-        'Unknown alert received: type 999,'
-        r' data G90DeviceAlert\(type=999, event_id=100, source=1,'
-        r" state=1, zone_name='Hall', device_id='DUMMYGUID',"
-        r" unix_time=1631545189, resv4=0, other=\[''\]\)",
+        'Invalid alert: Unknown alert received: type 999, data'
+        r' G90DeviceAlert\(type=999, event_id=100, source=1, state=1,'
+        " zone_name='Hall', device_id='DUMMYGUID', unix_time=1631545189,"
+        r" resv4=0, other=\[''\]\)",
         ''.join(caplog.messages)
     )
 

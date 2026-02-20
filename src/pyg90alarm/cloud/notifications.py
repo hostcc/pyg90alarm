@@ -32,7 +32,7 @@ from asyncio.protocols import Protocol, BaseProtocol
 from asyncio import Future
 
 from .protocol import (
-    G90CloudHeader, G90CloudError, G90CloudMessageNoMatch,
+    G90CloudHeader, G90CloudMessageNoMatch,
     G90CloudMessageContext,
 )
 from .messages import (
@@ -45,6 +45,7 @@ from .messages import (
 )
 from ..notifications.base import G90NotificationsBase
 from ..notifications.protocol import G90NotificationProtocol
+from ..exceptions import G90Error
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -242,7 +243,7 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
 
                 # Advance to the next message
                 data = data[hdr.message_length:]
-        except (G90CloudError, ValueError, KeyError, IndexError) as exc:
+        except (G90Error, ValueError, KeyError, IndexError) as exc:
             _LOGGER.error(
                 "Error processing data from device: %s. Data: '%s'",
                 exc, data.hex(' ')

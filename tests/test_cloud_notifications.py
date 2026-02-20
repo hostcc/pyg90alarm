@@ -2,6 +2,7 @@
 Tests for G90CloudNotifications class.
 """
 import asyncio
+from typing import Any
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 from struct import pack
@@ -20,6 +21,7 @@ from pyg90alarm.cloud.messages import (
     cloud_message
 )
 from pyg90alarm.cloud.const import G90CloudDirection, G90CloudCommand
+from pyg90alarm.const import G90RFIDKeypadStates
 
 from .device_mock import DeviceMock
 from .conftest import data_receive_awaitable
@@ -377,24 +379,45 @@ async def test_cloud_status_change_alarm_sensor(
     mock.on_alarm.assert_called_once_with(*expected_on_alarm_args)
 
 
-@pytest.mark.g90device(
-    cloud_notification_data=[
-        b'\x21\x10\x00\x20\x78\x00\x00\x00\x01\x00\x00\x00\x04\x20\x01\x01'
-        b'\x43\x6f\x72\x64\x20\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\xb1\x30\xa2\x67\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00'
-    ],
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Cord 1",32,0,126,1,0,32,0,5,16,1,0,""]]]IEND\0',
-        b'ISTART[117,[256]]IEND\0',
-    ]
-)
+@pytest.mark.parametrize("expected_call,expected_args", [
+    pytest.param(
+        'on_door_open_close', (32, 'Cord 1', True),
+        marks=pytest.mark.g90device(cloud_notification_data=[
+            b'\x21\x10\x00\x20\x78\x00\x00\x00\x01\x00\x00\x00\x04\x20\x01\x01'
+            b'\x43\x6f\x72\x64\x20\x31\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\xb1\x30\xa2\x67\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00'
+        ], sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["Cord 1",32,0,126,1,0,32,0,5,16,1,0,""]]]IEND\0',
+            b'ISTART[117,[256]]IEND\0',
+        ]), id="cord"
+    ),
+    pytest.param(
+        'on_rfid_keypad', (32, 'RFID Card 0', G90RFIDKeypadStates.CARD_0),
+        marks=pytest.mark.g90device(cloud_notification_data=[
+            b'\x21\x10\x00\x20\x78\x00\x00\x00\x01\x00\x00\x00\x04\x20\x0b\x06'
+            b'\x52\x46\x49\x44\x20\x43\x61\x72\x64\x20\x30\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\xd6\xda\x95\x69\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+            b'\x00\x00\x00\x00\x00\x00\x00\x00'
+        ], sent_data=[
+            b'ISTART[102,'
+            b'[[1,1,1],["RFID Card 0",32,0,11,1,0,32,0,0,16,1,0,""]]]IEND\0',
+            b'ISTART[117,[256]]IEND\0',
+        ]), id="rfid"
+    ),
+])
 async def test_cloud_status_change_sensor_activity(
+    expected_call: str,
+    expected_args: tuple[Any],
     mock_device: DeviceMock
 ) -> None:
     """
@@ -409,15 +432,16 @@ async def test_cloud_status_change_sensor_activity(
         local_port=mock_device.cloud_port
     )
     future = asyncio.get_running_loop().create_future()
-    mock.on_door_open_close.side_effect = (
-        lambda *args: future.set_result(True)
-    )
+    getattr(
+        mock, expected_call
+    ).side_effect = lambda *args: future.set_result(True)
+
     await notifications.listen()
     await mock_device.send_next_cloud_packet()
     await asyncio.wait([future], timeout=0.1)
     await notifications.close()
     assert await mock_device.cloud_recv_data == []
-    mock.on_door_open_close.assert_called_once_with(32, 'Cord 1', True)
+    getattr(mock, expected_call).assert_called_once_with(*expected_args)
 
 
 @pytest.mark.g90device(
