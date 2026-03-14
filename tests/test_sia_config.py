@@ -13,7 +13,8 @@ from .device_mock import DeviceMock
 @pytest.mark.parametrize(
     "expected_heartbeat_interval,expected_recv_data",
     [
-        pytest.param(60, [
+        pytest.param(
+            60, [
                 b'ISTART[230,230,""]IEND\0',
                 b"ISTART[231,231,[231,"
                 b'["127.0.0.1",12345,"ACCT1","RCVR1","PFX",'
@@ -30,8 +31,7 @@ from .device_mock import DeviceMock
             id="With heartbeat interval",
         ),
         pytest.param(
-            None,
-            [
+            None, [
                 b'ISTART[230,230,""]IEND\0',
                 b"ISTART[231,231,[231,"
                 b'["127.0.0.1",12345,"ACCT1","RCVR1","PFX",'
