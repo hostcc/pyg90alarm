@@ -167,6 +167,12 @@ class G90Commands(G90CommandsBase):
     SETAPINFO = 213
     PINGBYGPRS = 218
     PING = 219
+    # SIA Internet reporting
+    GETSIA = 230
+    SETSIA = 231
+    # CID (Contact ID) phone reporting
+    GETCID = 232
+    SETCID = 233
 
 
 class G90SystemCommands(G90CommandsBase):
