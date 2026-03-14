@@ -23,11 +23,12 @@ Base class for loading/saving dataclasses to a device.
 """
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING, Type, TypeVar, Optional, ClassVar, Any, Dict, List, cast
+    TYPE_CHECKING, Type, TypeVar, Optional, ClassVar, Any, Dict, List,
+    Union, cast
 )
 import logging
 from dataclasses import dataclass, asdict, field, fields
-from .validation import ValidatorBase
+from .validation import ValidatorBase, _DefaultNotSet
 from ..const import G90Commands
 if TYPE_CHECKING:
     from ..alarm import G90Alarm
@@ -120,7 +121,9 @@ def field_readonly_if_not_provided(
     # pylint: disable=invalid-field-call
     return cast(T, field(
         *args, **kwargs,
-        default=ReadOnlyIfNotProvided[T](default)
+        default=ReadOnlyIfNotProvided[T](
+            cast(Union[T, _DefaultNotSet], default)
+        )
     ))
 
 

@@ -453,3 +453,41 @@ def test_default_value_is_validated() -> None:
 
     with pytest.raises(ValueError):
         Config()
+
+
+def test_validated_fields_no_initial_value() -> None:
+    """
+    Test that validated fields without initial value raise ValueError when
+    not provided, and accept valid values when provided.
+    """
+    @dataclass
+    class Config:
+        value_int: int = validated_int_field(min_value=0, max_value=100)
+        value_str: str = validated_string_field(min_length=1, max_length=10)
+
+    with pytest.raises(ValueError) as exc_info:
+        Config()
+    assert "value_int: required value not provided" == str(exc_info.value)
+
+    config = Config(value_int=5, value_str="hi")
+    assert config.value_int == 5
+    assert config.value_str == "hi"
+
+
+def test_validated_fields_no_initial_value_with_default_none() -> None:
+    """
+    Test that validated fields without initial value raise ValueError when
+    not provided, and accept valid values when provided.
+    """
+    @dataclass
+    class Config:
+        value_int: int = validated_int_field(
+            min_value=0, max_value=100, default=None
+        )
+        value_str: str = validated_string_field(
+            min_length=1, max_length=10, default=None
+        )
+
+    config = Config()
+    assert config.value_int is None
+    assert config.value_str is None

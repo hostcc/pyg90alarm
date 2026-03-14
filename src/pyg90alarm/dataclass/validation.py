@@ -49,6 +49,7 @@ from dataclasses import dataclass, field, fields, is_dataclass
 from ..const import BUG_REPORT_URL
 if TYPE_CHECKING:
     from _typeshed import DataclassInstance
+    from typing_extensions import Self
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,18 +86,34 @@ METADATA_KEY = 'validation_constraints'
 T = TypeVar('T')
 
 
+class _DefaultNotSet:
+    """
+    Sentinel indicating that no default value was provided to the validator;
+    the field is required.
+
+    The sentinel is used to distinguish between a value that was not provided
+    to the validator and a default value that was provided explicitly as
+    default=None.
+    """
+    __slots__ = ()
+
+
+_DEFAULT_NOT_SET = _DefaultNotSet()
+
+
 class ValidatorBase(Generic[T]):
     """
     Base dataclass descriptor for validating field values.
 
     :param default: Default value to return upon read if not provided during
-     initialization.
+     initialization. Use :data:`_DEFAULT_NOT_SET` to mark the field as
+     required.
     :param trust_initial_value: If True, skips validation during dataclass
      initialization assuming init value is valid.
     """
     def __init__(
         self,
-        default: Optional[T] = None,
+        default: T | _DefaultNotSet = _DEFAULT_NOT_SET,
         trust_initial_value: bool = False
     ) -> None:
         self._name: Optional[str] = None
@@ -154,9 +171,21 @@ class ValidatorBase(Generic[T]):
         assert self._name is not None, 'Descriptor not initialized properly'
         return self._name
 
+    @overload
+    def __get__(
+        self, obj: None, objtype: Optional[type] = None
+    ) -> Self | T:
+        ...
+
+    @overload
     def __get__(
         self, obj: Any, objtype: Optional[type] = None
     ) -> Optional[T]:
+        ...
+
+    def __get__(
+        self, obj: Any, objtype: Optional[type] = None
+    ) -> Self | T | Optional[T]:
         """
         Retrieves the field value, returning default if not set.
 
@@ -166,18 +195,29 @@ class ValidatorBase(Generic[T]):
         """
         # Dataclass requests the default value for the field
         if obj is None:
-            return self._default
+            if self._default is _DEFAULT_NOT_SET:
+                return self
+            return cast(T, self._default)
 
         # Return stored value if it exists, otherwise return default if the
         # value is the descriptor itself, i.e. not set
-        value = getattr(obj, self.__field_name__, self._default)
+        value: T | _DefaultNotSet = getattr(
+            obj, self.__field_name__, self._default
+        )
         if value is self:
+            # No value provided to the field, raise an error since that
+            # indicates a required field.
+            if self._default is _DEFAULT_NOT_SET:
+                raise ValueError(
+                    f'{self.__unmangled_name__}: required value not provided'
+                )
+            # Use the default value otherwise.
             _LOGGER.debug(
                 "%s: Getting default value '%s'",
                 self.__unmangled_name__, self._default
             )
-            value = self._default
-        return value
+            value = cast(T, self._default)
+        return cast(Optional[T], value)
 
     def __set__(self, obj: Any, value: T) -> None:
         """
@@ -191,12 +231,22 @@ class ValidatorBase(Generic[T]):
         """
         # Default value assignment, e.g. when field not provided during
         # initialization thus being assigned the descriptor instance itself
-        if value is self and self._default is not None:
+        substituted_default = False
+        if value is self:
+            # No default value provided to the field, raise an error since that
+            # indicates a required field.
+            if self._default is _DEFAULT_NOT_SET:
+                raise ValueError(
+                    f'{self.__unmangled_name__}: required value not provided'
+                )
+
+            # Use the default value otherwise.
             _LOGGER.debug(
-                "%s: Assigning default value '%s'",
+                "%s: Using default value '%s'",
                 self.__unmangled_name__, self._default
             )
-            value = self._default
+            value = cast(T, self._default)
+            substituted_default = True
 
         # First time setting the value during dataclass initialization and its
         # value should be trusted if `trust_initial_value` is True
@@ -238,11 +288,17 @@ class ValidatorBase(Generic[T]):
                 self.__unmangled_name__, value, exc, BUG_REPORT_URL
             )
 
-        # Set the validated value
-        _LOGGER.debug(
-            "%s: Setting value to '%s'", self.__unmangled_name__, value
-        )
-        setattr(obj, self.__field_name__, value)
+        # Set the validated value. When we only validated the default, store
+        # the descriptor so "not provided" condition is preserved (e.g. for
+        # read-only fields that must reject later writes).
+        if substituted_default:
+            setattr(obj, self.__field_name__, self)
+        else:
+            _LOGGER.debug(
+                "%s: Setting value to '%s'", self.__unmangled_name__,
+                value
+            )
+            setattr(obj, self.__field_name__, value)
 
 
 class IntRangeValidator(ValidatorBase[int]):
@@ -281,6 +337,9 @@ class IntRangeValidator(ValidatorBase[int]):
     def __validate__(self, obj: Any, value: int) -> bool:
         # Validate the value before setting
         if value is None:
+            # None is allowed and valid if default is None
+            if self._default is None:
+                return True
             msg = (
                 f'{self.__unmangled_name__}: None value is not allowed'
             )
@@ -342,6 +401,9 @@ class StringLengthValidator(ValidatorBase[str]):
 
     def __validate__(self, obj: Any, value: str) -> bool:
         if value is None:
+            # None is allowed and valid if default is None
+            if self._default is None:
+                return True
             msg = (
                 f'{self.__unmangled_name__}: None value is not allowed'
             )
@@ -374,7 +436,7 @@ def validated_int_field(
     *,
     min_value: Optional[int] = None,
     max_value: Optional[int] = None,
-    default: Optional[int] = None,
+    default: Optional[int] | _DefaultNotSet = _DEFAULT_NOT_SET,
     trust_initial_value: bool = False,
     **kwargs: Any
 ) -> int:
@@ -389,7 +451,9 @@ def validated_int_field(
      minimum.
     :param max_value: Maximum allowed value (inclusive), or None for no
      maximum.
-    :param default: Default value for the field, or None for no default.
+    :param default: Default value for the field when not provided. Omit to make
+     the field required (raises ValueError when missing). Pass None explicitly
+     to use None as the default.
     :param trust_initial_value: If True, skips validation during dataclass
      initialization assuming init value is valid.
     :param kwargs: Additional keyword arguments to pass to dataclasses.field().
@@ -429,7 +493,7 @@ def validated_string_field(
     *,
     min_length: Optional[int] = None,
     max_length: Optional[int] = None,
-    default: Optional[str] = None,
+    default: Optional[str] | _DefaultNotSet = _DEFAULT_NOT_SET,
     trust_initial_value: bool = False,
     **kwargs: Any
 ) -> str:
@@ -444,7 +508,9 @@ def validated_string_field(
      minimum.
     :param max_length: Maximum string length (inclusive), or None for no
      maximum.
-    :param default: Default value for the field, or None for no default.
+    :param default: Default value for the field when not provided. Omit to make
+     the field required (raises ValueError when missing). Pass None explicitly
+     to use None as the default.
     :param trust_initial_value: If True, skips validation during dataclass
      initialization assuming init value is valid.
     :param kwargs: Additional keyword arguments to pass to dataclasses.field().
