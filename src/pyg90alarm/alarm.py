@@ -103,6 +103,8 @@ from .local.user_data_crc import G90UserDataCRC
 from .local.alarm_phones import G90AlarmPhones
 from .local.host_config import G90HostConfig
 from .local.net_config import G90NetConfig
+from .local.sia_config import G90SiaConfig
+from .local.cid_config import G90CidConfig
 from .callback import G90Callback, G90CallbackList
 from .exceptions import G90Error, G90TimeoutError
 from .cloud.notifications import G90CloudNotifications
@@ -594,6 +596,22 @@ class G90Alarm(G90NotificationProtocol):
         :return: Alarm panel network configuration
         """
         return await G90NetConfig.load(parent=self)
+
+    async def sia_config(self) -> G90SiaConfig:
+        """
+        Provides access to SIA Internet reporting configuration.
+
+        :return: SIA Internet reporting configuration
+        """
+        return await G90SiaConfig.load(parent=self)
+
+    async def cid_config(self) -> G90CidConfig:
+        """
+        Provides access to CID (Contact ID) phone reporting configuration.
+
+        :return: CID phone reporting configuration
+        """
+        return await G90CidConfig.load(parent=self)
 
     @property
     async def user_data_crc(self) -> G90UserDataCRC:
