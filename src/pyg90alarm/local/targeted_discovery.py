@@ -141,10 +141,10 @@ class G90TargetedDiscovery(G90BaseCommand):
         Initiates the device discovery process.
         """
         _LOGGER.debug('Attempting device discovery...')
-        transport, _ = await self._create_connection()
-        transport.sendto(self.to_wire())
+        await self._create_connection()
+        await self._send_only()
         await asyncio.sleep(self._timeout)
-        transport.close()
+        self._close_connection()
         _LOGGER.debug('Discovered %s devices', len(self.devices))
         return self
 

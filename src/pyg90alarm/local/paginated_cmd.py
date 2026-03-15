@@ -26,7 +26,7 @@ import logging
 from typing import Any, Optional
 from dataclasses import dataclass
 from .base_cmd import G90BaseCommand, BaseCommandsDataT
-from ..exceptions import G90Error
+from ..exceptions import G90Error, G90RetryableError
 from ..const import G90Commands
 
 _LOGGER = logging.getLogger(__name__)
@@ -118,7 +118,7 @@ class G90PaginatedCommand(G90BaseCommand):
                 f' received {len(resp_data)}')
 
         if errors:
-            raise G90Error('. '.join(errors))
+            raise G90RetryableError('. '.join(errors))
 
         _LOGGER.debug('Paginated command response: '
                       'total records %s, start record %s, record count %s',

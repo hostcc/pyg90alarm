@@ -28,16 +28,15 @@ import asyncio
 from asyncio import Future
 from asyncio.protocols import DatagramProtocol
 from asyncio.transports import DatagramTransport, BaseTransport
-from typing import Optional, Tuple, List, Any, TypeVar, Generic
+from typing import Optional, Tuple, List, Any, TypeVar, Generic, TYPE_CHECKING
 from dataclasses import dataclass
-# `Self` is available in `typing` module only starting from Python 3.11, for
-# older versions need to use typing_extensions`
-from typing_extensions import Self
 from ..exceptions import (
-    G90Error, G90TimeoutError, G90CommandFailure, G90CommandError
+    G90Error, G90TimeoutError, G90RetryableError,
+    G90CommandFailure, G90CommandError
 )
 from ..const import G90Commands, G90CommandsBase
-
+if TYPE_CHECKING:
+    from typing_extensions import Self
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,6 +68,7 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
             Future[Tuple[str, int, bytes]]
         ] = None
         self._data = self.encode_data(data)
+        self._transport: Optional[DatagramTransport] = None
 
     # Implementation of datagram protocol,
     # https://docs.python.org/3/library/asyncio-protocol.html#datagram-protocols
@@ -105,9 +105,7 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         ):
             self._connection_result.set_exception(exc)
 
-    async def _create_connection(self) -> (
-        Tuple[DatagramTransport, DatagramProtocol]
-    ):
+    async def _create_connection(self) -> None:
         """
         Creates UDP connection to the alarm panel.
         """
@@ -119,13 +117,77 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         if self._local_port:
             local_addr = ('0.0.0.0', self._local_port)
 
-        transport, protocol = await loop.create_datagram_endpoint(
+        self._transport, _ = await loop.create_datagram_endpoint(
             lambda: self,
             remote_addr=(self.host, self.port),
             allow_broadcast=True,
             local_addr=local_addr)
 
-        return (transport, protocol)
+    def _close_connection(self) -> None:
+        """
+        Closes the connection to the alarm panel.
+        """
+        if self._transport is not None:
+            self._transport.close()
+        self._transport = None
+
+    def _validate_response_sender(self, host: str, port: int) -> None:
+        """
+        Verifies the response is from the expected host and port.
+        Closes the transport and raises G90Error if not.
+        """
+        if self.host != '255.255.255.255':
+            if self.host != host or host == '255.255.255.255':
+                self._close_connection()
+                raise G90Error(
+                    f'Received response from wrong host '
+                    f'{host}, expected from {self.host}'
+                )
+        if self.port != port:
+            self._close_connection()
+            raise G90Error(
+                f'Received response from wrong port '
+                f'{port}, expected from {self.port}'
+            )
+
+    async def _send_only(self) -> None:
+        """
+        Sends the command without waiting for a response.
+        Used when expects_response is False.
+        """
+        assert self._transport is not None, 'Connection not established'
+
+        async with self._sk_lock:
+            _LOGGER.debug(
+                '(code %s) Sending request to %s:%s',
+                self._code, self.host, self.port
+            )
+            self._transport.sendto(self.to_wire())
+        self._result = None
+
+    async def _send_and_wait_for_response(
+        self
+    ) -> Optional[Tuple[str, int, bytes]]:
+        """
+        Sends the command and waits for a response.
+        Returns (host, port, data) on success, or None on timeout.
+        """
+        assert self._transport is not None, 'Connection not established'
+
+        loop = asyncio.get_running_loop()
+        self._connection_result = loop.create_future()
+        async with self._sk_lock:
+            _LOGGER.debug(
+                '(code %s) Sending request to %s:%s',
+                self._code, self.host, self.port
+            )
+            self._transport.sendto(self.to_wire())
+        done, _ = await asyncio.wait(
+            [self._connection_result], timeout=self._timeout
+        )
+        if self._connection_result in done:
+            return self._connection_result.result()
+        return None
 
     def encode_data(self, data: Optional[CommandDataT]) -> str:
         """
@@ -188,43 +250,36 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         if self._code == G90Commands.NONE:
             raise G90Error("'NONE' command code is disallowed")
 
-        transport, _ = await self._create_connection()
-        attempts = self._retries
-        while True:
-            attempts = attempts - 1
-            loop = asyncio.get_running_loop()
-            self._connection_result = loop.create_future()
-            async with self._sk_lock:
-                _LOGGER.debug('(code %s) Sending request to %s:%s',
-                              self._code, self.host, self.port)
-                transport.sendto(self.to_wire())
-                if not self.expects_response:
-                    self._result = None
-                    return self
-                done, _ = await asyncio.wait([self._connection_result],
-                                             timeout=self._timeout)
-            if self._connection_result in done:
-                break
-            # Cancel the future to signal protocol handler it is no longer
-            # valid, the future will be re-created on next retry
-            self._connection_result.cancel()
-            if not attempts:
-                transport.close()
-                raise G90TimeoutError()
-            _LOGGER.debug('Timed out, retrying')
-        transport.close()
-        (host, port, data) = self._connection_result.result()
-        _LOGGER.debug('Received response from %s:%s', host, port)
-        if self.host != '255.255.255.255':
-            if self.host != host or host == '255.255.255.255':
-                raise G90Error(f'Received response from wrong host {host},'
-                               f' expected from {self.host}')
-        if self.port != port:
-            raise G90Error(f'Received response from wrong port {port},'
-                           f' expected from {self.port}')
+        await self._create_connection()
+        try:
+            if not self.expects_response:
+                await self._send_only()
+                return self
 
-        ret = self.from_wire(data)
-        self._result = ret
+            attempts = self._retries
+            while True:
+                attempts = attempts - 1
+                response = await self._send_and_wait_for_response()
+                if response is None:
+                    if self._connection_result is not None:
+                        self._connection_result.cancel()
+                    if not attempts:
+                        raise G90TimeoutError()
+                    _LOGGER.debug('Timed out, retrying')
+                    continue
+
+                host, port, data = response
+                _LOGGER.debug('Received response from %s:%s', host, port)
+                self._validate_response_sender(host, port)
+                try:
+                    self._result = self.from_wire(data)
+                    break
+                except G90RetryableError as exc:
+                    if not attempts:
+                        raise
+                    _LOGGER.debug('Retryable error (%s), retrying', exc)
+        finally:
+            self._close_connection()
         return self
 
     def __repr__(self) -> str:
@@ -309,7 +364,7 @@ class G90BaseCommand(G90Command[BaseCommandsT, BaseCommandsDataT]):
                 raise G90Error(f"Missing data in response: '{payload}'")
 
             if self._resp.code != self._code:
-                raise G90Error(
+                raise G90RetryableError(
                     'Wrong response - received code '
                     f"{self._resp.code}, expected code {self._code}")
 

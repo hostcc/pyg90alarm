@@ -9,7 +9,8 @@ from pyg90alarm.local.base_cmd import (
     G90BaseCommand,
 )
 from pyg90alarm.exceptions import (
-    G90Error, G90TimeoutError, G90CommandError, G90CommandFailure
+    G90Error, G90TimeoutError, G90RetryableError,
+    G90CommandError, G90CommandFailure
 )
 from pyg90alarm.const import G90Commands
 
@@ -200,19 +201,71 @@ async def test_no_code_response(mock_device: DeviceMock) -> None:
 ])
 async def test_wrong_code_response(mock_device: DeviceMock) -> None:
     """
-    Verifies that response with wrong code is handled properly.
+    Verifies that response with wrong code raises retryable error.
     """
     g90 = G90BaseCommand(
         host=mock_device.host, port=mock_device.port,
-        code=G90Commands.GETHOSTINFO
+        code=G90Commands.GETHOSTINFO,
+        retries=1
     )
 
     with pytest.raises(
-        G90Error,
+        G90RetryableError,
         match='Wrong response - received code 106, expected code 206'
     ):
         await g90.process()
     assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[106,[""]]IEND\0',
+    b'ISTART[206,[""]]IEND\0',
+])
+async def test_retryable_error_retried_then_success(
+    mock_device: DeviceMock,
+) -> None:
+    """
+    Verifies that retryable error (wrong code) is retried and succeeds
+    when the second response is valid.
+    """
+    g90 = G90BaseCommand(
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO,
+        retries=3
+    )
+
+    await g90.process()
+    assert g90.result == ['']
+    assert await mock_device.recv_data == [
+        b'ISTART[206,206,""]IEND\0',
+        b'ISTART[206,206,""]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[106,[""]]IEND\0',
+    b'ISTART[106,[""]]IEND\0',
+])
+async def test_retryable_error_exhausted(mock_device: DeviceMock) -> None:
+    """
+    Verifies that after exhausting retries on retryable error,
+    G90RetryableError is raised.
+    """
+    g90 = G90BaseCommand(
+        host=mock_device.host, port=mock_device.port,
+        code=G90Commands.GETHOSTINFO,
+        timeout=0.1, retries=2
+    )
+
+    with pytest.raises(
+        G90RetryableError,
+        match='Wrong response - received code 106, expected code 206'
+    ):
+        await g90.process()
+    assert await mock_device.recv_data == [
+        b'ISTART[206,206,""]IEND\0',
+        b'ISTART[206,206,""]IEND\0',
+    ]
 
 
 @pytest.mark.g90device(sent_data=[
