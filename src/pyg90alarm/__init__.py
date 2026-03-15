@@ -53,6 +53,8 @@ from .local.host_config import (
 from .local.alarm_phones import G90AlarmPhones
 from .local.net_config import G90NetConfig, G90APNAuth
 from .local.history import G90History
+from .local.sia_config import G90SiaConfig
+from .local.cid_config import G90CidConfig
 
 from .dataclass.load_save import DataclassLoadSave
 from .dataclass.validation import (
@@ -103,6 +105,10 @@ __all__ = [
     'G90AlarmPhones',
     # History
     'G90History',
+    # SIA Configuration
+    'G90SiaConfig',
+    # CID Configuration
+    'G90CidConfig',
     # Dataclass validation
     'get_field_validation_constraints',
     # Dataclass load/save
