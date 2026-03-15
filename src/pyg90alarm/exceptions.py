@@ -39,6 +39,14 @@ class G90TimeoutError(asyncio.TimeoutError, G90Error):
     """
 
 
+class G90RetryableError(G90Error):
+    """
+    Raised for response or parsing conditions that trigger retries in
+    G90BaseCommand and G90PaginatedCommand (e.g. wrong response code,
+    truncated or extra data in paginated response).
+    """
+
+
 class G90CommandFailure(G90Error):
     """
     Raised when a command to the alarm panel reports failure.

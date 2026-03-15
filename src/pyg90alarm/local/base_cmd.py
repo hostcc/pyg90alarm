@@ -34,7 +34,8 @@ from dataclasses import dataclass
 # older versions need to use typing_extensions`
 from typing_extensions import Self
 from ..exceptions import (
-    G90Error, G90TimeoutError, G90CommandFailure, G90CommandError
+    G90Error, G90TimeoutError, G90RetryableError,
+    G90CommandFailure, G90CommandError
 )
 from ..const import G90Commands, G90CommandsBase
 
@@ -203,8 +204,28 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
                     return self
                 done, _ = await asyncio.wait([self._connection_result],
                                              timeout=self._timeout)
+            # Connection is done, process the response
             if self._connection_result in done:
-                break
+                (host, port, data) = self._connection_result.result()
+                _LOGGER.debug('Received response from %s:%s', host, port)
+                if self.host != '255.255.255.255':
+                    if self.host != host or host == '255.255.255.255':
+                        raise G90Error(f'Received response from wrong host '
+                                       f'{host}, expected from {self.host}')
+                if self.port != port:
+                    raise G90Error(f'Received response from wrong port '
+                                   f'{port}, expected from {self.port}')
+                try:
+                    ret = self.from_wire(data)
+                    self._result = ret
+                    break
+                # Handle retryable errors
+                except G90RetryableError as exc:
+                    if not attempts:
+                        transport.close()
+                        raise
+                    _LOGGER.debug('Retryable error (%s), retrying', exc)
+                    continue
             # Cancel the future to signal protocol handler it is no longer
             # valid, the future will be re-created on next retry
             self._connection_result.cancel()
@@ -213,18 +234,6 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
                 raise G90TimeoutError()
             _LOGGER.debug('Timed out, retrying')
         transport.close()
-        (host, port, data) = self._connection_result.result()
-        _LOGGER.debug('Received response from %s:%s', host, port)
-        if self.host != '255.255.255.255':
-            if self.host != host or host == '255.255.255.255':
-                raise G90Error(f'Received response from wrong host {host},'
-                               f' expected from {self.host}')
-        if self.port != port:
-            raise G90Error(f'Received response from wrong port {port},'
-                           f' expected from {self.port}')
-
-        ret = self.from_wire(data)
-        self._result = ret
         return self
 
     def __repr__(self) -> str:
@@ -309,7 +318,7 @@ class G90BaseCommand(G90Command[BaseCommandsT, BaseCommandsDataT]):
                 raise G90Error(f"Missing data in response: '{payload}'")
 
             if self._resp.code != self._code:
-                raise G90Error(
+                raise G90RetryableError(
                     'Wrong response - received code '
                     f"{self._resp.code}, expected code {self._code}")
 

@@ -204,9 +204,9 @@ async def test_find_sensor(mock_device: DeviceMock) -> None:
             b'ISTART[102,'
             b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
             b'ISTART[117,[256]]IEND\0',
-            # Simulate wrong response retrieving alert configuration flags, so
+            # Simulate error response retrieving alert configuration flags, so
             # that previously cached value is used
-            b'ISTART[200,[256]]IEND\0',
+            b'ISTARTfailIEND\0',
         ],
         notification_data=[
             b'[170,[5,[10,"Remote"]]]\0',
@@ -216,9 +216,9 @@ async def test_find_sensor(mock_device: DeviceMock) -> None:
         sent_data=[
             b'ISTART[102,'
             b'[[1,1,1],["Remote",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-            # Simulate wrong response retrieving alert configuration flags with
+            # Simulate error response retrieving alert configuration flags with
             # no previously cached data available
-            b'ISTART[200,[256]]IEND\0',
+            b'ISTARTfailIEND\0',
         ],
         notification_data=[
             b'[170,[5,[10,"Remote"]]]\0',

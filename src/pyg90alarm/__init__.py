@@ -69,7 +69,8 @@ from .const import (
     G90HistoryStates,
 )
 from .exceptions import (
-    G90Error, G90TimeoutError, G90CommandError, G90CommandFailure,
+    G90Error, G90TimeoutError, G90RetryableError,
+    G90CommandError, G90CommandFailure,
     G90EntityRegistrationError, G90PeripheralDefinitionNotFound,
 )
 
@@ -89,7 +90,8 @@ __all__ = [
     'G90AlertStateChangeTypes', 'G90HistoryStates',
     # Exceptions
     'G90Error',
-    'G90TimeoutError', 'G90CommandError', 'G90CommandFailure',
+    'G90TimeoutError', 'G90RetryableError',
+    'G90CommandError', 'G90CommandFailure',
     'G90EntityRegistrationError', 'G90PeripheralDefinitionNotFound',
     # Definitions
     'G90SensorDefinitions', 'G90DeviceDefinitions',
