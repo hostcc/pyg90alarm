@@ -210,9 +210,11 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
                 _LOGGER.debug('Received response from %s:%s', host, port)
                 if self.host != '255.255.255.255':
                     if self.host != host or host == '255.255.255.255':
+                        transport.close()
                         raise G90Error(f'Received response from wrong host '
                                        f'{host}, expected from {self.host}')
                 if self.port != port:
+                    transport.close()
                     raise G90Error(f'Received response from wrong port '
                                    f'{port}, expected from {self.port}')
                 try:
