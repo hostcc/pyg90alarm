@@ -374,3 +374,41 @@ async def test_command_error(mock_device: DeviceMock) -> None:
         )
     ):
         await g90.process()
+
+
+def test_attempt_delay_exponential_schedule() -> None:
+    """
+    Verifies that _get_attempt_delay implements exponential backoff
+    scaled by timeout and capped at timeout.
+    """
+    timeout = 3.0
+    retries = 3
+    cmd = G90BaseCommand(
+        host='mocked', port=12345, code=G90Commands.GETHOSTINFO,
+        timeout=timeout, retries=retries
+    )
+
+    # base = timeout / (2 ** retries) = 3.0 / 8 = 0.375
+    # pylint: disable=protected-access
+    assert cmd._get_attempt_delay(0) == pytest.approx(0.375)
+    assert cmd._get_attempt_delay(1) == pytest.approx(0.75)
+    assert cmd._get_attempt_delay(2) == pytest.approx(1.5)
+    # Further attempts are capped at timeout
+    assert cmd._get_attempt_delay(3) == pytest.approx(timeout)
+    assert cmd._get_attempt_delay(4) == pytest.approx(timeout)
+
+
+def test_attempt_delay_no_retries_returns_timeout() -> None:
+    """
+    Verifies that when retries <= 0, _get_attempt_delay always
+    returns timeout regardless of attempt index.
+    """
+    timeout = 2.5
+    cmd = G90BaseCommand(
+        host='mocked', port=12345, code=G90Commands.GETHOSTINFO,
+        timeout=timeout, retries=0
+    )
+
+    # pylint: disable=protected-access
+    for idx in range(5):
+        assert cmd._get_attempt_delay(idx) == pytest.approx(timeout)
