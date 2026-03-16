@@ -166,7 +166,8 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         self._result = None
 
     async def _send_and_wait_for_response(
-        self
+        self,
+        timeout: float,
     ) -> Optional[Tuple[str, int, bytes]]:
         """
         Sends the command and waits for a response.
@@ -176,17 +177,19 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
 
         loop = asyncio.get_running_loop()
         self._connection_result = loop.create_future()
+        # Both sending and waiting for response are protected by the same lock,
+        # to avoid next command to start before the current one is finished
         async with self._sk_lock:
             _LOGGER.debug(
                 '(code %s) Sending request to %s:%s',
                 self._code, self.host, self.port
             )
             self._transport.sendto(self.to_wire())
-        done, _ = await asyncio.wait(
-            [self._connection_result], timeout=self._timeout
-        )
-        if self._connection_result in done:
-            return self._connection_result.result()
+            done, _ = await asyncio.wait(
+                [self._connection_result], timeout=timeout
+            )
+            if self._connection_result in done:
+                return self._connection_result.result()
         return None
 
     def encode_data(self, data: Optional[CommandDataT]) -> str:
@@ -241,6 +244,22 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         """
         return True
 
+    def _get_attempt_delay(self, attempt: int) -> float:
+        """
+        Returns delay (seconds) used as both per-attempt timeout and
+        sleep interval before the given retry attempt.
+
+        :param attempt: The attempt number (1-based typically)
+        :return: The delay in seconds
+        """
+        if self._retries <= 0:
+            return self._timeout
+
+        # Exponential schedule scaled by overall timeout.
+        base = self._timeout / (2 ** self._retries)
+        delay = base * (2 ** attempt)
+        return float(min(self._timeout, delay))
+
     async def process(self) -> Self:  # G90Command[CommandT, CommandDataT]:
         """
         Processes the command.
@@ -256,16 +275,23 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
                 await self._send_only()
                 return self
 
-            attempts = self._retries
+            attempt = 1
             while True:
-                attempts = attempts - 1
-                response = await self._send_and_wait_for_response()
+                delay = self._get_attempt_delay(attempt)
+                response = await self._send_and_wait_for_response(delay)
+
+                # Handle timeout
                 if response is None:
                     if self._connection_result is not None:
                         self._connection_result.cancel()
-                    if not attempts:
+                    _LOGGER.debug(
+                        'Timed out after %s seconds (attempt %s)%s',
+                        delay, attempt,
+                        ', retrying' if attempt < self._retries else ''
+                    )
+                    if attempt >= self._retries:
                         raise G90TimeoutError()
-                    _LOGGER.debug('Timed out, retrying')
+                    attempt += 1
                     continue
 
                 host, port, data = response
@@ -274,10 +300,17 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
                 try:
                     self._result = self.from_wire(data)
                     break
+                # Handle retryable error
                 except G90RetryableError as exc:
-                    if not attempts:
+                    if attempt >= self._retries:
                         raise
-                    _LOGGER.debug('Retryable error (%s), retrying', exc)
+                    _LOGGER.debug(
+                        'Retryable error (%s), retrying in %s seconds'
+                        ' (attempt %d)',
+                        exc, delay, attempt
+                    )
+                    attempt += 1
+                    await asyncio.sleep(delay)
         finally:
             self._close_connection()
         return self
