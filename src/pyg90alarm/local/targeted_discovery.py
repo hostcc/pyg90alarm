@@ -25,7 +25,6 @@ from __future__ import annotations
 import logging
 from typing import Tuple, Any, Optional, Dict, List
 from dataclasses import dataclass, asdict
-import asyncio
 from asyncio.transports import BaseTransport
 from .base_cmd import G90BaseCommand
 from ..const import G90Commands
@@ -141,10 +140,7 @@ class G90TargetedDiscovery(G90BaseCommand):
         Initiates the device discovery process.
         """
         _LOGGER.debug('Attempting device discovery...')
-        await self._create_connection()
-        await self._send_only()
-        await asyncio.sleep(self._timeout)
-        self._close_connection()
+        await self._send_only(sleep_for=self._timeout)
         _LOGGER.debug('Discovered %s devices', len(self.devices))
         return self
 
