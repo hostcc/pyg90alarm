@@ -28,7 +28,9 @@ import asyncio
 from asyncio import Future
 from asyncio.protocols import DatagramProtocol
 from asyncio.transports import DatagramTransport, BaseTransport
-from typing import Optional, Tuple, List, Any, TypeVar, Generic, TYPE_CHECKING
+from typing import (
+    Optional, Tuple, List, Any, TypeVar, Generic, TYPE_CHECKING, cast
+)
 from dataclasses import dataclass
 from ..exceptions import (
     G90Error, G90TimeoutError, G90RetryableError,
@@ -56,7 +58,7 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
     def __init__(self, host: str, port: int, code: CommandT,
                  data: Optional[CommandDataT] = None,
                  local_port: Optional[int] = None,
-                 timeout: float = 3.0, retries: int = 3) -> None:
+                 timeout: float = 30.0, retries: int = 3) -> None:
         self._remote_host = host
         self._remote_port = port
         self._local_port = local_port
@@ -128,6 +130,7 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         Closes the connection to the alarm panel.
         """
         if self._transport is not None:
+            _LOGGER.debug('Closing connection to %s:%s', self.host, self.port)
             self._transport.close()
         self._transport = None
 
@@ -150,20 +153,34 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
                 f'{port}, expected from {self.port}'
             )
 
-    async def _send_only(self) -> None:
+    async def _send_only(self, sleep_for: Optional[float] = None) -> None:
         """
         Sends the command without waiting for a response.
         Used when expects_response is False.
-        """
-        assert self._transport is not None, 'Connection not established'
 
-        async with self._sk_lock:
-            _LOGGER.debug(
-                '(code %s) Sending request to %s:%s',
-                self._code, self.host, self.port
-            )
-            self._transport.sendto(self.to_wire())
-        self._result = None
+        :param sleep_for: The amount of time to sleep after sending the command
+          before returning. Used by discovery commands to wait all available
+          devices to be discovered.
+        """
+        try:
+            await self._create_connection()
+
+            async with self._sk_lock:
+                _LOGGER.debug(
+                    '(code %s) Sending request to %s:%s',
+                    self._code, self.host, self.port
+                )
+                # _create_connection() ensures that _transport is not None
+                cast(DatagramTransport, self._transport).sendto(self.to_wire())
+            # The sleep is not protected by the lock, to avoid blocking the
+            # main thread - the primary purpose of sleeping it is to allow
+            # multiple responses to be received, which shouldn't conflict with
+            # command processing (which is protected by the lock).
+            if sleep_for is not None:
+                await asyncio.sleep(sleep_for)
+            self._result = None
+        finally:
+            self._close_connection()
 
     async def _send_and_wait_for_response(
         self,
@@ -173,23 +190,29 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         Sends the command and waits for a response.
         Returns (host, port, data) on success, or None on timeout.
         """
-        assert self._transport is not None, 'Connection not established'
+        try:
+            await self._create_connection()
 
-        loop = asyncio.get_running_loop()
-        self._connection_result = loop.create_future()
-        # Both sending and waiting for response are protected by the same lock,
-        # to avoid next command to start before the current one is finished
-        async with self._sk_lock:
-            _LOGGER.debug(
-                '(code %s) Sending request to %s:%s',
-                self._code, self.host, self.port
-            )
-            self._transport.sendto(self.to_wire())
-            done, _ = await asyncio.wait(
-                [self._connection_result], timeout=timeout
-            )
-            if self._connection_result in done:
-                return self._connection_result.result()
+            loop = asyncio.get_running_loop()
+            self._connection_result = loop.create_future()
+            # Both sending and waiting for response are protected by the same
+            # lock, to avoid next command to start before the current one is
+            # finished.
+            async with self._sk_lock:
+                _LOGGER.debug(
+                    '(code %s) Sending request to %s:%s',
+                    self._code, self.host, self.port
+                )
+                # See comment above
+                cast(DatagramTransport, self._transport).sendto(self.to_wire())
+                done, _ = await asyncio.wait(
+                    [self._connection_result], timeout=timeout
+                )
+                self._close_connection()
+                if self._connection_result in done:
+                    return self._connection_result.result()
+        finally:
+            self._close_connection()
         return None
 
     def encode_data(self, data: Optional[CommandDataT]) -> str:
@@ -269,50 +292,47 @@ class G90Command(DatagramProtocol, Generic[CommandT, CommandDataT]):
         if self._code == G90Commands.NONE:
             raise G90Error("'NONE' command code is disallowed")
 
-        await self._create_connection()
-        try:
-            if not self.expects_response:
-                await self._send_only()
-                return self
+        if not self.expects_response:
+            await self._send_only()
+            return self
 
-            attempt = 1
-            while True:
-                delay = self._get_attempt_delay(attempt)
-                response = await self._send_and_wait_for_response(delay)
+        attempt = 1
+        while True:
+            delay = self._get_attempt_delay(attempt)
+            response = await self._send_and_wait_for_response(delay)
 
-                # Handle timeout
-                if response is None:
-                    if self._connection_result is not None:
-                        self._connection_result.cancel()
-                    _LOGGER.debug(
-                        'Timed out after %s seconds (attempt %s)%s',
-                        delay, attempt,
-                        ', retrying' if attempt < self._retries else ''
-                    )
-                    if attempt >= self._retries:
-                        raise G90TimeoutError()
-                    attempt += 1
-                    continue
+            # Handle timeout
+            if response is None:
+                if self._connection_result is not None:
+                    self._connection_result.cancel()
+                _LOGGER.debug(
+                    'Timed out after %s seconds (attempt %s)%s',
+                    delay, attempt,
+                    ', retrying' if attempt < self._retries else ''
+                )
+                if attempt >= self._retries:
+                    raise G90TimeoutError()
+                attempt += 1
+                continue
 
-                host, port, data = response
-                _LOGGER.debug('Received response from %s:%s', host, port)
-                self._validate_response_sender(host, port)
-                try:
-                    self._result = self.from_wire(data)
-                    break
-                # Handle retryable error
-                except G90RetryableError as exc:
-                    if attempt >= self._retries:
-                        raise
-                    _LOGGER.debug(
-                        'Retryable error (%s), retrying in %s seconds'
-                        ' (attempt %d)',
-                        exc, delay, attempt
-                    )
-                    attempt += 1
-                    await asyncio.sleep(delay)
-        finally:
-            self._close_connection()
+            host, port, data = response
+            _LOGGER.debug('Received response from %s:%s', host, port)
+            self._validate_response_sender(host, port)
+            try:
+                self._result = self.from_wire(data)
+                break
+            # Handle retryable error
+            except G90RetryableError as exc:
+                if attempt >= self._retries:
+                    raise
+                _LOGGER.debug(
+                    'Retryable error (%s), retrying in %s seconds'
+                    ' (attempt %d)',
+                    exc, delay, attempt
+                )
+                attempt += 1
+                await asyncio.sleep(delay)
+
         return self
 
     def __repr__(self) -> str:

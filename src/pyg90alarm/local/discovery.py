@@ -22,7 +22,6 @@
 Discovers G90 alarm panels.
 """
 from __future__ import annotations
-import asyncio
 from typing import Any, List, Tuple
 from dataclasses import dataclass
 import logging
@@ -82,10 +81,7 @@ class G90Discovery(G90BaseCommand):
         Initiates device discovery.
         """
         _LOGGER.debug('Attempting device discovery...')
-        await self._create_connection()
-        await self._send_only()
-        await asyncio.sleep(self._timeout)
-        self._close_connection()
+        await self._send_only(sleep_for=self._timeout)
         _LOGGER.debug('Discovered %s devices', len(self.devices))
         return self
 
