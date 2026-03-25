@@ -88,6 +88,10 @@ Known caveats
   normal closed (NC) or normal open (NO) contacts only. Best used with NC
   contact sensors though, since an intruder cutting the line will trigger the
   alarm.
+* Due to an apparent bug in certain panel firmware versions, loading CID or SIA
+  configuration periodically (seems in range of 10-20 iterations) leads to
+  paginated commands timing out afterwards. Hence, such configurations are loaded only once and then reused during `G90Alarm` lifetime, or when cache is bypassed (by passing `force=True` to corresponding `G90Alarm` methods).
+  For unification, other configuration objects are cached for 10 minutes as well, to reduce load on the panel.
 
 Device notifications
 ====================

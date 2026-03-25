@@ -16,10 +16,14 @@ from .device_mock import DeviceMock
     pytest.param(
         True, [
             b'ISTART[106,106,""]IEND\0',
+            b'ISTART[106,106,""]IEND\0',
             b'ISTART[107,107,[107,'
             b'[600,0,0,1,2,2,60,2,0,60,2]'
             b']]IEND\0'
         ], marks=pytest.mark.g90device(sent_data=[
+            b'ISTART[106,'
+            b'[900,0,0,1,2,2,60,2,0,60,2]'
+            b']IEND\0',
             b'ISTART[106,'
             b'[900,0,0,1,2,2,60,2,0,60,2]'
             b']IEND\0',
@@ -30,10 +34,14 @@ from .device_mock import DeviceMock
     pytest.param(
         False, [
             b'ISTART[106,106,""]IEND\0',
+            b'ISTART[106,106,""]IEND\0',
             b'ISTART[107,107,[107,'
             b'[600,0,0,1,2,2,60,2,0,60]'
             b']]IEND\0'
         ], marks=pytest.mark.g90device(sent_data=[
+            b'ISTART[106,'
+            b'[900,0,0,1,2,2,60,2,0,60]'
+            b']IEND\0',
             b'ISTART[106,'
             b'[900,0,0,1,2,2,60,2,0,60]'
             b']IEND\0',
@@ -170,6 +178,9 @@ async def test_host_config_constraints(
     b'ISTART[106,'
     b'[900,0,0,1,2,2,60,0,0,60,2]'
     b']IEND\0',
+    b'ISTART[106,'
+    b'[900,0,0,1,2,2,60,0,0,60,2]'
+    b']IEND\0',
     b'ISTARTIEND\0'
 ])
 async def test_host_config_speech_language_zero(
@@ -192,7 +203,37 @@ async def test_host_config_speech_language_zero(
 
     assert await mock_device.recv_data == [
         b'ISTART[106,106,""]IEND\0',
+        b'ISTART[106,106,""]IEND\0',
         b'ISTART[107,107,[107,'
         b'[900,0,0,1,2,2,60,0,0,60,2]'
+        b']]IEND\0'
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[106,'
+    b'[900,0,0,1,2,2,60,2,0,60,2]'
+    b']IEND\0',
+    b'ISTART[106,'
+    b'[901,0,0,1,2,2,61,2,0,60,2]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_host_config_save_preserves_external_changes(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Test save() keeps externally changed untouched fields.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    cfg = await g90.host_config()
+    cfg.alarm_siren_duration = 600
+    await cfg.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[106,106,""]IEND\0',
+        b'ISTART[106,106,""]IEND\0',
+        b'ISTART[107,107,[107,'
+        b'[600,0,0,1,2,2,61,2,0,60,2]'
         b']]IEND\0'
     ]

@@ -25,7 +25,9 @@ from enum import IntEnum
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional
 from ..const import G90Commands
-from ..dataclass.load_save import DataclassLoadSave, Metadata
+from ..dataclass.load_save import (
+    DataclassLoadSave, Metadata, TtlDataclassLoadPolicy,
+)
 from ..dataclass.validation import validated_int_field, validated_string_field
 
 
@@ -47,6 +49,8 @@ class G90NetConfig(DataclassLoadSave):
     # pylint: disable=too-many-instance-attributes
     LOAD_COMMAND = G90Commands.GETAPINFO
     SAVE_COMMAND = G90Commands.SETAPINFO
+    # Cache configuration for 10 minutes to reduce load on the panel.
+    LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=600)
 
     # The field constraints below have been determined experimentally by
     # entering various values into panel configuration manually. All values
@@ -105,6 +109,7 @@ class G90NetConfig(DataclassLoadSave):
     @ap_enabled.setter
     def ap_enabled(self, value: bool) -> None:
         self._ap_enabled = int(value)
+        self._dirty_fields.add('_ap_enabled')
 
     @property
     def wifi_enabled(self) -> bool:
@@ -116,6 +121,7 @@ class G90NetConfig(DataclassLoadSave):
     @wifi_enabled.setter
     def wifi_enabled(self, value: bool) -> None:
         self._wifi_enabled = int(value)
+        self._dirty_fields.add('_wifi_enabled')
 
     @property
     def gprs_enabled(self) -> bool:
@@ -127,6 +133,7 @@ class G90NetConfig(DataclassLoadSave):
     @gprs_enabled.setter
     def gprs_enabled(self, value: bool) -> None:
         self._gprs_enabled = int(value)
+        self._dirty_fields.add('_gprs_enabled')
 
     @property
     def apn_auth(self) -> G90APNAuth:
@@ -152,6 +159,7 @@ class G90NetConfig(DataclassLoadSave):
     @apn_auth.setter
     def apn_auth(self, value: G90APNAuth) -> None:
         self._apn_auth = value.value
+        self._dirty_fields.add('_apn_auth')
 
     def _asdict(self) -> Dict[str, Any]:
         return {

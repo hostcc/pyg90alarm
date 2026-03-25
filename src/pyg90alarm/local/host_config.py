@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from enum import IntEnum
 from ..dataclass.load_save import (
-    DataclassLoadSave, field_readonly_if_not_provided,
+    DataclassLoadSave, TtlDataclassLoadPolicy, field_readonly_if_not_provided,
 )
 from ..dataclass.validation import validated_int_field
 from ..const import G90Commands
@@ -73,6 +73,8 @@ class G90HostConfig(DataclassLoadSave):
     # pylint: disable=too-many-instance-attributes
     LOAD_COMMAND = G90Commands.GETHOSTCONFIG
     SAVE_COMMAND = G90Commands.SETHOSTCONFIG
+    # Cache configuration for 10 minutes to reduce load on the panel.
+    LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=600)
 
     # The field constraints below have been determined experimentally by
     # entering various values into panel configuration manually. All values

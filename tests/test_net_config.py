@@ -19,12 +19,18 @@ from .device_mock import DeviceMock
             b'ISTART[212,'
             b'[0,"123456789",1,1,"apn.a.net","user","pwd",3,"54321"]'
             b']IEND\0',
+            b'ISTART[212,'
+            b'[0,"123456789",1,1,"apn.a.net","user","pwd",3,"54321"]'
+            b']IEND\0',
             b'ISTARTIEND\0'
         ]),
         id='Device with cellular module'
     ),
     pytest.param(
         False, marks=pytest.mark.g90device(sent_data=[
+            b'ISTART[212,'
+            b'[0,"123456789",1,1,"apn.a.net","user","pwd",3]'
+            b']IEND\0',
             b'ISTART[212,'
             b'[0,"123456789",1,1,"apn.a.net","user","pwd",3]'
             b']IEND\0',
@@ -70,6 +76,7 @@ async def test_net_config(
     # Verify data sent to the device, `gsm_operator` field should not be sent
     # regardless if it was present when loading from device
     assert await mock_device.recv_data == [
+        b'ISTART[212,212,""]IEND\0',
         b'ISTART[212,212,""]IEND\0',
         b'ISTART[213,213,[213,'
         b'[1,"123456789",1,1,"apn.a.net","user","pwd",3]'
@@ -157,6 +164,9 @@ async def test_net_config_constraints(
     b'ISTART[212,'
     b'[0,"123456789",1,1,"","user","pwd",3,"54321"]'
     b']IEND\0',
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"","user","pwd",3,"54321"]'
+    b']IEND\0',
     b'ISTARTIEND\0'
 ])
 async def test_net_config_apn_name_empty(
@@ -186,6 +196,7 @@ async def test_net_config_apn_name_empty(
 
     assert await mock_device.recv_data == [
         b'ISTART[212,212,""]IEND\0',
+        b'ISTART[212,212,""]IEND\0',
         b'ISTART[213,213,[213,'
         b'[0,"123456789",1,1,"","user","pwd",3]'
         b']]IEND\0'
@@ -198,6 +209,7 @@ async def test_net_config_apn_name_empty(
     pytest.param(
         None, [
             b'ISTART[212,212,""]IEND\0',
+            b'ISTART[212,212,""]IEND\0',
             b'ISTART[213,213,[213,'
             b'[0,"123456789",1,1,"","user","pwd",333]'
             b']]IEND\0'
@@ -207,6 +219,7 @@ async def test_net_config_apn_name_empty(
     pytest.param(
         G90APNAuth.PAP, [
             b'ISTART[212,212,""]IEND\0',
+            b'ISTART[212,212,""]IEND\0',
             b'ISTART[213,213,[213,'
             b'[0,"123456789",1,1,"","user","pwd",1]'
             b']]IEND\0'
@@ -214,6 +227,9 @@ async def test_net_config_apn_name_empty(
     ),
 ])
 @pytest.mark.g90device(sent_data=[
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"","user","pwd",333,"54321"]'
+    b']IEND\0',
     b'ISTART[212,'
     b'[0,"123456789",1,1,"","user","pwd",333,"54321"]'
     b']IEND\0',
@@ -245,3 +261,32 @@ async def test_net_config_apn_auth_invalid(
 
     # Verify data sent to the device
     assert await mock_device.recv_data == expected_recv_data
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"apn.a.net","user","pwd",3,"54321"]'
+    b']IEND\0',
+    b'ISTART[212,'
+    b'[0,"123456789",1,1,"apn.a.net","external_user","pwd",3,"54321"]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_net_config_save_preserves_external_changes(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Test save() keeps externally changed untouched fields.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    cfg = await g90.net_config()
+    cfg.ap_enabled = True
+    await cfg.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[212,212,""]IEND\0',
+        b'ISTART[212,212,""]IEND\0',
+        b'ISTART[213,213,[213,'
+        b'[1,"123456789",1,1,"apn.a.net","external_user","pwd",3]'
+        b']]IEND\0'
+    ]

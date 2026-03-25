@@ -573,45 +573,50 @@ class G90Alarm(G90NotificationProtocol):
         """
         await self.alert_config.set(flags)
 
-    async def alarm_phones(self) -> G90AlarmPhones:
+    async def alarm_phones(self, force: bool = False) -> G90AlarmPhones:
         """
         Provides access to alarm panel phone numbers.
 
+        :param force: If True, bypass cached value and force device read.
         :return: Alarm panel phone numbers
         """
-        return await G90AlarmPhones.load(parent=self)
+        return await G90AlarmPhones.load(parent=self, force=force)
 
-    async def host_config(self) -> G90HostConfig:
+    async def host_config(self, force: bool = False) -> G90HostConfig:
         """
         Provides access to alarm panel configuration.
 
+        :param force: If True, bypass cached value and force device read.
         :return: Alarm panel configuration
         """
-        return await G90HostConfig.load(parent=self)
+        return await G90HostConfig.load(parent=self, force=force)
 
-    async def net_config(self) -> G90NetConfig:
+    async def net_config(self, force: bool = False) -> G90NetConfig:
         """
         Provides access to alarm panel network configuration.
 
+        :param force: If True, bypass cached value and force device read.
         :return: Alarm panel network configuration
         """
-        return await G90NetConfig.load(parent=self)
+        return await G90NetConfig.load(parent=self, force=force)
 
-    async def sia_config(self) -> G90SiaConfig:
+    async def sia_config(self, force: bool = False) -> G90SiaConfig:
         """
         Provides access to SIA Internet reporting configuration.
 
+        :param force: If True, bypass cached value and force device read.
         :return: SIA Internet reporting configuration
         """
-        return await G90SiaConfig.load(parent=self)
+        return await G90SiaConfig.load(parent=self, force=force)
 
-    async def cid_config(self) -> G90CidConfig:
+    async def cid_config(self, force: bool = False) -> G90CidConfig:
         """
         Provides access to CID (Contact ID) phone reporting configuration.
 
+        :param force: If True, bypass cached value and force device read.
         :return: CID phone reporting configuration
         """
-        return await G90CidConfig.load(parent=self)
+        return await G90CidConfig.load(parent=self, force=force)
 
     @property
     async def user_data_crc(self) -> G90UserDataCRC:

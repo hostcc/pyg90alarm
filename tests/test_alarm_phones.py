@@ -15,6 +15,9 @@ from .device_mock import DeviceMock
     b'ISTART[114,'
     b'["1234", "11111111", "", "", "", "", "", "", "87654321", "12345678"]'
     b']IEND\0',
+    b'ISTART[114,'
+    b'["1234", "11111111", "", "", "", "", "", "", "87654321", "12345678"]'
+    b']IEND\0',
     b'ISTARTIEND\0'
 ])
 async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
@@ -47,8 +50,38 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
     # Verify data sent to the device
     assert await mock_device.recv_data == [
         b'ISTART[114,114,""]IEND\0',
+        b'ISTART[114,114,""]IEND\0',
         b'ISTART[108,108,[108,'
         b'["5678","11111111","","","","","","","87654321","12345678"]'
+        b']]IEND\0'
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[114,'
+    b'["1234", "11111111", "", "", "", "", "", "", "87654321", "12345678"]'
+    b']IEND\0',
+    b'ISTART[114,'
+    b'["1234", "11111111", "", "", "", "", "", "", "99999999", "88888888"]'
+    b']IEND\0',
+    b'ISTARTIEND\0'
+])
+async def test_alarm_phones_save_preserves_external_changes(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Test save() keeps externally changed untouched fields.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    phones = await g90.alarm_phones()
+    phones.panel_password = '5678'
+    await phones.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[114,114,""]IEND\0',
+        b'ISTART[114,114,""]IEND\0',
+        b'ISTART[108,108,[108,'
+        b'["5678","11111111","","","","","","","99999999","88888888"]'
         b']]IEND\0'
     ]
 

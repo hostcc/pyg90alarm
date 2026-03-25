@@ -26,7 +26,10 @@ from dataclasses import dataclass
 from typing import Any, Dict
 
 from ..const import G90Commands
-from ..dataclass.load_save import DataclassLoadSave
+from ..dataclass.load_save import (
+    DataclassLoadSave,
+    LoadOnceDataclassLoadPolicy,
+)
 from ..dataclass.validation import (
     validated_int_field,
     validated_string_field,
@@ -41,6 +44,11 @@ class G90CidConfig(DataclassLoadSave):
 
     LOAD_COMMAND = G90Commands.GETCID
     SAVE_COMMAND = G90Commands.SETCID
+    # Due to an apparent bug in certain panel firmware versions, loading CID
+    # configuration periodically (seems in range of 10-20 iterations) leads to
+    # paginated commands timing out. Hence, the configuration is loaded once
+    # and then reused until the next load to avoid the issue.
+    LOAD_POLICY = LoadOnceDataclassLoadPolicy()
 
     # All values received from the panel are trusted.
 
@@ -75,6 +83,7 @@ class G90CidConfig(DataclassLoadSave):
     @enabled.setter
     def enabled(self, value: bool) -> None:
         self._enabled = int(value)
+        self._dirty_fields.add('_enabled')
 
     def serialize(self) -> list[Any]:
         """
