@@ -237,3 +237,32 @@ async def test_host_config_save_preserves_external_changes(
         b'[600,0,0,1,2,2,61,2,0,60,2]'
         b']]IEND\0'
     ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[106,'
+    b'[900,0,0,1,2,2,60,2,0,60,2]'
+    b']IEND\0',
+    b'ISTART[106,'
+    b'[900,0,0,1,2,2,60,2,0,60,2]'
+    b']IEND\0',
+    b'ISTARTIEND\0',
+])
+async def test_host_config_save_persists_speech_language_property(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Enum-backed property setters must mark private fields dirty for RMW save.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    cfg = await g90.host_config()
+    cfg.speech_language = G90SpeechLanguage.CHINESE_FEMALE
+    await cfg.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[106,106,""]IEND\0',
+        b'ISTART[106,106,""]IEND\0',
+        b'ISTART[107,107,[107,'
+        b'[900,0,0,1,2,2,60,3,0,60,2]'
+        b']]IEND\0',
+    ]

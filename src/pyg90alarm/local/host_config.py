@@ -141,6 +141,7 @@ class G90HostConfig(DataclassLoadSave):
     @speech_language.setter
     def speech_language(self, value: G90SpeechLanguage) -> None:
         self._speech_language = value.value
+        self._dirty_fields.add('_speech_language')
 
     @property
     def alarm_volume_level(self) -> G90VolumeLevel:
@@ -152,6 +153,7 @@ class G90HostConfig(DataclassLoadSave):
     @alarm_volume_level.setter
     def alarm_volume_level(self, value: G90VolumeLevel) -> None:
         self._alarm_volume_level = value.value
+        self._dirty_fields.add('_alarm_volume_level')
 
     @property
     def speech_volume_level(self) -> G90VolumeLevel:
@@ -163,6 +165,7 @@ class G90HostConfig(DataclassLoadSave):
     @speech_volume_level.setter
     def speech_volume_level(self, value: G90VolumeLevel) -> None:
         self._speech_volume_level = value.value
+        self._dirty_fields.add('_speech_volume_level')
 
     @property
     def key_tone_volume_level(self) -> G90VolumeLevel:
@@ -174,6 +177,7 @@ class G90HostConfig(DataclassLoadSave):
     @key_tone_volume_level.setter
     def key_tone_volume_level(self, value: G90VolumeLevel) -> None:
         self._key_tone_volume_level = value.value
+        self._dirty_fields.add('_key_tone_volume_level')
 
     @property
     def ring_volume_level(self) -> Optional[G90VolumeLevel]:
@@ -191,6 +195,7 @@ class G90HostConfig(DataclassLoadSave):
     @ring_volume_level.setter
     def ring_volume_level(self, value: G90VolumeLevel) -> None:
         self._ring_volume_level = value.value
+        self._dirty_fields.add('_ring_volume_level')
 
     def _asdict(self) -> Dict[str, Any]:
         """
