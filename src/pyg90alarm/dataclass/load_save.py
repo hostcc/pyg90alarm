@@ -95,19 +95,19 @@ class TtlDataclassLoadPolicy(DataclassLoadPolicy):
         """
         Load from cache when fresh, otherwise read from the device.
         """
-        now = time.monotonic()
         if not force and self._ttl_seconds > 0:
             cached = self._cache.get(parent)
             if cached is not None:
                 obj, loaded_at_monotonic = cached
                 if (
                     isinstance(obj, cls)
-                    and (now - loaded_at_monotonic) < self._ttl_seconds
+                    and (time.monotonic() - loaded_at_monotonic)
+                    < self._ttl_seconds
                 ):
                     return obj
 
         loaded = await cls.load_uncached(parent)
-        self._cache[parent] = (loaded, now)
+        self._cache[parent] = (loaded, time.monotonic())
         return loaded
 
 
