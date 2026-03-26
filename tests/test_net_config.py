@@ -272,11 +272,11 @@ async def test_net_config_apn_auth_invalid(
     b']IEND\0',
     b'ISTARTIEND\0'
 ])
-async def test_net_config_save_preserves_external_changes(
+async def test_net_config_save_persists_ap_enabled_property(
     mock_device: DeviceMock
 ) -> None:
     """
-    Test save() keeps externally changed untouched fields.
+    Private-backed ``ap_enabled`` property must be tracked and persisted in RMW.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     cfg = await g90.net_config()
@@ -290,3 +290,5 @@ async def test_net_config_save_preserves_external_changes(
         b'[1,"123456789",1,1,"apn.a.net","external_user","pwd",3]'
         b']]IEND\0'
     ]
+
+

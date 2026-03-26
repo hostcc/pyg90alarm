@@ -23,7 +23,7 @@ Unit tests for DataclassLoadSave functionality.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
-from unittest.mock import AsyncMock, call
+from unittest.mock import AsyncMock, call, patch
 
 import pytest
 
@@ -32,6 +32,7 @@ from pyg90alarm.dataclass.load_save import (
     DataclassLoadSave,
     LoadOnceDataclassLoadPolicy,
     Metadata,
+    TtlDataclassLoadPolicy,
     field_readonly_if_not_provided,
 )
 
@@ -285,6 +286,92 @@ async def test_load_once_policy_reuses_instance() -> None:
 
     third = await LoadOnceTestConfig.load(mock_parent)
     assert third is refreshed
+    assert mock_parent.command.call_count == 2
+
+
+async def test_ttl_policy_reuses_instance_within_ttl() -> None:
+    """
+    TTL policy should return cached instance while entry is fresh.
+    """
+
+    @dataclass
+    class TtlConfig(DataclassLoadSave):
+        LOAD_COMMAND = G90Commands.GETHOSTINFO
+        SAVE_COMMAND = G90Commands.SETHOSTSTATUS
+        LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=10.0)
+
+        x: int = 0
+
+    mock_parent = AsyncMock()
+    mock_parent.command = AsyncMock(side_effect=[[1], [2]])
+
+    with patch(
+        "pyg90alarm.dataclass.load_save.time.monotonic",
+        side_effect=[100.0, 105.0],
+    ):
+        first = await TtlConfig.load(mock_parent)
+        second = await TtlConfig.load(mock_parent)
+
+    assert first is second
+    assert first.x == 1
+    assert mock_parent.command.call_count == 1
+
+
+async def test_ttl_policy_refreshes_after_expiry() -> None:
+    """
+    TTL policy should reload when cached entry is stale.
+    """
+
+    @dataclass
+    class TtlConfig(DataclassLoadSave):
+        LOAD_COMMAND = G90Commands.GETHOSTINFO
+        SAVE_COMMAND = G90Commands.SETHOSTSTATUS
+        LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=10.0)
+
+        x: int = 0
+
+    mock_parent = AsyncMock()
+    mock_parent.command = AsyncMock(side_effect=[[1], [2]])
+
+    with patch(
+        "pyg90alarm.dataclass.load_save.time.monotonic",
+        side_effect=[100.0, 111.0, 112.0],
+    ):
+        first = await TtlConfig.load(mock_parent)
+        second = await TtlConfig.load(mock_parent)
+
+    assert first is not second
+    assert first.x == 1
+    assert second.x == 2
+    assert mock_parent.command.call_count == 2
+
+
+async def test_ttl_policy_force_refreshes_even_within_ttl() -> None:
+    """
+    TTL policy should bypass cache when ``force=True``.
+    """
+
+    @dataclass
+    class TtlConfig(DataclassLoadSave):
+        LOAD_COMMAND = G90Commands.GETHOSTINFO
+        SAVE_COMMAND = G90Commands.SETHOSTSTATUS
+        LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=10.0)
+
+        x: int = 0
+
+    mock_parent = AsyncMock()
+    mock_parent.command = AsyncMock(side_effect=[[1], [2]])
+
+    with patch(
+        "pyg90alarm.dataclass.load_save.time.monotonic",
+        side_effect=[100.0, 101.0],
+    ):
+        first = await TtlConfig.load(mock_parent)
+        second = await TtlConfig.load(mock_parent, force=True)
+
+    assert first is not second
+    assert first.x == 1
+    assert second.x == 2
     assert mock_parent.command.call_count == 2
 
 

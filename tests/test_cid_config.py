@@ -53,33 +53,6 @@ async def test_cid_config_load_and_save(mock_device: DeviceMock) -> None:
 @pytest.mark.g90device(
     sent_data=[
         b'ISTART[232,["+1234567890","+0987654321","USER1",1,"000F"]]IEND\0',
-        b'ISTART[232,["+1234567890","+2222222222","USER1",1,"00FF"]]IEND\0',
-        b"ISTARTIEND\0",
-    ]
-)
-async def test_cid_config_save_preserves_external_changes(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Test save() keeps externally changed untouched fields.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    cfg = await g90.cid_config()
-    cfg.phone1 = "+1111111111"
-    await cfg.save()
-
-    assert await mock_device.recv_data == [
-        b'ISTART[232,232,""]IEND\0',
-        b'ISTART[232,232,""]IEND\0',
-        b'ISTART[233,233,[233,'
-        b'["+1111111111","+2222222222","USER1",1,"FFFF"]'
-        b"]]IEND\0",
-    ]
-
-
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[232,["+1234567890","+0987654321","USER1",1,"000F"]]IEND\0',
         b'ISTART[232,["+1111111111","+2222222222","USER2",0,"00FF"]]IEND\0',
     ]
 )
@@ -100,4 +73,31 @@ async def test_cid_config_cache_and_force_refresh(
     assert await mock_device.recv_data == [
         b'ISTART[232,232,""]IEND\0',
         b'ISTART[232,232,""]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(
+    sent_data=[
+        b'ISTART[232,["+1234567890","+0987654321","USER1",1,"000F"]]IEND\0',
+        b'ISTART[232,["+1234567890","+2222222222","USER1",1,"00FF"]]IEND\0',
+        b"ISTARTIEND\0",
+    ]
+)
+async def test_cid_config_save_persists_enabled_property(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Private-backed ``enabled`` property must be tracked and persisted in RMW.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    cfg = await g90.cid_config()
+    cfg.enabled = False
+    await cfg.save()
+
+    assert await mock_device.recv_data == [
+        b'ISTART[232,232,""]IEND\0',
+        b'ISTART[232,232,""]IEND\0',
+        b'ISTART[233,233,[233,'
+        b'["+1234567890","+2222222222","USER1",0,"FFFF"]'
+        b"]]IEND\0",
     ]
