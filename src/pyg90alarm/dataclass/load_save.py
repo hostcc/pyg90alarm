@@ -99,15 +99,12 @@ class TtlDataclassLoadPolicy(DataclassLoadPolicy):
             cached = self._cache.get(parent)
             if cached is not None:
                 obj, loaded_at_monotonic = cached
-                if (
-                    isinstance(obj, cls)
-                    and (time.monotonic() - loaded_at_monotonic)
-                    < self._ttl_seconds
-                ):
+                ttl_elapsed = time.monotonic() - loaded_at_monotonic
+                if isinstance(obj, cls) and ttl_elapsed < self._ttl_seconds:
                     _LOGGER.debug(
-                        '%s: Loaded from cache (ttl: %s): %s',
+                        '%s: Loaded from cache (ttl: %s, elapsed: %s): %s',
                         self.__class__.__name__, self._ttl_seconds,
-                        str(obj)
+                        ttl_elapsed, str(obj)
                     )
                     return obj
 
