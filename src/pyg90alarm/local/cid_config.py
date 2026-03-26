@@ -92,8 +92,15 @@ class G90CidConfig(DataclassLoadSave):
         The `event_flags` element is always set to `FFFF` regardless
         of the current value, as expected by the panel.
         """
-        self.event_flags = 'FFFF'
-        return super().serialize()
+        # Serialize mutates the payload only; we must not permanently alter
+        # local in-memory state because DataclassLoadSave.save() later
+        # re-syncs fields from the refreshed instance.
+        original_event_flags = self.event_flags
+        try:
+            self.event_flags = 'FFFF'
+            return super().serialize()
+        finally:
+            self.event_flags = original_event_flags
 
     def _asdict(self) -> Dict[str, Any]:
         """

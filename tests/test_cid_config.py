@@ -40,6 +40,10 @@ async def test_cid_config_load_and_save(mock_device: DeviceMock) -> None:
     cfg.enabled = False
     await cfg.save()
 
+    # Serialize() forces event_flags in the outbound SET command payload,
+    # but local in-memory state should not be permanently mutated.
+    assert cfg.event_flags == "000F"
+
     # Verify data sent to the device; event_flags must be forced to FFFF
     assert await mock_device.recv_data == [
         b'ISTART[232,232,""]IEND\0',

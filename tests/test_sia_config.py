@@ -90,6 +90,10 @@ async def test_sia_config_load_and_save(
     cfg.encryption = False
     await cfg.save()
 
+    # Serialize() forces event_flags in the outbound SET command payload,
+    # but local in-memory state should not be permanently mutated.
+    assert cfg.event_flags == "0000FFFF"
+
     # Verify data sent to the device
     assert await mock_device.recv_data == expected_recv_data
 
