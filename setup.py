@@ -14,7 +14,9 @@ long_description = (here / 'README.rst').read_text(encoding='utf-8')
 
 setup(
     name='pyg90alarm',
-    setup_requires=['setuptools_scm'],
+    # `setuptools_scm` is pinned to avoid `No module named 'vcs_versioning'`
+    # error with 10.0.2
+    setup_requires=['setuptools_scm==9.2.2'],
     use_scm_version={
         "local_scheme": "no-local-version"
     },

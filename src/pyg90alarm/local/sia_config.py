@@ -27,7 +27,9 @@ from typing import Any, Dict, Optional
 
 from ..const import G90Commands
 from ..dataclass.load_save import (
-    DataclassLoadSave, field_readonly_if_not_provided
+    DataclassLoadSave,
+    LoadOnceDataclassLoadPolicy,
+    field_readonly_if_not_provided,
 )
 from ..dataclass.validation import (
     validated_int_field,
@@ -44,8 +46,11 @@ class G90SiaConfig(DataclassLoadSave):
 
     LOAD_COMMAND = G90Commands.GETSIA
     SAVE_COMMAND = G90Commands.SETSIA
-
-    # All values received from the panel are trusted.
+    # Due to an apparent bug in certain panel firmware versions, loading SIA
+    # configuration periodically (seems in range of 10-20 iterations) leads to
+    # paginated commands timing out. Hence, the configuration is loaded once
+    # and then reused until the next load to avoid the issue.
+    LOAD_POLICY = LoadOnceDataclassLoadPolicy()
 
     # IP address or hostname of the central station receiver
     host: str = validated_string_field(
@@ -101,6 +106,7 @@ class G90SiaConfig(DataclassLoadSave):
     @encryption.setter
     def encryption(self, value: bool) -> None:
         self._encryption = int(value)
+        self._dirty_fields.add('_encryption')
 
     @property
     def enabled(self) -> bool:
@@ -112,6 +118,7 @@ class G90SiaConfig(DataclassLoadSave):
     @enabled.setter
     def enabled(self, value: bool) -> None:
         self._enabled = int(value)
+        self._dirty_fields.add('_enabled')
 
     def serialize(self) -> list[Any]:
         """
@@ -120,8 +127,15 @@ class G90SiaConfig(DataclassLoadSave):
         The `event_flags` element is always set to `FFFFFFFF`
         regardless of the current value, as expected by the panel.
         """
-        self.event_flags = 'FFFFFFFF'
-        return super().serialize()
+        # Serialize mutates the payload only; we must not permanently alter
+        # local in-memory state because DataclassLoadSave.save() later
+        # re-syncs fields from the refreshed instance.
+        original_event_flags = self.event_flags
+        try:
+            self.event_flags = 'FFFFFFFF'
+            return super().serialize()
+        finally:
+            self.event_flags = original_event_flags
 
     def _asdict(self) -> Dict[str, Any]:
         """

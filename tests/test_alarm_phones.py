@@ -15,6 +15,9 @@ from .device_mock import DeviceMock
     b'ISTART[114,'
     b'["1234", "11111111", "", "", "", "", "", "", "87654321", "12345678"]'
     b']IEND\0',
+    b'ISTART[114,'
+    b'["1234", "11111111", "", "", "", "", "", "", "87654321", "12345678"]'
+    b']IEND\0',
     b'ISTARTIEND\0'
 ])
 async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
@@ -46,6 +49,7 @@ async def test_alarm_phones_config(mock_device: DeviceMock) -> None:
 
     # Verify data sent to the device
     assert await mock_device.recv_data == [
+        b'ISTART[114,114,""]IEND\0',
         b'ISTART[114,114,""]IEND\0',
         b'ISTART[108,108,[108,'
         b'["5678","11111111","","","","","","","87654321","12345678"]'

@@ -24,7 +24,9 @@ from __future__ import annotations
 from typing import Dict, Any
 from dataclasses import dataclass
 from ..const import G90Commands
-from ..dataclass.load_save import DataclassLoadSave
+from ..dataclass.load_save import (
+    DataclassLoadSave, TtlDataclassLoadPolicy,
+)
 from ..dataclass.validation import validated_string_field
 
 
@@ -36,6 +38,8 @@ class G90AlarmPhones(DataclassLoadSave):
     # pylint: disable=too-many-instance-attributes
     LOAD_COMMAND = G90Commands.GETALMPHONE
     SAVE_COMMAND = G90Commands.SETALMPHONE
+    # Cache configuration for 10 minutes to reduce load on the panel.
+    LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=600)
 
     # The field constraints below have been determined experimentally by
     # entering various values into panel configuration manually. All values

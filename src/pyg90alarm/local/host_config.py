@@ -25,7 +25,7 @@ from typing import Dict, Any, Optional
 from dataclasses import dataclass
 from enum import IntEnum
 from ..dataclass.load_save import (
-    DataclassLoadSave, field_readonly_if_not_provided,
+    DataclassLoadSave, TtlDataclassLoadPolicy, field_readonly_if_not_provided,
 )
 from ..dataclass.validation import validated_int_field
 from ..const import G90Commands
@@ -73,6 +73,8 @@ class G90HostConfig(DataclassLoadSave):
     # pylint: disable=too-many-instance-attributes
     LOAD_COMMAND = G90Commands.GETHOSTCONFIG
     SAVE_COMMAND = G90Commands.SETHOSTCONFIG
+    # Cache configuration for 10 minutes to reduce load on the panel.
+    LOAD_POLICY = TtlDataclassLoadPolicy(ttl_seconds=600)
 
     # The field constraints below have been determined experimentally by
     # entering various values into panel configuration manually. All values
@@ -139,6 +141,7 @@ class G90HostConfig(DataclassLoadSave):
     @speech_language.setter
     def speech_language(self, value: G90SpeechLanguage) -> None:
         self._speech_language = value.value
+        self._dirty_fields.add('_speech_language')
 
     @property
     def alarm_volume_level(self) -> G90VolumeLevel:
@@ -150,6 +153,7 @@ class G90HostConfig(DataclassLoadSave):
     @alarm_volume_level.setter
     def alarm_volume_level(self, value: G90VolumeLevel) -> None:
         self._alarm_volume_level = value.value
+        self._dirty_fields.add('_alarm_volume_level')
 
     @property
     def speech_volume_level(self) -> G90VolumeLevel:
@@ -161,6 +165,7 @@ class G90HostConfig(DataclassLoadSave):
     @speech_volume_level.setter
     def speech_volume_level(self, value: G90VolumeLevel) -> None:
         self._speech_volume_level = value.value
+        self._dirty_fields.add('_speech_volume_level')
 
     @property
     def key_tone_volume_level(self) -> G90VolumeLevel:
@@ -172,6 +177,7 @@ class G90HostConfig(DataclassLoadSave):
     @key_tone_volume_level.setter
     def key_tone_volume_level(self, value: G90VolumeLevel) -> None:
         self._key_tone_volume_level = value.value
+        self._dirty_fields.add('_key_tone_volume_level')
 
     @property
     def ring_volume_level(self) -> Optional[G90VolumeLevel]:
@@ -189,6 +195,7 @@ class G90HostConfig(DataclassLoadSave):
     @ring_volume_level.setter
     def ring_volume_level(self, value: G90VolumeLevel) -> None:
         self._ring_volume_level = value.value
+        self._dirty_fields.add('_ring_volume_level')
 
     def _asdict(self) -> Dict[str, Any]:
         """
