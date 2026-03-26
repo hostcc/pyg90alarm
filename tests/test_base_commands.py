@@ -121,7 +121,7 @@ async def test_timeout(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
-    b'\xdeadbeef\0',
+    b'ISTART\xdeadbeefIEND\0',
 ])
 async def test_invalid_utf8_encoding(mock_device: DeviceMock) -> None:
     """
@@ -134,7 +134,7 @@ async def test_invalid_utf8_encoding(mock_device: DeviceMock) -> None:
 
     with pytest.raises(
         G90Error,
-        match=re.escape("Unable to decode response from UTF-8")
+        match=re.escape("Unable to parse response as JSON: '�adbeef'")
     ):
         await g90.process()
     assert await mock_device.recv_data == [b'ISTART[206,206,""]IEND\0']
