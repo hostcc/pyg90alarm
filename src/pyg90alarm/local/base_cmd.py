@@ -437,30 +437,40 @@ class G90BaseCommand(G90Command[BaseCommandsT, BaseCommandsDataT]):
         Parses the response from the alarm panel.
         """
         _LOGGER.debug('To be decoded from wire format %s', data)
+
+        # Protocol markers must be processed strictly on bytes to avoid
+        # invalid UTF-8 corrupting marker detection.
+        start_marker = b'ISTART'
+        if not data.startswith(start_marker):
+            raise G90Error('Missing start marker in data')
+
+        end_marker = b'IEND\0'
+        if not data.endswith(end_marker):
+            raise G90Error('Missing end marker in data')
+
+        payload_bytes = data[len(start_marker):-len(end_marker)]
         try:
-            decoded_data = data.decode('utf-8')
-            if not decoded_data.startswith('ISTART'):
-                raise G90Error('Missing start marker in data')
-            if not decoded_data.endswith('IEND\0'):
-                raise G90Error('Missing end marker in data')
-            payload = decoded_data[6:-5]
-            _LOGGER.debug("Decoded from wire: string '%s'", payload)
-
-            if not payload:
-                return []
-
-            # Panel may report the last command has failed
-            if payload == 'fail':
-                raise G90CommandFailure(
-                    f"Command {self._code.name}"
-                    f" (code={self._code.value}) failed"
-                )
-
-            return self.decode_data(payload)
+            payload = payload_bytes.decode('utf-8')
         except UnicodeDecodeError as exc:
-            raise G90Error(
-                'Unable to decode response from UTF-8'
-            ) from exc
+            _LOGGER.debug(
+                "Unable to decode response '%s' as strict UTF-8 (%s),"
+                " invalid characters will be replaced",
+                payload_bytes, exc
+            )
+            payload = payload_bytes.decode('utf-8', errors='replace')
+        _LOGGER.debug("Decoded from wire: string '%s'", payload)
+
+        if not payload:
+            return []
+
+        # Panel may report the last command has failed
+        if payload == 'fail':
+            raise G90CommandFailure(
+                f"Command {self._code.name}"
+                f" (code={self._code.value}) failed"
+            )
+
+        return self.decode_data(payload)
 
     @property
     def result(self) -> BaseCommandsDataT:
