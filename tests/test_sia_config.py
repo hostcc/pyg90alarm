@@ -139,7 +139,8 @@ async def test_sia_config_save_persists_encryption_property(
     mock_device: DeviceMock,
 ) -> None:
     """
-    Private-backed ``encryption`` property must be tracked and persisted in RMW.
+    Private-backed ``encryption`` property must be tracked and persisted in
+    RMW.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     cfg = await g90.sia_config()

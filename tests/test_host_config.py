@@ -237,5 +237,3 @@ async def test_host_config_save_persists_speech_language_property(
         b'[900,0,0,1,2,2,60,3,0,60,2]'
         b']]IEND\0',
     ]
-
-
