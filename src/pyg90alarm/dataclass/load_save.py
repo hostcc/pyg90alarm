@@ -43,7 +43,7 @@ T = TypeVar('T')
 
 class DataclassLoadPolicy:
     """
-    Defines strategy for loading dataclass-backed panel configuration.
+    Defines strategy for loading dataclass-backed panel entity.
     """
     # pylint: disable=too-few-public-methods
     async def load(
@@ -53,14 +53,14 @@ class DataclassLoadPolicy:
         force: bool = False,
     ) -> DataclassLoadSaveT:
         """
-        Load configuration according to the policy.
+        Load entity according to the policy.
         """
         raise NotImplementedError()
 
 
 class NoCacheDataclassLoadPolicy(DataclassLoadPolicy):
     """
-    Always loads configuration from the panel.
+    Always loads entity from the panel.
     """
     # pylint: disable=too-few-public-methods
     async def load(
@@ -77,7 +77,7 @@ class NoCacheDataclassLoadPolicy(DataclassLoadPolicy):
 
 class TtlDataclassLoadPolicy(DataclassLoadPolicy):
     """
-    Reuses loaded configuration for a given parent within a TTL.
+    Reuses loaded entity for a given parent within a TTL.
     """
     # pylint: disable=too-few-public-methods
     def __init__(self, ttl_seconds: float) -> None:
@@ -102,7 +102,7 @@ class TtlDataclassLoadPolicy(DataclassLoadPolicy):
                 ttl_elapsed = time.monotonic() - loaded_at_monotonic
                 if isinstance(obj, cls) and ttl_elapsed < self._ttl_seconds:
                     _LOGGER.debug(
-                        '%s: Loaded from cache (ttl: %s, elapsed: %s): %s',
+                        '%s: Loaded from cache (ttl: %.2f, elapsed: %.2f): %s',
                         self.__class__.__name__, self._ttl_seconds,
                         ttl_elapsed, str(obj)
                     )
@@ -119,7 +119,7 @@ class TtlDataclassLoadPolicy(DataclassLoadPolicy):
 
 class LoadOnceDataclassLoadPolicy(DataclassLoadPolicy):
     """
-    Loads configuration from the device once per ``G90Alarm`` instance.
+    Loads entity from the device once per ``G90Alarm`` instance.
 
     Subsequent ``load`` calls return the same in-memory object until
     ``force=True`` (or the parent alarm instance is garbage-collected).
@@ -410,9 +410,9 @@ class DataclassLoadSave:
         assert self.SAVE_COMMAND is not None, '`SAVE_COMMAND` must be defined'
         assert self._parent is not None, 'Please call `load()` first'
 
-        # Reload the configuration from the device to get the latest values
+        # Reload the entity from the device to get the latest values
         _LOGGER.debug(
-            '%s: Reloading configuration from the device',
+            '%s: Reloading entity from the device',
             self.__class__.__name__
         )
         refreshed = await type(self).load(self._parent, force=True)
@@ -457,8 +457,7 @@ class DataclassLoadSave:
         :return: An instance of the dataclass loaded from the device.
         """
         _LOGGER.debug(
-            '%s: Loading configuration from the device'
-            ' (policy: %s, force: %s)',
+            '%s: Loading entity (%s, force: %s)',
             cls.__name__, cls.LOAD_POLICY.__class__.__name__, force
         )
         return await cls.LOAD_POLICY.load(cls, parent, force=force)
@@ -473,6 +472,9 @@ class DataclassLoadSave:
         assert cls.LOAD_COMMAND is not None, '`LOAD_COMMAND` must be defined'
         assert parent is not None, '`parent` must be provided'
 
+        _LOGGER.debug(
+            '%s: Loading entity from device', cls.__name__
+        )
         data = await parent.command(cls.LOAD_COMMAND)
         obj = cls(*data)
         _LOGGER.debug('%s: Loaded data: %s', cls.__name__, str(obj))
