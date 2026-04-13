@@ -3,7 +3,7 @@
 # https://pip.pypa.io/en/stable/reference/pip/#pep-517-and-518-support
 # `setuptools_scm` is pinned to avoid `No module named 'vcs_versioning'`
 # error with 10.0.2
-requires = ["setuptools>=40.8.0", "wheel", "setuptools_scm==9.2.2"]
+requires = ["setuptools>=82.0.1", "wheel", "setuptools_scm==9.2.2"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
