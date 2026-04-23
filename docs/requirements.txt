@@ -4,12 +4,14 @@ sphinx-autodoc-typehints==2.3.0; python_version < '3.11'
 # `spinx-autodoc-typehints` 3.6+ require Sphinx 9.x - pin it to 3.5.2 last
 # supporting Sphinx 8.x (see below for the reason)
 sphinx-autodoc-typehints==3.5.2; python_version >= '3.11'
-pygments>=2.15.0 # not directly required, pinned by Snyk to avoid a vulnerability
+pygments>=2.20.0 # not directly required, pinned by Snyk to avoid a vulnerability
 # enum_tools.autoenum doesn't support sphinx 9.x yet,
 # https://github.com/domdfcoding/enum_tools/issues/118
 sphinx==8.2.3
-setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=78.1.1 # not directly required, pinned by Snyk to avoid a vulnerability
 certifi>=2023.7.22 # not directly required, pinned by Snyk to avoid a vulnerability
-requests>=2.32.5 # not directly required, pinned by Snyk to avoid a vulnerability
+requests>=2.33.0 # not directly required, pinned by Snyk to avoid a vulnerability
 jinja2>=3.1.6 # not directly required, pinned by Snyk to avoid a vulnerability
 idna>=3.12 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3>=2.6.3 # not directly required, pinned by Snyk to avoid a vulnerability
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
