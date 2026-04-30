@@ -393,10 +393,86 @@ async def test_sensor_set_user_flags(
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[102,'
-    b'[[1,1,1],'
-    b'["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]'
-    b']]IEND\0',
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
+    b"ISTARTIEND\0",
+    b'ISTART[102,[[1,1,1],["Renamed",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
+])
+async def test_sensor_set_name(mock_device: DeviceMock) -> None:
+    """
+    Tests for setting a sensor name.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    sensors = await g90.sensors
+    await sensors[0].set_name('Renamed')
+    assert sensors[0].name == 'Renamed'
+    assert await mock_device.recv_data == [
+        b'ISTART[102,102,[102,[1,10]]]IEND\0',
+        b'ISTART[102,102,[102,[1,1]]]IEND\0',
+        b'ISTART[103,103,[103,["Renamed",10,0,126,1,0,33,0,5,16,1,0,0,"00"]'
+        b']]IEND\0',
+        b'ISTART[102,102,[102,[1,10]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
+])
+async def test_sensor_set_name_not_changed(mock_device: DeviceMock) -> None:
+    """
+    Tests for setting the same sensor name.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    sensors = await g90.sensors
+    await sensors[0].set_name('Cord 2')
+    assert sensors[0].name == 'Cord 2'
+    assert await mock_device.recv_data == [
+        b'ISTART[102,102,[102,[1,10]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,1,0,5,16,1,0,""]]]IEND\0',
+])
+async def test_sensor_set_name_externally_modified(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for renaming a sensor that has been modified externally.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    sensors = await g90.sensors
+    await sensors[0].set_name('Renamed cord')
+    assert sensors[0].name == 'Cord 2'
+    assert await mock_device.recv_data == [
+        b'ISTART[102,102,[102,[1,10]]]IEND\0',
+        b'ISTART[102,102,[102,[1,1]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
+    b'ISTART[102,[[1,1,0]]]IEND\0',
+])
+async def test_sensor_set_name_not_found_on_refresh(
+    mock_device: DeviceMock
+) -> None:
+    """
+    Tests for renaming a sensor that is not found on refresh.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    sensors = await g90.sensors
+    await sensors[0].set_name('Renamed cord')
+    assert sensors[0].name == 'Cord 2'
+    assert await mock_device.recv_data == [
+        b'ISTART[102,102,[102,[1,10]]]IEND\0',
+        b'ISTART[102,102,[102,[1,1]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[102,[[1,1,1],["Cord 2",10,0,126,1,0,33,0,5,16,1,0,""]]]IEND\0',
     b"ISTARTIEND\0",
 ])
 async def test_sensor_delete(mock_device: DeviceMock) -> None:
@@ -414,14 +490,12 @@ async def test_sensor_delete(mock_device: DeviceMock) -> None:
 
 
 REGISTER_SENSOR_SENT_DATA = [
-    b'ISTART[102,'
-    b'[[2,1,2],'
+    b'ISTART[102,[[2,1,2],'
     b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
     b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""]'
     b']]IEND\0',
     b'ISTARTIEND\0',
-    b'ISTART[102,'
-    b'[[3,1,3],'
+    b'ISTART[102,[[3,1,3],'
     b'["Cord 1",11,0,126,1,0,63,0,5,16,1,0,""],'
     b'["Cord 2",10,0,126,1,0,63,0,5,16,1,0,""],'
     b'["Test sensor",3,0,1,3,0,33,0,0,0,1,0,""]'
