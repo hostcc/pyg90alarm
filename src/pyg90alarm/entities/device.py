@@ -38,6 +38,27 @@ class G90Device(G90Sensor):
     Interacts with device (relay) on G90 alarm panel.
     """
     @property
+    def _get_list_command(self) -> G90Commands:
+        """
+        Panel command used to refresh this device.
+        """
+        return G90Commands.GETDEVICELIST
+
+    @property
+    def _set_single_command(self) -> G90Commands:
+        """
+        Panel command used to write this device.
+        """
+        return G90Commands.SETSINGLEDEVICE
+
+    @property
+    def _entity_kind(self) -> str:
+        """
+        Entity kind used for logging.
+        """
+        return 'device'
+
+    @property
     def definition(self) -> Optional[G90PeripheralDefinition]:
         """
         Returns the definition for the device.
@@ -71,20 +92,11 @@ class G90Device(G90Sensor):
         await self.parent.command(G90Commands.CONTROLDEVICE,
                                   [self.index, 1, self.subindex])
 
-    @property
-    def supports_updates(self) -> bool:
+    async def _refresh_entities(self) -> None:
         """
-        Indicates if disabling/enabling the device (relay) is supported.
-
-        :return: Support for enabling/disabling the device
+        Refreshes cached devices from the panel.
         """
-        # No support for manipulating of disable/enabled for the device, since
-        # single protocol entity read from the G90 alarm panel results in
-        # multiple `G90Device` instances and changing the state would
-        # subsequently require a design change to allow multiple entities to
-        # reflect that. Multiple device entities are for multi-channel relays
-        # mostly.
-        return False
+        await self.parent.get_devices()
 
     async def delete(self) -> None:
         """
