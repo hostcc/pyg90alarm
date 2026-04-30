@@ -353,9 +353,9 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Occupancy state
         """
         _LOGGER.debug(
-            "Setting occupancy for sensor index=%s: '%s' %s"
+            "Setting occupancy for %s index=%s: '%s' %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._occupancy
+            self._entity_kind, self.index, self.name, value, self._occupancy
         )
         self._occupancy = value
 
@@ -482,10 +482,11 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         if not self.definition:
             _LOGGER.debug(
-                'Manipulating sensor at index=%s'
-                ' is unsupported - no sensor definition for'
+                'Manipulating %s at index=%s'
+                ' is unsupported - no definition for'
                 ' type=%s, subtype=%s, protocol=%s',
-                self.index, self.type, self.subtype, self.protocol
+                self._entity_kind, self.index, self.type, self.subtype,
+                self.protocol
             )
             return False
         return True
@@ -535,9 +536,9 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Low battery state
         """
         _LOGGER.debug(
-            "Setting low battery for sensor index=%s '%s': %s"
+            "Setting low battery for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._low_battery
+            self._entity_kind, self.index, self.name, value, self._low_battery
         )
         self._low_battery = value
 
@@ -560,9 +561,9 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Tamper state
         """
         _LOGGER.debug(
-            "Setting tamper for sensor index=%s '%s': %s"
+            "Setting tamper for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._tampered
+            self._entity_kind, self.index, self.name, value, self._tampered
         )
         self._tampered = value
 
@@ -585,9 +586,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Door open state
         """
         _LOGGER.debug(
-            "Setting door open when arming for sensor index=%s '%s': %s"
+            "Setting door open when arming for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._door_open_when_arming
+            self._entity_kind, self.index, self.name, value,
+            self._door_open_when_arming
         )
         self._door_open_when_arming = value
 
@@ -608,9 +610,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         if value & ~G90SensorUserFlags.USER_SETTABLE:
             _LOGGER.debug(
-                'User flags for sensor index=%s contain non-user settable'
+                'User flags for %s index=%s contain non-user settable'
                 ' flags, those will be ignored: %s',
-                self.index, repr(value & ~G90SensorUserFlags.USER_SETTABLE)
+                self._entity_kind, self.index,
+                repr(value & ~G90SensorUserFlags.USER_SETTABLE)
             )
 
         await self._set_protocol_data(
@@ -663,7 +666,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             return False
 
         # Checking private attribute directly, since `mypy` doesn't recognize
-        # the check for sensor definition is done over `self.supports_updates`
+        # the check for entity definition is done over `self.supports_updates`
         # property
         assert self.definition is not None
 
@@ -820,8 +823,8 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
 
         if result is None:
             raise ValueError(
-                f"Unknown alert mode for sensor {self.name}: {mode}"
-                f" (user flag: {self.user_flag})"
+                f"Unknown alert mode for {self._entity_kind} {self.name}:"
+                f" {mode} (user flag: {self.user_flag})"
             )
 
         return result
@@ -844,8 +847,8 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
 
         if result is None:
             raise ValueError(
-                f"Attempting to set alert mode for sensor {self.name} to"
-                f" unknown value '{value}'"
+                f"Attempting to set alert mode for {self._entity_kind}"
+                f" {self.name} to unknown value '{value}'"
             )
 
         # Add the mapped value over the user flags, filtering out previous
@@ -884,7 +887,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         Deletes the sensor from the alarm panel.
         """
-        _LOGGER.debug("Deleting sensor: %s", self)
+        _LOGGER.debug("Deleting %s: %s", self._entity_kind, self)
 
         # Mark the sensor as unavailable
         self.is_unavailable = True

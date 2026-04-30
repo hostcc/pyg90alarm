@@ -102,7 +102,7 @@ class G90Device(G90Sensor):
         """
         Deletes the device (relay) from the G90 alarm panel.
         """
-        _LOGGER.debug("Deleting device: %s", self)
+        _LOGGER.debug("Deleting %s: %s", self._entity_kind, self)
         # Mark the device as unavailable
         self.is_unavailable = True
         # Delete the device from the alarm panel
