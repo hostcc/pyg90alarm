@@ -246,6 +246,27 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         return f'{self._protocol_data.parent_name}#{self._subindex + 1}'
 
     @property
+    def _get_list_command(self) -> G90Commands:
+        """
+        Panel command used to refresh this entity.
+        """
+        return G90Commands.GETSENSORLIST
+
+    @property
+    def _set_single_command(self) -> G90Commands:
+        """
+        Panel command used to write this entity.
+        """
+        return G90Commands.SETSINGLESENSOR
+
+    @property
+    def _entity_kind(self) -> str:
+        """
+        Entity kind used for logging.
+        """
+        return 'sensor'
+
+    @property
     def state_callback(self) -> G90CallbackList[SensorStateCallback]:
         """
         Callback that is invoked when the sensor changes its state.
@@ -332,9 +353,9 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Occupancy state
         """
         _LOGGER.debug(
-            "Setting occupancy for sensor index=%s: '%s' %s"
+            "Setting occupancy for %s index=%s: '%s' %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._occupancy
+            self._entity_kind, self.index, self.name, value, self._occupancy
         )
         self._occupancy = value
 
@@ -461,10 +482,11 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         if not self.definition:
             _LOGGER.debug(
-                'Manipulating with user flags for sensor index=%s'
-                ' is unsupported - no sensor definition for'
+                'Manipulating %s at index=%s'
+                ' is unsupported - no definition for'
                 ' type=%s, subtype=%s, protocol=%s',
-                self.index, self.type, self.subtype, self.protocol
+                self._entity_kind, self.index, self.type, self.subtype,
+                self.protocol
             )
             return False
         return True
@@ -514,9 +536,9 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Low battery state
         """
         _LOGGER.debug(
-            "Setting low battery for sensor index=%s '%s': %s"
+            "Setting low battery for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._low_battery
+            self._entity_kind, self.index, self.name, value, self._low_battery
         )
         self._low_battery = value
 
@@ -539,9 +561,9 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Tamper state
         """
         _LOGGER.debug(
-            "Setting tamper for sensor index=%s '%s': %s"
+            "Setting tamper for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._tampered
+            self._entity_kind, self.index, self.name, value, self._tampered
         )
         self._tampered = value
 
@@ -564,9 +586,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         :param value: Door open state
         """
         _LOGGER.debug(
-            "Setting door open when arming for sensor index=%s '%s': %s"
+            "Setting door open when arming for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self.index, self.name, value, self._door_open_when_arming
+            self._entity_kind, self.index, self.name, value,
+            self._door_open_when_arming
         )
         self._door_open_when_arming = value
 
@@ -585,89 +608,120 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
           :attr:`.G90SensorUserFlags.USER_SETTABLE` will be ignored and
           preserved from existing sensor flags.
         """
-        if not self.supports_updates:
-            return
-
-        # Checking private attribute directly, since `mypy` doesn't recognize
-        # the check for sensor definition is done over
-        # `self.supports_updates` property
-        if not self.definition:
-            return
-
         if value & ~G90SensorUserFlags.USER_SETTABLE:
             _LOGGER.debug(
-                'User flags for sensor index=%s contain non-user settable'
+                'User flags for %s index=%s contain non-user settable'
                 ' flags, those will be ignored: %s',
-                self.index, repr(value & ~G90SensorUserFlags.USER_SETTABLE)
+                self._entity_kind, self.index,
+                repr(value & ~G90SensorUserFlags.USER_SETTABLE)
             )
 
-        # Refresh actual sensor data from the alarm panel before modifying it.
-        # This implies the sensor is at the same position within sensor list
+        await self._set_protocol_data(
+            'set user flags',
+            user_flags_data=(
+                # Preserve flags that are not user-settable
+                self.user_flags & ~G90SensorUserFlags.USER_SETTABLE
+            ) | (
+                # Combine them with the new user-settable flags
+                value & G90SensorUserFlags.USER_SETTABLE
+            )
+        )
+
+    async def set_name(self, value: str) -> None:
+        """
+        Sets sensor name on the panel.
+
+        For multi-node entities the name is shared by all nodes on the panel;
+        node suffixes are derived locally when the :attr:`name` is read.
+
+        :param value: Name to set.
+        """
+        if self._protocol_data.parent_name == value:
+            _LOGGER.debug(
+                '%s index=%s: name %s has not changed, skipping update',
+                self._entity_kind, self.index, repr(value)
+            )
+            return
+
+        # Set the name refreshing the entities from panel once done - that
+        # ensures the list of entities reflects recent changes
+        await self._set_protocol_data(
+            'set name', refresh_after_update=True, parent_name=value
+        )
+
+    async def _set_protocol_data(
+        self, operation: str, refresh_after_update: bool = False,
+        **updates: Any
+    ) -> bool:
+        """
+        Updates protocol data on the panel.
+
+        :param operation: Operation description for logging.
+        :param refresh_after_update: Refresh cached entities from the panel
+          after updating.
+        :param updates: Protocol data fields to update.
+        :return: True if the update has been sent to the panel.
+        """
+        if not self.supports_updates:
+            return False
+
+        # Checking private attribute directly, since `mypy` doesn't recognize
+        # the check for entity definition is done over `self.supports_updates`
+        # property
+        assert self.definition is not None
+
+        # Refresh actual entity data from the alarm panel before modifying it.
+        # This implies the entity is at the same position within protocol list
         # (`_proto_index`) as it has been read initially from the alarm panel
         # when instantiated.
         _LOGGER.debug(
-            'Refreshing sensor at index=%s, position in protocol list=%s',
-            self.index, self.proto_idx
+            'Refreshing %s at index=%s, position in protocol list=%s',
+            self._entity_kind, self.index, self.proto_idx
         )
-        sensors_result = self.parent.paginated_result(
-            G90Commands.GETSENSORLIST,
+        entities_result = self.parent.paginated_result(
+            self._get_list_command,
             start=self.proto_idx, end=self.proto_idx
         )
-        sensors = [x.data async for x in sensors_result]
+        entities = [x.data async for x in entities_result]
 
-        # Abort if sensor is not found
-        if not sensors:
+        # Abort if entity is not found
+        if not entities:
             _LOGGER.error(
-                'Sensor index=%s not found when attempting to set its'
-                ' user flag',
-                self.index,
+                '%s index=%s not found when attempting to %s',
+                self._entity_kind, self.index, operation
             )
-            return
+            return False
 
-        # Compare actual sensor data from what the sensor has been instantiated
+        # Compare actual entity data from what the entity has been instantiated
         # from, and abort the operation if out-of-band changes are detected.
-        sensor_data = sensors[0]
-        if self._protocol_incoming_data_kls(
-            *sensor_data
-        ) != self._protocol_data:
+        actual_data = self._protocol_incoming_data_kls(*entities[0])
+        if actual_data != self._protocol_data:
             _LOGGER.error(
-                "Sensor index=%s '%s' has been changed externally,"
-                " refusing to alter its user flag",
-                self.index,
-                self.name
+                "%s index=%s '%s' has been changed externally,"
+                " refusing to %s",
+                self._entity_kind, self.index, self.name,
+                operation
             )
-            return
+            return False
 
-        prev_user_flags = self.user_flags
+        # Re-instantiate the protocol data with modified fields
+        _data = asdict(actual_data)
+        _data.update(updates)
+        new_protocol_data = self._protocol_incoming_data_kls(**_data)
 
-        # Re-instantiate the protocol data with modified user flags
-        _data = asdict(self._protocol_data)
-        _data['user_flags_data'] = (
-            # Preserve flags that are not user-settable
-            self.user_flags & ~G90SensorUserFlags.USER_SETTABLE
-        ) | (
-            # Combine them with the new user-settable flags
-            value & G90SensorUserFlags.USER_SETTABLE
-        )
-        self._protocol_data = self._protocol_incoming_data_kls(**_data)
-
-        if self.user_flags == prev_user_flags:
+        if new_protocol_data == self._protocol_data:
             _LOGGER.debug(
-                'Sensor index=%s: user flags %s have not changed,'
+                '%s index=%s: %s has not changed,'
                 ' skipping update',
-                self._protocol_data.index, repr(prev_user_flags)
+                self._entity_kind, self._protocol_data.index,
+                operation
             )
-            return
+            return False
 
-        _LOGGER.debug(
-            'Sensor index=%s: previous user flags %s, resulting flags %s',
-            self._protocol_data.index,
-            repr(prev_user_flags),
-            repr(self.user_flags)
-        )
+        self._protocol_data = new_protocol_data
 
         # Generate protocol data from write operation, deriving values either
-        # from fields read from the sensor, or from the sensor definition - not
+        # from fields read from the entity, or from the entity definition - not
         # all fields are present during read, only in definition.
         outgoing_data = self._protocol_outgoing_data_kls(
             parent_name=self._protocol_data.parent_name,
@@ -685,10 +739,22 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
             tx=self.definition.tx,
             private_data=self.definition.private_data,
         )
-        # Modify the sensor
+        # Modify the entity
         await self._parent.command(
-            G90Commands.SETSINGLESENSOR, list(astuple(outgoing_data))
+            self._set_single_command, list(astuple(outgoing_data))
         )
+
+        # Refresh the entities from the panel if requested
+        if refresh_after_update:
+            await self._refresh_entities()
+
+        return True
+
+    async def _refresh_entities(self) -> None:
+        """
+        Refreshes cached entities from the panel.
+        """
+        await self.parent.get_sensors()
 
     def get_flag(self, flag: G90SensorUserFlags) -> bool:
         """
@@ -757,8 +823,8 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
 
         if result is None:
             raise ValueError(
-                f"Unknown alert mode for sensor {self.name}: {mode}"
-                f" (user flag: {self.user_flag})"
+                f"Unknown alert mode for {self._entity_kind} {self.name}:"
+                f" {mode} (user flag: {self.user_flag})"
             )
 
         return result
@@ -781,8 +847,8 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
 
         if result is None:
             raise ValueError(
-                f"Attempting to set alert mode for sensor {self.name} to"
-                f" unknown value '{value}'"
+                f"Attempting to set alert mode for {self._entity_kind}"
+                f" {self.name} to unknown value '{value}'"
             )
 
         # Add the mapped value over the user flags, filtering out previous
@@ -821,7 +887,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         Deletes the sensor from the alarm panel.
         """
-        _LOGGER.debug("Deleting sensor: %s", self)
+        _LOGGER.debug("Deleting %s: %s", self._entity_kind, self)
 
         # Mark the sensor as unavailable
         self.is_unavailable = True
@@ -886,6 +952,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         return (
             self.type == value.type
             and self.subtype == value.subtype
+            and self.protocol == value.protocol
             and self.index == value.index
-            and self.name == value.name
+            and self.subindex == value.subindex
         )

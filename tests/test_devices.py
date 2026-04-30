@@ -96,8 +96,62 @@ async def test_multinode_device(mock_device: DeviceMock) -> None:
 
 
 @pytest.mark.g90device(sent_data=[
-    b'ISTART[138,'
-    b'[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
+    b'ISTART[138,[[1,1,1],["Socket",10,0,128,3,0,32,1190,0,17,1,0,""]]]IEND\0',
+    b'ISTART[138,[[1,1,1],["Socket",10,0,128,3,0,32,1190,0,17,1,0,""]]]IEND\0',
+    b"ISTARTIEND\0",
+    b'ISTART[138,[[1,1,1],["Renamed socket",10,0,128,3,0,32,1190,0,17,1,0,""]'
+    b']]IEND\0',
+])
+async def test_device_set_name(mock_device: DeviceMock) -> None:
+    """
+    Tests for setting a device name.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    devices = await g90.get_devices()
+    await devices[0].set_name('Renamed socket')
+    assert devices[0].name == 'Renamed socket'
+    assert await mock_device.recv_data == [
+        b'ISTART[138,138,[138,[1,10]]]IEND\0',
+        b'ISTART[138,138,[138,[1,1]]]IEND\0',
+        b'ISTART[140,140,[140,'
+        b'["Renamed socket",10,0,128,3,0,32,1190,0,17,1,0,2,"060A0600"]'
+        b']]IEND\0',
+        b'ISTART[138,138,[138,[1,10]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[138,[[1,1,1],["Relay",10,0,128,0,0,32,1480,0,17,4,0,""]]]IEND\0',
+    b'ISTART[138,[[1,1,1],["Relay",10,0,128,0,0,32,1480,0,17,4,0,""]]]IEND\0',
+    b"ISTARTIEND\0",
+    b'ISTART[138,[[1,1,1],["Renamed",10,0,128,0,0,32,1480,0,17,4,0,""]'
+    b']]IEND\0',
+])
+async def test_multinode_device_set_name(mock_device: DeviceMock) -> None:
+    """
+    Tests for setting a multi-node device name from a specific node.
+    """
+    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
+    devices = await g90.get_devices()
+    await devices[2].set_name('Renamed')
+    assert [device.name for device in devices] == [
+        'Renamed#1',
+        'Renamed#2',
+        'Renamed#3',
+        'Renamed#4',
+    ]
+    assert await mock_device.recv_data == [
+        b'ISTART[138,138,[138,[1,10]]]IEND\0',
+        b'ISTART[138,138,[138,[1,1]]]IEND\0',
+        b'ISTART[140,140,[140,'
+        b'["Renamed",10,0,128,0,0,32,1480,0,17,4,0,2,"0707070B0B0D0D0E0E00"]'
+        b']]IEND\0',
+        b'ISTART[138,138,[138,[1,10]]]IEND\0',
+    ]
+
+
+@pytest.mark.g90device(sent_data=[
+    b'ISTART[138,[[1,1,1],["Switch",10,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
     b'ISTARTIEND\0',
     b'ISTARTIEND\0',
 ])
