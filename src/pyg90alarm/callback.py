@@ -23,6 +23,7 @@ Implements callbacks.
 """
 from __future__ import annotations
 import asyncio
+import inspect
 from functools import (partial, wraps)
 from asyncio import Task
 from typing import (
@@ -59,7 +60,7 @@ class G90Callback:
                       ' (args: %s, kwargs: %s)',
                       callback, args, kwargs)
 
-        if not asyncio.iscoroutinefunction(callback):
+        if not inspect.iscoroutinefunction(callback):
             def async_wrapper(
                 func: Callable[..., None]
             ) -> Callable[..., Coroutine[Any, Any, None]]:
