@@ -416,3 +416,11 @@ class G90CloudNotifications(G90NotificationsBase, asyncio.Protocol):
             )
             self._server.close()
             self._server = None
+
+        # Close the device connection, otherwise `asyncio` still calls
+        # connection methods of this class, even if the caller created new
+        # instance (directly or via `G90Alarm()` constructor). For the latter
+        # case and if the connection is not closed, the callbacks from the old
+        # `G90Alarm` instance will still be firing instead of ones set on new
+        # `G90Alarm` instance
+        await super().close()
