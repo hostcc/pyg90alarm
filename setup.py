@@ -16,7 +16,7 @@ setup(
     name='pyg90alarm',
     # `setuptools_scm` is pinned to avoid `No module named 'vcs_versioning'`
     # error with 10.0.2
-    setup_requires=['setuptools_scm==9.2.2'],
+    setup_requires=['setuptools_scm==10.0.5'],
     use_scm_version={
         "local_scheme": "no-local-version"
     },
