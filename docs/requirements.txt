@@ -8,7 +8,7 @@ pygments>=2.20.0 # not directly required, pinned by Snyk to avoid a vulnerabilit
 # https://github.com/domdfcoding/enum_tools/issues/118
 sphinx==8.2.3
 setuptools>=78.1.1 # not directly required, pinned by Snyk to avoid a vulnerability
-certifi>=2026.5.20 # not directly required, pinned by Snyk to avoid a vulnerability
+certifi>=2026.6.17 # not directly required, pinned by Snyk to avoid a vulnerability
 requests>=2.34.2 # not directly required, pinned by Snyk to avoid a vulnerability
 jinja2>=3.1.6 # not directly required, pinned by Snyk to avoid a vulnerability
 idna>=3.18 # not directly required, pinned by Snyk to avoid a vulnerability
