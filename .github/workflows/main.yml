@@ -38,7 +38,7 @@ jobs:
           # history
           fetch-depth: 0
       - name: Set Python up
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
       - name: Install testing tools
@@ -103,7 +103,7 @@ jobs:
         with:
           fetch-depth: 0  # `setuptools_scm` needs tags
       - name: Set Python up
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: 3.14
       - name: Install the PEP517 package builder
