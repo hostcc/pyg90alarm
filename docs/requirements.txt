@@ -7,7 +7,7 @@ pygments>=2.20.0 # not directly required, pinned by Snyk to avoid a vulnerabilit
 # enum_tools.autoenum doesn't support sphinx 9.x yet,
 # https://github.com/domdfcoding/enum_tools/issues/118
 sphinx==8.2.3
-setuptools>=83.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools>=84.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
 certifi>=2026.7.22 # not directly required, pinned by Snyk to avoid a vulnerability
 requests>=2.34.2 # not directly required, pinned by Snyk to avoid a vulnerability
 jinja2>=3.1.6 # not directly required, pinned by Snyk to avoid a vulnerability
