@@ -200,8 +200,10 @@ class ValidatorBase(Generic[T]):
             return cast(T, self._default)
 
         # Return stored value if it exists, otherwise return default if the
-        # value is the descriptor itself, i.e. not set
-        value: T | _DefaultNotSet = getattr(
+        # value is the descriptor itself, i.e. not set. Self is in the union
+        # so identity narrowing of `value is self` keeps `self` as the
+        # descriptor (mypy 2.1+).
+        value: T | _DefaultNotSet | Self = getattr(
             obj, self.__field_name__, self._default
         )
         if value is self:
@@ -219,7 +221,7 @@ class ValidatorBase(Generic[T]):
             value = cast(T, self._default)
         return cast(Optional[T], value)
 
-    def __set__(self, obj: Any, value: T) -> None:
+    def __set__(self, obj: Any, value: T | Self) -> None:
         """
         Sets the field value after validating it
 
@@ -230,7 +232,9 @@ class ValidatorBase(Generic[T]):
         :param value: The value to set.
         """
         # Default value assignment, e.g. when field not provided during
-        # initialization thus being assigned the descriptor instance itself
+        # initialization thus being assigned the descriptor instance itself.
+        # Value is T | Self so identity narrowing of `value is self` keeps
+        # `self` as the descriptor (mypy 2.1+).
         substituted_default = False
         if value is self:
             # No default value provided to the field, raise an error since that
@@ -247,6 +251,9 @@ class ValidatorBase(Generic[T]):
             )
             value = cast(T, self._default)
             substituted_default = True
+
+        # TypeVar cannot subtract Self from T | Self after `is self`.
+        value = cast(T, value)
 
         # First time setting the value during dataclass initialization and its
         # value should be trusted if `trust_initial_value` is True
