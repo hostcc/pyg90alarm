@@ -296,7 +296,12 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 26 and x.name == 'Remote']
     low_battery_sensor_cb = MagicMock()
-    low_battery_sensor_cb.side_effect = lambda *args: future.set_result(True)
+
+    def _complete_low_battery(*_args: object) -> None:
+        if not future.done():
+            future.set_result(True)
+
+    low_battery_sensor_cb.side_effect = _complete_low_battery
     sensor[0].low_battery_callback = low_battery_sensor_cb
     low_battery_cb = MagicMock()
     g90.low_battery_callback = low_battery_cb
@@ -318,6 +323,12 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
 
     # Verify the low battery state is reset upon sensor activity
     assert sensor[0].is_low_battery is False
+    # Callback is invoked again when the condition is cleared; current
+    # state is on the sensor property
+    assert low_battery_sensor_cb.call_count == 2
+    low_battery_sensor_cb.assert_called_with()
+    assert low_battery_cb.call_count == 2
+    low_battery_cb.assert_called_with(26, 'Remote')
 
     await g90.close_notifications()
 
@@ -349,8 +360,13 @@ async def test_sensor_door_open_when_arming_callback(
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 21 and x.name == 'Hall']
     door_open_when_arming_sensor_cb = MagicMock()
+
+    def _complete_door_open_when_arming(*_args: object) -> None:
+        if not future.done():
+            future.set_result(True)
+
     door_open_when_arming_sensor_cb.side_effect = (
-        lambda *args: future.set_result(True)
+        _complete_door_open_when_arming
     )
     sensor[0].door_open_when_arming_callback = door_open_when_arming_sensor_cb
     door_open_when_arming_cb = MagicMock()
@@ -374,6 +390,12 @@ async def test_sensor_door_open_when_arming_callback(
 
     # Verify the door open when arming state is reset upon disarming
     assert sensor[0].is_door_open_when_arming is False
+    # Callback is invoked again when the condition is cleared; current
+    # state is on the sensor property
+    assert door_open_when_arming_sensor_cb.call_count == 2
+    door_open_when_arming_sensor_cb.assert_called_with()
+    assert door_open_when_arming_cb.call_count == 2
+    door_open_when_arming_cb.assert_called_with(21, 'Hall')
 
     await g90.close_notifications()
 
@@ -588,9 +610,12 @@ async def test_sensor_tamper_callback(
     future = asyncio.get_running_loop().create_future()
     sensor = [x for x in sensors if x.index == 100 and x.name == 'Hall']
     tamper_sensor_cb = MagicMock()
-    tamper_sensor_cb.side_effect = (
-        lambda *args: future.set_result(True)
-    )
+
+    def _complete_tamper(*_args: object) -> None:
+        if not future.done():
+            future.set_result(True)
+
+    tamper_sensor_cb.side_effect = _complete_tamper
     sensor[0].tamper_callback = tamper_sensor_cb
     tamper_cb = MagicMock()
     g90.tamper_callback = tamper_cb
@@ -613,6 +638,12 @@ async def test_sensor_tamper_callback(
 
     # Verify the sensor tampered state is reset upon disarming
     assert sensor[0].is_tampered is False
+    # Callback is invoked again when the condition is cleared; current
+    # state is on the sensor property
+    assert tamper_sensor_cb.call_count == 2
+    tamper_sensor_cb.assert_called_with()
+    assert tamper_cb.call_count == 2
+    tamper_cb.assert_called_with(100, 'Hall')
 
     await g90.close_notifications()
 

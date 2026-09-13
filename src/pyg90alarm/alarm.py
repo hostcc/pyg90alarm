@@ -687,8 +687,12 @@ class G90Alarm(G90NotificationProtocol):
         if sensor:
             # Reset the low battery flag since the sensor reports activity,
             # implying it has sufficient battery power
+            was_low_battery = sensor.is_low_battery
             # pylint: disable=protected-access
             sensor._set_low_battery(False)
+            if was_low_battery:
+                sensor.low_battery_callback.invoke()
+                self._low_battery_cb.invoke(idx, name)
             # Set the sensor occupancy
             # pylint: disable=protected-access
             sensor._set_occupancy(occupancy)
@@ -817,9 +821,15 @@ class G90Alarm(G90NotificationProtocol):
             if sensor.is_tampered:
                 # pylint: disable=protected-access
                 sensor._set_tampered(False)
+                sensor.tamper_callback.invoke()
+                self._tamper_cb.invoke(sensor.index, sensor.name)
             if sensor.is_door_open_when_arming:
                 # pylint: disable=protected-access
                 sensor._set_door_open_when_arming(False)
+                sensor.door_open_when_arming_callback.invoke()
+                self._door_open_when_arming_cb.invoke(
+                    sensor.index, sensor.name
+                )
 
         self._armdisarm_cb.invoke(state)
 
@@ -842,12 +852,14 @@ class G90Alarm(G90NotificationProtocol):
     ) -> None:
         """
         Invoked when alarm is triggered. Fires corresponding callback if set by
-        the user with :attr:`.alarm_callback`.
+        the user with :attr:`.alarm_callback`. When the alarm is a tamper,
+        also fires :attr:`.tamper_callback`.
 
         Please note the method is for internal use by the class.
 
         :param event_id: Index of the sensor triggered alarm
         :param zone_name: Sensor name
+        :param is_tampered: Whether the alarm is a tamper condition
         """
         sensor = await self.find_sensor(event_id, zone_name)
         extra_data = None
@@ -895,7 +907,11 @@ class G90Alarm(G90NotificationProtocol):
         """
         Invoked when the sensor reports on low battery. Fires
         corresponding callback if set by the user with
-        :attr:`.on_low_battery_callback`.
+        :attr:`.low_battery_callback`.
+
+        The panel does not send a dedicated battery-restored event; a cleared
+        callback is synthesized later from sensor activity (see
+        :meth:`.on_sensor_activity`).
 
         Please note the method is for internal use by the class.
 
@@ -916,8 +932,12 @@ class G90Alarm(G90NotificationProtocol):
     @property
     def low_battery_callback(self) -> G90CallbackList[LowBatteryCallback]:
         """
-        Low battery callback, which is invoked when sensor reports the
-        condition.
+        Low battery callback, which is invoked when a sensor reports the
+        condition or when the library determines it is no longer active.
+
+        The current value is on :attr:`G90Sensor.is_low_battery`. The panel
+        does not send a battery-restored event; a cleared callback is
+        synthesized when the sensor later reports activity.
 
         .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
@@ -1067,6 +1087,9 @@ class G90Alarm(G90NotificationProtocol):
         callback if set by the user with
         :attr:`.door_open_when_arming_callback`.
 
+        The panel does not send a dedicated cleared event; a cleared callback
+        is synthesized on the next arm/disarm (see :meth:`.on_armdisarm`).
+
         Please note the method is for internal use by the class.
 
         :param event_id: The index of the sensor being active when the panel
@@ -1076,7 +1099,6 @@ class G90Alarm(G90NotificationProtocol):
         _LOGGER.debug('on_door_open_when_arming: %s %s', event_id, zone_name)
         sensor = await self.find_sensor(event_id, zone_name)
         if sensor:
-            # Set the low battery flag on the sensor
             # pylint: disable=protected-access
             sensor._set_door_open_when_arming(True)
             # Invoke per-sensor callback if provided
@@ -1089,8 +1111,12 @@ class G90Alarm(G90NotificationProtocol):
         self
     ) -> G90CallbackList[DoorOpenWhenArmingCallback]:
         """
-        Door open when arming callback, which is invoked when sensor reports
-        the condition.
+        Door open when arming callback, which is invoked when a sensor reports
+        the condition or when the library determines it is no longer active.
+
+        The current value is on :attr:`G90Sensor.is_door_open_when_arming`.
+        The panel does not send a cleared event; a cleared callback is
+        synthesized on the next arm/disarm.
 
         .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
@@ -1105,7 +1131,14 @@ class G90Alarm(G90NotificationProtocol):
     @property
     def tamper_callback(self) -> G90CallbackList[TamperCallback]:
         """
-        Tamper callback, which is invoked when sensor reports the condition.
+        Tamper callback, which is invoked when a sensor reports the condition
+        or when the library determines it is no longer active.
+
+        The current value is on :attr:`G90Sensor.is_tampered`. The panel does
+        not send a tamper-cleared event; a cleared callback is synthesized on
+        the next arm/disarm.
+
+        .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
         return self._tamper_cb
 
