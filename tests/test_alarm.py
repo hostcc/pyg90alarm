@@ -330,10 +330,6 @@ async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
     assert low_battery_cb.call_count == 2
     low_battery_cb.assert_called_with(26, 'Remote')
 
-    # Allow the remainder of on_sensor_activity (alert config fetch) to
-    # finish before closing the listener
-    await asyncio.sleep(0.1)
-
     await g90.close_notifications()
 
 
