@@ -286,8 +286,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         self
     ) -> G90CallbackList[SensorLowBatteryCallback]:
         """
-        Callback that is invoked when the sensor reports on low battery
-        condition.
+        Callback that is invoked when the sensor reports a low battery
+        condition, or when that condition is cleared.
+
+        The current value is on :attr:`.is_low_battery`.
 
         :return: Sensor's low battery callback
 
@@ -304,8 +306,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         self
     ) -> G90CallbackList[SensorDoorOpenWhenArmingCallback]:
         """
-        Callback that is invoked when the sensor reports on open door
-        condition when arming.
+        Callback that is invoked when the sensor reports an open door
+        condition when arming, or when that condition is cleared.
+
+        The current value is on :attr:`.is_door_open_when_arming`.
 
         :return: Sensor's door open when arming callback
 
@@ -322,7 +326,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
     @property
     def tamper_callback(self) -> G90CallbackList[SensorTamperCallback]:
         """
-        Callback that is invoked when the sensor reports being tampered.
+        Callback that is invoked when the sensor reports being tampered, or
+        when that condition is cleared.
+
+        The current value is on :attr:`.is_tampered`.
 
         :return: Sensor's tamper callback
 
@@ -522,7 +529,8 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         Indicates if the sensor is reporting low battery.
 
         The condition is cleared when the sensor reports activity (i.e. is no
-        longer low on battery as it is able to report the activity).
+        longer low on battery as it is able to report the activity). The
+        corresponding callback is invoked at that point as well.
         """
         return self._low_battery
 
@@ -548,6 +556,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         Indicates if the sensor has been tampered.
 
         The condition is cleared when panel is armed/disarmed next time.
+        The corresponding callback is invoked at that point as well.
         """
         return self._tampered
 
@@ -573,6 +582,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         Indicates if the sensor reports on open door when arming.
 
         The condition is cleared when panel is armed/disarmed next time.
+        The corresponding callback is invoked at that point as well.
         """
         return self._door_open_when_arming
 
