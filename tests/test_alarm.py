@@ -270,89 +270,76 @@ async def test_sensor_callback(
     assert not sensor[0].occupancy
 
 
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Remote",26,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-        b'ISTART[117,[256]]IEND\0',
+@pytest.mark.parametrize(
+    'index,name,wireless,first_wait,first_low,first_count,'
+    'second_wait,second_low,second_count',
+    [
+        pytest.param(
+            26, 'Remote', True, 'low_battery', True, 1,
+            'low_battery', False, 2,
+            marks=pytest.mark.g90device(
+                sent_data=[
+                    b'ISTART[102,'
+                    b'[[1,1,1],["Remote",26,0,10,1,0,32,0,0,16,1,0,""]]]'
+                    b'IEND\0',
+                    b'ISTART[117,[256]]IEND\0',
+                ],
+                notification_data=[
+                    b'[208,[4,26,1,4,"Remote","DUMMYGUID",1719223959,0,'
+                    b'[""]]]\0',
+                    # Activity clears the low battery state
+                    b'[170,[5,[26,"Remote"]]]\0',
+                ]
+            ),
+            id='activate-then-clear',
+        ),
+        pytest.param(
+            26, 'Remote', True, 'low_battery', False, 1,
+            'occupancy', False, 1,
+            marks=pytest.mark.g90device(
+                sent_data=[
+                    b'ISTART[102,'
+                    b'[[1,1,1],["Remote",26,0,10,1,0,32,0,0,16,1,0,""]]]'
+                    b'IEND\0',
+                    b'ISTART[117,[256]]IEND\0',
+                ],
+                notification_data=[
+                    b'[170,[5,[26,"Remote"]]]\0',
+                    b'[170,[5,[26,"Remote"]]]\0',
+                ]
+            ),
+            id='clear-on-first-activity',
+        ),
+        pytest.param(
+            12, 'Cord 1', False, 'occupancy', False, 0,
+            None, False, 0,
+            marks=pytest.mark.g90device(
+                sent_data=[
+                    b'ISTART[102,'
+                    b'[[1,1,1],["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]]]'
+                    b'IEND\0',
+                    b'ISTART[117,[256]]IEND\0',
+                ],
+                notification_data=[
+                    b'[170,[5,[12,"Cord 1"]]]\0',
+                ]
+            ),
+            id='wired-skip',
+        ),
     ],
-    notification_data=[
-        b'[208,[4,26,1,4,"Remote","DUMMYGUID",1719223959,0,[""]]]\0',
-        # Simulate sensor activity, which should reset low battery state for it
-        b'[170,[5,[26,"Remote"]]]\0',
-    ]
 )
-async def test_sensor_low_battery_callback(mock_device: DeviceMock) -> None:
-    """
-    Tests for sensor low battery callback.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    await g90.use_local_notifications(
-        notifications_local_ip=mock_device.notification_host,
-        notifications_local_port=mock_device.notification_port
-    )
-
-    sensors = await g90.sensors
-
-    future = asyncio.get_running_loop().create_future()
-    sensor = [x for x in sensors if x.index == 26 and x.name == 'Remote']
-    low_battery_sensor_cb = MagicMock()
-
-    def _complete_low_battery(*_args: object) -> None:
-        if not future.done():
-            future.set_result(True)
-
-    low_battery_sensor_cb.side_effect = _complete_low_battery
-    sensor[0].low_battery_callback = low_battery_sensor_cb
-    low_battery_cb = MagicMock()
-    g90.low_battery_callback = low_battery_cb
-
-    await g90.listen_notifications()
-    await mock_device.send_next_notification()
-    await asyncio.wait([future], timeout=0.1)
-
-    low_battery_sensor_cb.assert_called_once_with()
-    low_battery_cb.assert_called_once_with(26, 'Remote')
-    # Verify the low battery state is set upon receiving the notification
-    assert sensor[0].is_low_battery is True
-
-    # Signal the second notification is ready, the future has to be re-created
-    # as the corresponding callback will be fired again
-    future = asyncio.get_running_loop().create_future()
-    await mock_device.send_next_notification()
-    await asyncio.wait([future], timeout=0.1)
-
-    # Verify the low battery state is reset upon sensor activity
-    assert sensor[0].is_low_battery is False
-    # Callback is invoked again when the condition is cleared; current
-    # state is on the sensor property
-    assert low_battery_sensor_cb.call_count == 2
-    low_battery_sensor_cb.assert_called_with()
-    assert low_battery_cb.call_count == 2
-    low_battery_cb.assert_called_with(26, 'Remote')
-
-    await g90.close_notifications()
-
-
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Remote",26,0,10,1,0,32,0,0,16,1,0,""]]]IEND\0',
-        b'ISTART[117,[256]]IEND\0',
-    ],
-    notification_data=[
-        # First activity with no prior low-battery alert synthesizes a clear
-        b'[170,[5,[26,"Remote"]]]\0',
-        # Subsequent activity must not invoke the callback again
-        b'[170,[5,[26,"Remote"]]]\0',
-    ]
-)
-async def test_sensor_low_battery_clear_on_first_activity(
-    mock_device: DeviceMock
+# pylint: disable=too-many-positional-arguments,too-many-arguments
+# pylint: disable=too-many-locals
+async def test_sensor_low_battery_callback(
+    index: int, name: str, wireless: bool, first_wait: str, first_low: bool,
+    first_count: int, second_wait: str | None, second_low: bool,
+    second_count: int, mock_device: DeviceMock
 ) -> None:
     """
-    Tests synthesizing a low-battery clear from the first wireless sensor
-    activity after construction, and that later activity is gated.
+    Tests for sensor low battery callback.
+
+    Covers activate-then-clear, a synthesized clear from the first wireless
+    activity after construction, and skipping the path for wired sensors.
     """
     g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
     await g90.use_local_notifications(
@@ -361,93 +348,64 @@ async def test_sensor_low_battery_clear_on_first_activity(
     )
 
     sensors = await g90.sensors
+    sensor = [
+        x for x in sensors if x.index == index and x.name == name
+    ]
 
-    future = asyncio.get_running_loop().create_future()
-    sensor = [x for x in sensors if x.index == 26 and x.name == 'Remote']
+    low_battery_future = asyncio.get_running_loop().create_future()
+    occupancy_future = asyncio.get_running_loop().create_future()
     low_battery_sensor_cb = MagicMock()
+    occupancy_cb = MagicMock()
 
     def _complete_low_battery(*_args: object) -> None:
-        if not future.done():
-            future.set_result(True)
-
-    low_battery_sensor_cb.side_effect = _complete_low_battery
-    sensor[0].low_battery_callback = low_battery_sensor_cb
-    low_battery_cb = MagicMock()
-    g90.low_battery_callback = low_battery_cb
-
-    occupancy_future = asyncio.get_running_loop().create_future()
-    occupancy_cb = MagicMock()
+        if not low_battery_future.done():
+            low_battery_future.set_result(True)
 
     def _complete_occupancy(*_args: object) -> None:
         if not occupancy_future.done():
             occupancy_future.set_result(True)
 
+    def _wait_future(wait: str) -> asyncio.Future[bool]:
+        if wait == 'low_battery':
+            return low_battery_future
+        return occupancy_future
+
+    low_battery_sensor_cb.side_effect = _complete_low_battery
+    sensor[0].low_battery_callback = low_battery_sensor_cb
     occupancy_cb.side_effect = _complete_occupancy
     sensor[0].state_callback = occupancy_cb
-
-    await g90.listen_notifications()
-    await mock_device.send_next_notification()
-    await asyncio.wait([future], timeout=0.1)
-
-    assert sensor[0].is_low_battery is False
-    low_battery_sensor_cb.assert_called_once_with()
-    low_battery_cb.assert_called_once_with(26, 'Remote')
-
-    occupancy_future = asyncio.get_running_loop().create_future()
-    await mock_device.send_next_notification()
-    await asyncio.wait([occupancy_future], timeout=0.1)
-
-    assert occupancy_future.done()
-    assert sensor[0].is_low_battery is False
-    assert low_battery_sensor_cb.call_count == 1
-    assert low_battery_cb.call_count == 1
-
-    await g90.close_notifications()
-
-
-@pytest.mark.g90device(
-    sent_data=[
-        b'ISTART[102,'
-        b'[[1,1,1],["Cord 1",12,0,126,1,0,32,0,5,16,1,0,""]]]IEND\0',
-        b'ISTART[117,[256]]IEND\0',
-    ],
-    notification_data=[
-        b'[170,[5,[12,"Cord 1"]]]\0',
-    ]
-)
-async def test_wired_sensor_activity_skips_low_battery_callback(
-    mock_device: DeviceMock
-) -> None:
-    """
-    Tests that wired sensor activity does not synthesize a low-battery clear.
-    """
-    g90 = G90Alarm(host=mock_device.host, port=mock_device.port)
-    await g90.use_local_notifications(
-        notifications_local_ip=mock_device.notification_host,
-        notifications_local_port=mock_device.notification_port
-    )
-
-    sensors = await g90.sensors
-
-    future = asyncio.get_running_loop().create_future()
-    sensor = [x for x in sensors if x.index == 12 and x.name == 'Cord 1']
-    occupancy_cb = MagicMock()
-    occupancy_cb.side_effect = lambda *args: future.set_result(True)
-    sensor[0].state_callback = occupancy_cb
-    low_battery_sensor_cb = MagicMock()
-    sensor[0].low_battery_callback = low_battery_sensor_cb
     low_battery_cb = MagicMock()
     g90.low_battery_callback = low_battery_cb
 
     await g90.listen_notifications()
     await mock_device.send_next_notification()
-    await asyncio.wait([future], timeout=0.1)
+    first_future = _wait_future(first_wait)
+    await asyncio.wait([first_future], timeout=0.1)
+    assert first_future.done()
 
-    assert future.done()
-    assert sensor[0].is_wireless is False
-    assert sensor[0].is_low_battery is False
-    low_battery_sensor_cb.assert_not_called()
-    low_battery_cb.assert_not_called()
+    assert sensor[0].is_wireless is wireless
+    assert sensor[0].is_low_battery is first_low
+    assert low_battery_sensor_cb.call_count == first_count
+    assert low_battery_cb.call_count == first_count
+    if first_count:
+        low_battery_sensor_cb.assert_called_with()
+        low_battery_cb.assert_called_with(index, name)
+
+    if second_wait is not None:
+        # Recreate wait futures for the next notification
+        low_battery_future = asyncio.get_running_loop().create_future()
+        occupancy_future = asyncio.get_running_loop().create_future()
+        await mock_device.send_next_notification()
+        second_future = _wait_future(second_wait)
+        await asyncio.wait([second_future], timeout=0.1)
+        assert second_future.done()
+
+        assert sensor[0].is_low_battery is second_low
+        assert low_battery_sensor_cb.call_count == second_count
+        assert low_battery_cb.call_count == second_count
+        if second_count:
+            low_battery_sensor_cb.assert_called_with()
+            low_battery_cb.assert_called_with(index, name)
 
     await g90.close_notifications()
 
