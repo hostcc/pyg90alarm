@@ -190,7 +190,7 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         self._low_battery_callback: G90CallbackList[
             SensorLowBatteryCallback
         ] = G90CallbackList()
-        self._low_battery = False
+        self._low_battery: Optional[bool] = None
         self._tampered = False
         self._door_open_when_arming_callback: G90CallbackList[
             SensorDoorOpenWhenArmingCallback
@@ -289,7 +289,10 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         Callback that is invoked when the sensor reports a low battery
         condition, or when that condition is cleared.
 
-        The current value is on :attr:`.is_low_battery`.
+        The current value is on :attr:`.is_low_battery`. After construction,
+        the first activity of a wireless sensor may synthesize a clear while
+        :attr:`.is_low_battery` is ``False``, so observers that persist state
+        can drop it.
 
         :return: Sensor's low battery callback
 
@@ -528,13 +531,20 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         """
         Indicates if the sensor is reporting low battery.
 
+        Unknown (never observed in this :class:`G90Alarm` lifetime) reads as
+        ``False``.
+
         The condition is cleared when the sensor reports activity (i.e. is no
         longer low on battery as it is able to report the activity). The
         corresponding callback is invoked at that point as well.
-        """
-        return self._low_battery
 
-    def _set_low_battery(self, value: bool) -> None:
+        After construction, the first activity of a wireless sensor may
+        synthesize a clear while this property is ``False``, so observers that
+        persist state can drop it.
+        """
+        return self._low_battery is True
+
+    def _set_low_battery(self, value: bool) -> bool:
         """
         Sets low battery state of the sensor.
 
@@ -542,13 +552,16 @@ class G90Sensor(G90BaseEntity):  # pylint:disable=too-many-instance-attributes
         notifications/alerts.
 
         :param value: Low battery state
+        :return: Whether the stored value changed
         """
+        previous = self._low_battery
         _LOGGER.debug(
             "Setting low battery for %s index=%s '%s': %s"
             " (previous value: %s)",
-            self._entity_kind, self.index, self.name, value, self._low_battery
+            self._entity_kind, self.index, self.name, value, previous
         )
         self._low_battery = value
+        return previous != value
 
     @property
     def is_tampered(self) -> bool:

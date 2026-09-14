@@ -686,13 +686,14 @@ class G90Alarm(G90NotificationProtocol):
         sensor = await self.find_sensor(idx, name)
         if sensor:
             # Reset the low battery flag since the sensor reports activity,
-            # implying it has sufficient battery power
-            was_low_battery = sensor.is_low_battery
-            # pylint: disable=protected-access
-            sensor._set_low_battery(False)
-            if was_low_battery:
-                sensor.low_battery_callback.invoke()
-                self._low_battery_cb.invoke(idx, name)
+            # implying it has sufficient battery power. Unknown (never
+            # observed) is a change, so a synthesized clear is delivered once
+            # after a G90Alarm restart. Wired sensors never report this alert.
+            if sensor.is_wireless:
+                # pylint: disable=protected-access
+                if sensor._set_low_battery(False):
+                    sensor.low_battery_callback.invoke()
+                    self._low_battery_cb.invoke(idx, name)
             # Set the sensor occupancy
             # pylint: disable=protected-access
             sensor._set_occupancy(occupancy)
@@ -911,7 +912,10 @@ class G90Alarm(G90NotificationProtocol):
 
         The panel does not send a dedicated battery-restored event; a cleared
         callback is synthesized later from sensor activity (see
-        :meth:`.on_sensor_activity`).
+        :meth:`.on_sensor_activity`). After construction, the first activity
+        of a wireless sensor may synthesize a clear while
+        :attr:`G90Sensor.is_low_battery` is ``False``, so observers that
+        persist state can drop it.
 
         Please note the method is for internal use by the class.
 
@@ -937,7 +941,10 @@ class G90Alarm(G90NotificationProtocol):
 
         The current value is on :attr:`G90Sensor.is_low_battery`. The panel
         does not send a battery-restored event; a cleared callback is
-        synthesized when the sensor later reports activity.
+        synthesized when the sensor later reports activity. After
+        construction, the first activity of a wireless sensor may synthesize
+        a clear while :attr:`G90Sensor.is_low_battery` is ``False``, so
+        observers that persist state can drop it.
 
         .. seealso:: :attr:`.sensor_callback` for compatibility notes
         """
