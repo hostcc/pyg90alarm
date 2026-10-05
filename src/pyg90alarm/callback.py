@@ -26,6 +26,7 @@ import asyncio
 import inspect
 from functools import (partial, wraps)
 from asyncio import Task
+from types import CoroutineType
 from typing import (
     Any, Callable, Coroutine, cast, Optional, Union, TypeVar, Generic
 )
@@ -91,11 +92,15 @@ class G90Callback:
             """
             exc = task.exception()
             if exc:
+                coro = task.get_coro()
+                qualname = (
+                    coro.__qualname__
+                    if isinstance(coro, CoroutineType)
+                    else repr(coro)
+                )
                 _LOGGER.error(
                     "Got exception when invoking callback '%s(...)':",
-                    cast(
-                        Coroutine[Any, Any, None], task.get_coro()
-                    ).__qualname__,
+                    qualname,
                     exc_info=exc, stack_info=False
                 )
 
