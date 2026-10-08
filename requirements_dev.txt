@@ -3,6 +3,6 @@ flake8 == 7.4.1
 pytest==9.1.1
 pytest-asyncio==1.4.0
 pytest-cov == 7.1.0
-pylint==4.1.1
+pylint==4.1.2
 mypy[reports] == 2.4.0
 freezegun == 1.5.5
