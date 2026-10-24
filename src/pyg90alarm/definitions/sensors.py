@@ -730,6 +730,27 @@ class G90SensorDefinitions(G90PeripheralDefinitionsBase):
             baudrate=0,
             node_count=1
         ),
+        # Kerui K16 private_data follows K07: a leading byte, then
+        # (action, code) pairs. K07 is 0e | 0007 | 010d | 020b | 0301 |
+        # ... | 0a00. K16 is 0e | 010d home | 0207 disarm | 030b SOS |
+        # 0000 away. 030b is action 3, code 0x0B. The 0000 pair is
+        # action 0, code 0x00: the same action byte as K07's 0007, and
+        # a zero code like K07's 0a00. Tamper sends the SOS code. A
+        # registered card is relayed as the disarm key.
+        G90PeripheralDefinition(
+            type=G90PeripheralTypes.RFID,
+            subtype=2,
+            rx=4,
+            tx=0,
+            private_data='0e010d0207030b0000',
+            rw_mode=G90PeripheralRwModes.READ,
+            match_mode=G90PeripheralMatchModes.ONLY20BITS,
+            name="RFID: K16",
+            protocol=G90PeripheralProtocols.RF_1527,
+            timeout=0,
+            baudrate=0,
+            node_count=1
+        ),
         G90PeripheralDefinition(
             type=G90PeripheralTypes.DOORBELL,
             subtype=1,
