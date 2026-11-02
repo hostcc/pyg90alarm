@@ -4,5 +4,5 @@ pytest==9.2.0
 pytest-asyncio==1.4.1
 pytest-cov == 7.1.0
 pylint==4.1.3
-mypy[reports] == 2.4.0
+mypy[reports] == 2.4.1
 freezegun == 1.5.5
